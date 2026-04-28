@@ -5,3 +5,4 @@ openai
 APScheduler
 flask
 gunicorn
+requests
