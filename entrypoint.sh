@@ -1,13 +1,7 @@
 #!/bin/sh
 
-DB_PATH="/data/finance.db"
-INITIAL_DB_PATH="/app/finance.db"
+# The database is created automatically by init_db() in main.py
+# It lives on the persistent disk at /data/finance.db
+# No need to copy a seed file — init_db() handles table creation and account setup
 
-# Check if the database already exists in the persistent volume
-if [ ! -f "$DB_PATH" ]; then
-  echo "Initializing database in persistent volume..."
-  cp "$INITIAL_DB_PATH" "$DB_PATH"
-fi
-
-# Execute the main application command
 exec python render_main.py

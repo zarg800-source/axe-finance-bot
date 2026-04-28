@@ -799,25 +799,19 @@ def init_db():
     """)
     for emoji, name in CATEGORY_LIST:
         c.execute("INSERT OR IGNORE INTO categories (name, emoji) VALUES (?, ?)", (name, emoji))
+    # Create accounts if they don't exist (with 0 balance — use /updatebalance to set correct values)
+    # INSERT OR IGNORE means this only runs on a fresh database, never overwrites existing balances
     uid = AUTHORIZED_USER_ID
-    for user_id, name, balance in [
-        (uid, 'Bangkok Bank', 2137.24),
-        (uid, 'True Money Wallet', 6.00),
-        (uid, 'MRT EMV Visa', 133.79),
-        (uid, 'Rabbit Card', 0.00),
-        (uid, 'Cash', 0.00),
+    for user_id, name in [
+        (uid, 'Bangkok Bank'),
+        (uid, 'True Money Wallet'),
+        (uid, 'MRT EMV Visa'),
+        (uid, 'Rabbit Card'),
+        (uid, 'Cash'),
     ]:
-        c.execute("INSERT OR IGNORE INTO accounts (user_id, name, balance) VALUES (?, ?, ?)", (user_id, name, balance))
-    for user_id, name, amount, cat, account, due, freq in [
-        (uid, 'YouTube Premium (10GB)', 204.67, 'Subscriptions', 'Bangkok Bank', '2026-04-29', 'monthly'),
-        (uid, 'Google One 30GB', 30.00, 'Subscriptions', 'Bangkok Bank', '2026-04-25', 'monthly'),
-    ]:
-        c.execute("SELECT id FROM recurring_subscriptions WHERE user_id = ? AND name = ?", (user_id, name))
-        if not c.fetchone():
-            c.execute(
-                "INSERT INTO recurring_subscriptions (user_id, name, amount, category, account, next_due_date, frequency) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (user_id, name, amount, cat, account, due, freq)
-            )
+        c.execute("INSERT OR IGNORE INTO accounts (user_id, name, balance) VALUES (?, ?, 0.0)", (user_id, name))
+    # Note: Subscriptions are managed via /addsubscription and /deletesubscription commands.
+    # No hardcoded subscription seeds — the live database on Render has the real data.
     conn.commit()
     conn.close()
 
@@ -1154,17 +1148,30 @@ async def cmd_add_subscription(update: Update, context: ContextTypes.DEFAULT_TYP
     if not args or len(args) < 3:
         await update.message.reply_text(
             "Usage: /addsubscription <name> <amount> <account> [next_due_date]\n"
-            "Example: /addsubscription Netflix 399 bank 2026-05-01"
+            "Example: /addsubscription Netflix 399 bank 2026-05-01\n"
+            "Example: /addsubscription GoogleOne 30.45 mrt 2026-05-25"
         )
         return
-    name = args[0]
+    # Parse from the end: last arg might be date, second-to-last is account, before that is amount
+    # Everything before amount is the name
+    # Try to detect: if last arg looks like a date (YYYY-MM-DD), it's the due date
+    next_due = None
+    remaining_args = list(args)
+    if len(remaining_args) >= 4 and re.match(r'^\d{4}-\d{2}-\d{2}$', remaining_args[-1]):
+        next_due = remaining_args.pop()
+    if len(remaining_args) < 3:
+        await update.message.reply_text("Need at least: name, amount, account")
+        return
+    account_keyword = remaining_args.pop()
+    account = detect_account(account_keyword)
     try:
-        amount = float(args[1].replace(',', ''))
+        amount = float(remaining_args.pop().replace(',', ''))
     except ValueError:
         await update.message.reply_text("Invalid amount.")
         return
-    account = detect_account(args[2])
-    next_due = args[3] if len(args) > 3 else str(date.today() + timedelta(days=30))
+    name = " ".join(remaining_args)  # Everything left is the name (supports multi-word)
+    if not next_due:
+        next_due = str(date.today() + timedelta(days=30))
 
     conn = get_db()
     c = conn.cursor()

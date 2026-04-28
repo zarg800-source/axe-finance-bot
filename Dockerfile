@@ -10,7 +10,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY main.py .
 COPY render_main.py .
-COPY finance.db .
 COPY entrypoint.sh .
 RUN chmod +x /app/entrypoint.sh
 
