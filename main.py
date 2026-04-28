@@ -2,14 +2,15 @@
 """
 Mike's Personal Finance Tracker Bot (v20 async)
 Tracks income, expenses, balances across multiple accounts.
-Supports natural language logging, photo receipts, recurring subscriptions,
-and weekly reports with month-over-month comparison.
+Supports natural language logging, photo receipts (OCR), recurring subscriptions,
+weekly reports with month-over-month comparison, and Excel export.
 """
 
 import logging
 import sqlite3
 import os
 import re
+import io
 import base64
 from datetime import datetime, timedelta, date
 from functools import wraps
@@ -22,7 +23,15 @@ from telegram.ext import (
 )
 from dotenv import load_dotenv
 import pytz
-from openai import OpenAI
+
+# OCR imports
+import pytesseract
+from PIL import Image
+
+# Excel export
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
 
 # Load environment variables
 load_dotenv()
@@ -44,8 +53,16 @@ AUTHORIZED_USER_ID = int(os.getenv('AUTHORIZED_USER_ID'))
 DATABASE_NAME = os.path.join('/data', 'finance.db')
 BANGKOK_TZ = pytz.timezone('Asia/Bangkok')
 
-# OpenAI client for receipt processing
-ai_client = OpenAI()
+# Optional OpenAI client for enhanced receipt processing
+ai_client = None
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
+if OPENAI_API_KEY and OPENAI_API_KEY.strip():
+    try:
+        from openai import OpenAI
+        ai_client = OpenAI()
+        logger.info("OpenAI client initialized for enhanced receipt scanning.")
+    except Exception as e:
+        logger.warning(f"Could not initialize OpenAI client: {e}. Using OCR fallback.")
 
 # ─── Categories ───────────────────────────────────────────────────────────────
 CATEGORIES = {
@@ -60,6 +77,12 @@ CATEGORIES = {
     'pepsi': ('Food & Drinks', '🍜'),
     'coke': ('Food & Drinks', '🍜'),
     'snack': ('Food & Drinks', '🍜'),
+    'kfc': ('Food & Drinks', '🍜'),
+    'mcdonalds': ('Food & Drinks', '🍜'),
+    'pizza': ('Food & Drinks', '🍜'),
+    'noodle': ('Food & Drinks', '🍜'),
+    'rice': ('Food & Drinks', '🍜'),
+    'chicken': ('Food & Drinks', '🍜'),
     'coffee': ('Coffee', '☕'),
     'starbucks': ('Coffee', '☕'),
     'cafe amazon': ('Coffee', '☕'),
@@ -93,12 +116,17 @@ CATEGORIES = {
     'clinic': ('Health', '💊'),
     'hospital': ('Health', '💊'),
     'medicine': ('Health', '💊'),
+    'vitamin': ('Health', '💊'),
+    'multivitamin': ('Health', '💊'),
+    'swisse': ('Health', '💊'),
     'shopping': ('Shopping', '👗'),
     'clothes': ('Shopping', '👗'),
     'accessories': ('Shopping', '👗'),
     'uniqlo': ('Shopping', '👗'),
     'headphones': ('Shopping', '👗'),
     'sennheiser': ('Shopping', '👗'),
+    'shopee': ('Shopping', '👗'),
+    'lazada': ('Shopping', '👗'),
     'entertainment': ('Entertainment', '🎉'),
     'movies': ('Entertainment', '🎉'),
     'movie': ('Entertainment', '🎉'),
@@ -263,6 +291,73 @@ def detect_account(text):
     return 'Cash'
 
 
+def parse_bangkok_bank_ocr(ocr_text):
+    """Parse Bangkok Bank transfer slip from OCR text."""
+    result = {
+        'amount': None,
+        'note': None,
+        'bank': None,
+        'direction': 'OUT',
+        'to': None,
+    }
+
+    # Detect Bangkok Bank
+    if 'bangkok bank' in ocr_text.lower():
+        result['bank'] = 'Bangkok Bank'
+
+    # Extract amount - look for patterns like "6,504.00" or "204.00" near "Amount" or "THB"
+    amount_patterns = [
+        r'(?:Amount|amount)\s*[:\s]*([0-9,]+\.?\d*)\s*(?:THB|Baht)?',
+        r'([0-9,]+\.\d{2})\s*THB',
+        r'THB\s*([0-9,]+\.\d{2})',
+        r'([0-9]{1,3}(?:,[0-9]{3})*\.\d{2})',
+    ]
+    for pattern in amount_patterns:
+        match = re.search(pattern, ocr_text, re.IGNORECASE)
+        if match:
+            amount_str = match.group(1).replace(',', '')
+            try:
+                amount = float(amount_str)
+                if amount > 0 and amount != 0.00:  # Skip fee amounts of 0.00
+                    result['amount'] = amount
+                    break
+            except ValueError:
+                continue
+
+    # Extract Note field
+    note_patterns = [
+        r'Note\s*[:\s]+([^\n]+)',
+        r'Memo\s*[:\s]+([^\n]+)',
+        r'Remark\s*[:\s]+([^\n]+)',
+    ]
+    for pattern in note_patterns:
+        match = re.search(pattern, ocr_text, re.IGNORECASE)
+        if match:
+            note = match.group(1).strip()
+            if note and note.lower() not in ['', '-', 'n/a']:
+                result['note'] = note
+                break
+
+    # Extract "To" field for description
+    to_patterns = [
+        r'To\s+([A-Z][A-Z\s\(\)]+(?:CO\.,?LTD\.?|THAILAND|COMPANY)?)',
+        r'To\s+(.+?)(?:\n|Service|Biller|Reference)',
+    ]
+    for pattern in to_patterns:
+        match = re.search(pattern, ocr_text, re.IGNORECASE)
+        if match:
+            result['to'] = match.group(1).strip()
+            break
+
+    # Detect direction - if "From" contains the user's name/account, it's OUT
+    if re.search(r'From.*(?:MR\s*MIN|171-4)', ocr_text, re.IGNORECASE):
+        result['direction'] = 'OUT'
+    elif re.search(r'To.*(?:MR\s*MIN|171-4)', ocr_text, re.IGNORECASE):
+        result['direction'] = 'IN'
+
+    return result
+
+
 # ─── Commands ─────────────────────────────────────────────────────────────────
 @restricted
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -285,6 +380,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/help — This help menu\n"
         "/balance — Show all account balances\n"
         "/report — Get financial summary\n"
+        "/export — Download Excel spreadsheet\n"
         "/categories — List categories\n"
         "/subscriptions — Show recurring subscriptions\n"
         "/addsubscription — Add a subscription\n"
@@ -297,8 +393,9 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "\"spent ฿150 BTS\" — logs expense\n"
         "\"received ฿5000 salary bank\" — logs income\n"
         "\"paid ฿45 coffee\" — logs expense\n\n"
-        "📸 Send a receipt photo to log it!\n\n"
-        "💡 Add account name at the end: bank, true money, mrt, rabbit, cash",
+        "📸 Send a receipt photo to auto-log it\n\n"
+        "📊 /export — Get monthly Excel file\n\n"
+        "💡 Add account name at the end: bank, truemoney, mrt, rabbit, cash",
         parse_mode=ParseMode.MARKDOWN
     )
 
@@ -544,6 +641,211 @@ async def cmd_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+# ─── Export to Excel ─────────────────────────────────────────────────────────
+@restricted
+async def cmd_export(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Export transactions as an Excel file. Usage: /export [month] [year]"""
+    args = context.args
+    now = datetime.now(BANGKOK_TZ)
+
+    # Parse month/year from args
+    if args and len(args) >= 2:
+        try:
+            month = int(args[0])
+            year = int(args[1])
+        except ValueError:
+            month = now.month
+            year = now.year
+    elif args and len(args) == 1:
+        try:
+            month = int(args[0])
+            year = now.year
+        except ValueError:
+            month = now.month
+            year = now.year
+    else:
+        month = now.month
+        year = now.year
+
+    month_start = f"{year}-{month:02d}-01"
+    if month == 12:
+        month_end = f"{year + 1}-01-01"
+    else:
+        month_end = f"{year}-{month + 1:02d}-01"
+
+    conn = get_db()
+    c = conn.cursor()
+
+    # Get transactions for the month
+    c.execute(
+        "SELECT timestamp, type, amount, description, category, account "
+        "FROM transactions WHERE user_id = ? AND timestamp >= ? AND timestamp < ? "
+        "ORDER BY timestamp",
+        (AUTHORIZED_USER_ID, month_start, month_end)
+    )
+    txns = c.fetchall()
+
+    # Get account balances
+    c.execute("SELECT name, balance FROM accounts WHERE user_id = ? ORDER BY id", (AUTHORIZED_USER_ID,))
+    accounts = c.fetchall()
+    conn.close()
+
+    if not txns:
+        await update.message.reply_text(f"No transactions found for {year}-{month:02d}.")
+        return
+
+    # Create Excel workbook
+    wb = Workbook()
+
+    # ── Transactions Sheet ──
+    ws = wb.active
+    ws.title = f"Transactions {year}-{month:02d}"
+
+    # Styles
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    header_fill = PatternFill(start_color="2E86AB", end_color="2E86AB", fill_type="solid")
+    income_fill = PatternFill(start_color="D4EDDA", end_color="D4EDDA", fill_type="solid")
+    expense_fill = PatternFill(start_color="F8D7DA", end_color="F8D7DA", fill_type="solid")
+    border = Border(
+        left=Side(style='thin'), right=Side(style='thin'),
+        top=Side(style='thin'), bottom=Side(style='thin')
+    )
+    money_format = '#,##0.00'
+
+    # Headers
+    headers = ['Date', 'Time', 'Type', 'Amount (฿)', 'Description', 'Category', 'Account']
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal='center')
+        cell.border = border
+
+    # Data rows
+    total_income = 0
+    total_expense = 0
+    for row_idx, t in enumerate(txns, 2):
+        ts = t['timestamp']
+        date_str = ts[:10] if ts else ''
+        time_str = ts[11:16] if ts and len(ts) > 11 else ''
+
+        ws.cell(row=row_idx, column=1, value=date_str).border = border
+        ws.cell(row=row_idx, column=2, value=time_str).border = border
+        ws.cell(row=row_idx, column=3, value=t['type'].capitalize()).border = border
+
+        amount_cell = ws.cell(row=row_idx, column=4, value=abs(t['amount']))
+        amount_cell.number_format = money_format
+        amount_cell.border = border
+
+        ws.cell(row=row_idx, column=5, value=t['description']).border = border
+        ws.cell(row=row_idx, column=6, value=t['category']).border = border
+        ws.cell(row=row_idx, column=7, value=t['account']).border = border
+
+        # Color rows
+        fill = income_fill if t['type'] == 'income' else expense_fill
+        for col in range(1, 8):
+            ws.cell(row=row_idx, column=col).fill = fill
+
+        if t['type'] == 'income':
+            total_income += abs(t['amount'])
+        else:
+            total_expense += abs(t['amount'])
+
+    # Summary row
+    summary_row = len(txns) + 3
+    ws.cell(row=summary_row, column=3, value="Total Income:").font = Font(bold=True)
+    ws.cell(row=summary_row, column=4, value=total_income).number_format = money_format
+    ws.cell(row=summary_row, column=4).font = Font(bold=True, color="28A745")
+
+    ws.cell(row=summary_row + 1, column=3, value="Total Expenses:").font = Font(bold=True)
+    ws.cell(row=summary_row + 1, column=4, value=total_expense).number_format = money_format
+    ws.cell(row=summary_row + 1, column=4).font = Font(bold=True, color="DC3545")
+
+    ws.cell(row=summary_row + 2, column=3, value="Net:").font = Font(bold=True)
+    ws.cell(row=summary_row + 2, column=4, value=total_income - total_expense).number_format = money_format
+    ws.cell(row=summary_row + 2, column=4).font = Font(bold=True)
+
+    # Column widths
+    ws.column_dimensions['A'].width = 12
+    ws.column_dimensions['B'].width = 8
+    ws.column_dimensions['C'].width = 10
+    ws.column_dimensions['D'].width = 15
+    ws.column_dimensions['E'].width = 30
+    ws.column_dimensions['F'].width = 15
+    ws.column_dimensions['G'].width = 18
+
+    # ── Category Summary Sheet ──
+    ws2 = wb.create_sheet(title="Category Summary")
+    cat_headers = ['Category', 'Total Spent (฿)', 'Number of Transactions']
+    for col, header in enumerate(cat_headers, 1):
+        cell = ws2.cell(row=1, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal='center')
+        cell.border = border
+
+    # Calculate category totals
+    cat_totals = {}
+    for t in txns:
+        if t['type'] == 'expense':
+            cat = t['category']
+            if cat not in cat_totals:
+                cat_totals[cat] = {'total': 0, 'count': 0}
+            cat_totals[cat]['total'] += abs(t['amount'])
+            cat_totals[cat]['count'] += 1
+
+    for row_idx, (cat, data) in enumerate(sorted(cat_totals.items(), key=lambda x: x[1]['total'], reverse=True), 2):
+        ws2.cell(row=row_idx, column=1, value=cat).border = border
+        ws2.cell(row=row_idx, column=2, value=data['total']).number_format = money_format
+        ws2.cell(row=row_idx, column=2).border = border
+        ws2.cell(row=row_idx, column=3, value=data['count']).border = border
+
+    ws2.column_dimensions['A'].width = 18
+    ws2.column_dimensions['B'].width = 18
+    ws2.column_dimensions['C'].width = 22
+
+    # ── Account Balances Sheet ──
+    ws3 = wb.create_sheet(title="Account Balances")
+    acc_headers = ['Account', 'Balance (฿)']
+    for col, header in enumerate(acc_headers, 1):
+        cell = ws3.cell(row=1, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal='center')
+        cell.border = border
+
+    total_balance = 0
+    for row_idx, acc in enumerate(accounts, 2):
+        ws3.cell(row=row_idx, column=1, value=acc['name']).border = border
+        ws3.cell(row=row_idx, column=2, value=acc['balance']).number_format = money_format
+        ws3.cell(row=row_idx, column=2).border = border
+        total_balance += acc['balance']
+
+    total_row = len(accounts) + 3
+    ws3.cell(row=total_row, column=1, value="TOTAL").font = Font(bold=True)
+    ws3.cell(row=total_row, column=2, value=total_balance).number_format = money_format
+    ws3.cell(row=total_row, column=2).font = Font(bold=True)
+
+    ws3.column_dimensions['A'].width = 20
+    ws3.column_dimensions['B'].width = 18
+
+    # Save to bytes buffer
+    month_name = datetime(year, month, 1).strftime('%B')
+    filename = f"Finance_{month_name}_{year}.xlsx"
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    await update.message.reply_document(
+        document=buffer,
+        filename=filename,
+        caption=f"📊 Financial report for {month_name} {year}\n"
+                f"💵 Income: ฿{total_income:,.2f}\n"
+                f"💸 Expenses: ฿{total_expense:,.2f}\n"
+                f"📊 Net: ฿{total_income - total_expense:,.2f}"
+    )
+
+
 # ─── Natural language handler ────────────────────────────────────────────────
 @restricted
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -620,7 +922,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
-# ─── Photo receipt handling ───────────────────────────────────────────────────
+# ─── Photo receipt handling (OCR-based, free) ────────────────────────────────
 @restricted
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     caption = update.message.caption or ""
@@ -631,78 +933,134 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         photo_file = await update.message.photo[-1].get_file()
         photo_bytes = await photo_file.download_as_bytearray()
-        b64_image = base64.b64encode(photo_bytes).decode('utf-8')
 
-        response = ai_client.chat.completions.create(
-            model="gpt-4.1-mini",
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a receipt/bank transfer slip parser. Extract information from the image.\n"
-                        "Look for:\n"
-                        "- The total amount or transfer amount\n"
-                        "- The 'Note' or 'Memo' field if present (this is the user's description of what they bought/paid for)\n"
-                        "- The bank or source (e.g., Bangkok Bank, KBank, SCB, True Money, etc.)\n"
-                        "- Whether this is money going OUT (payment/transfer/expense) or money coming IN (received/deposit)\n\n"
-                        "Respond in this exact format:\n"
-                        "AMOUNT: <number only, no currency symbol>\n"
-                        "NOTE: <the Note/Memo field from the receipt, or a short description of the transaction>\n"
-                        "BANK: <bank name if visible, otherwise UNKNOWN>\n"
-                        "DIRECTION: <OUT or IN>\n"
-                        "CATEGORY: <one of: Food & Drinks, Coffee, Transport, Groceries, Housing, Health, Shopping, Entertainment, Subscriptions, Travel, School, Other>\n"
-                        "If you cannot read the receipt, respond with AMOUNT: 0"
-                    )
-                },
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": f"Please extract the amount, note, bank, and direction from this receipt/slip.{' User caption: ' + caption if caption else ''}"},
-                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64_image}"}}
-                    ]
-                }
-            ],
-            max_tokens=300
-        )
+        amount = None
+        desc = None
+        account_name = 'Cash'
+        cat_name = 'Other'
+        is_income = False
 
-        result = response.choices[0].message.content
-        logger.info(f"AI receipt result: {result}")
+        # Try AI first if available
+        ai_success = False
+        if ai_client:
+            try:
+                b64_image = base64.b64encode(photo_bytes).decode('utf-8')
+                response = ai_client.chat.completions.create(
+                    model="gpt-4.1-mini",
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": (
+                                "You are a receipt/bank transfer slip parser. Extract information from the image.\n"
+                                "Look for:\n"
+                                "- The total amount or transfer amount\n"
+                                "- The 'Note' or 'Memo' field if present\n"
+                                "- The bank or source (e.g., Bangkok Bank, KBank, SCB, True Money)\n"
+                                "- Whether this is money going OUT (payment/transfer/expense) or money coming IN\n\n"
+                                "Respond in this exact format:\n"
+                                "AMOUNT: <number only>\n"
+                                "NOTE: <the Note/Memo field, or short description>\n"
+                                "BANK: <bank name if visible, otherwise UNKNOWN>\n"
+                                "DIRECTION: <OUT or IN>\n"
+                                "CATEGORY: <one of: Food & Drinks, Coffee, Transport, Groceries, Housing, Health, Shopping, Entertainment, Subscriptions, Travel, School, Other>\n"
+                                "If you cannot read the receipt, respond with AMOUNT: 0"
+                            )
+                        },
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": f"Extract amount, note, bank, direction from this receipt.{' Caption: ' + caption if caption else ''}"},
+                                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64_image}"}}
+                            ]
+                        }
+                    ],
+                    max_tokens=300
+                )
+                result = response.choices[0].message.content
+                logger.info(f"AI receipt result: {result}")
 
-        amount_match = re.search(r'AMOUNT:\s*([\d,]+(?:\.\d{1,2})?)', result)
-        note_match = re.search(r'NOTE:\s*(.+)', result)
-        bank_match = re.search(r'BANK:\s*(.+)', result)
-        direction_match = re.search(r'DIRECTION:\s*(OUT|IN)', result, re.IGNORECASE)
-        cat_match = re.search(r'CATEGORY:\s*(.+)', result)
+                amount_match = re.search(r'AMOUNT:\s*([\d,]+(?:\.\d{1,2})?)', result)
+                note_match = re.search(r'NOTE:\s*(.+)', result)
+                bank_match = re.search(r'BANK:\s*(.+)', result)
+                direction_match = re.search(r'DIRECTION:\s*(OUT|IN)', result, re.IGNORECASE)
+                cat_match_ai = re.search(r'CATEGORY:\s*(.+)', result)
 
-        if not amount_match or float(amount_match.group(1).replace(',', '')) == 0:
+                if amount_match and float(amount_match.group(1).replace(',', '')) > 0:
+                    amount = float(amount_match.group(1).replace(',', ''))
+                    desc = note_match.group(1).strip() if note_match else "Receipt scan"
+                    cat_name = cat_match_ai.group(1).strip() if cat_match_ai else "Other"
+                    is_income = direction_match.group(1).upper() == "IN" if direction_match else False
+
+                    if bank_match:
+                        bank_text = bank_match.group(1).strip().lower()
+                        if bank_text != 'unknown':
+                            if 'bangkok' in bank_text or 'bbl' in bank_text:
+                                account_name = 'Bangkok Bank'
+                            elif 'true' in bank_text:
+                                account_name = 'True Money Wallet'
+                            elif 'rabbit' in bank_text:
+                                account_name = 'Rabbit Card'
+                            elif 'mrt' in bank_text or 'emv' in bank_text:
+                                account_name = 'MRT EMV Visa'
+                    ai_success = True
+            except Exception as e:
+                logger.warning(f"AI receipt processing failed, falling back to OCR: {e}")
+
+        # Fallback: OCR-based parsing
+        if not ai_success:
+            try:
+                image = Image.open(io.BytesIO(bytes(photo_bytes)))
+                ocr_text = pytesseract.image_to_string(image, lang='eng')
+                logger.info(f"OCR text: {ocr_text[:500]}")
+
+                parsed = parse_bangkok_bank_ocr(ocr_text)
+
+                if parsed['amount'] and parsed['amount'] > 0:
+                    amount = parsed['amount']
+                    desc = parsed['note'] if parsed['note'] else (parsed['to'] if parsed['to'] else "Receipt scan")
+                    is_income = parsed['direction'] == 'IN'
+
+                    if parsed['bank']:
+                        if 'bangkok' in parsed['bank'].lower():
+                            account_name = 'Bangkok Bank'
+                else:
+                    # Try harder with different amounts
+                    all_amounts = re.findall(r'([0-9,]+\.\d{2})', ocr_text)
+                    valid_amounts = [float(a.replace(',', '')) for a in all_amounts if float(a.replace(',', '')) > 0]
+                    if valid_amounts:
+                        # Take the largest non-zero amount (likely the transaction amount, not the fee)
+                        amount = max(valid_amounts)
+                        # Try to get note
+                        note_match = re.search(r'Note\s*[:\s]+([^\n]+)', ocr_text, re.IGNORECASE)
+                        desc = note_match.group(1).strip() if note_match else "Receipt scan"
+                        if 'bangkok bank' in ocr_text.lower():
+                            account_name = 'Bangkok Bank'
+            except Exception as e:
+                logger.error(f"OCR processing failed: {e}")
+
+        # If we still don't have an amount, give up
+        if not amount or amount <= 0:
             await update.message.reply_text(
                 "😅 I couldn't read the receipt clearly. Please log it manually:\n"
-                "Example: \"spent ฿150 food\""
+                "Example: \"spent ฿150 food bank\""
             )
             return
 
-        amount = float(amount_match.group(1).replace(',', ''))
-        desc = note_match.group(1).strip() if note_match else "Receipt scan"
-        cat_name = cat_match.group(1).strip() if cat_match else "Other"
-        direction = direction_match.group(1).upper() if direction_match else "OUT"
-
-        # Detect account: caption > AI bank detection > default
-        account_name = 'Cash'
+        # Caption overrides
         if caption_lower:
-            account_name = detect_account(caption_lower)
-        if account_name == 'Cash' and bank_match:
-            bank_text = bank_match.group(1).strip().lower()
-            if bank_text != 'unknown':
-                if 'bangkok' in bank_text or 'bbl' in bank_text:
-                    account_name = 'Bangkok Bank'
-                elif 'true' in bank_text:
-                    account_name = 'True Money Wallet'
-                elif 'rabbit' in bank_text:
-                    account_name = 'Rabbit Card'
-                elif 'mrt' in bank_text or 'emv' in bank_text:
-                    account_name = 'MRT EMV Visa'
+            detected_acc = detect_account(caption_lower)
+            if detected_acc != 'Cash':
+                account_name = detected_acc
+            for w in ['received', 'got', 'earned', 'income', 'money in', 'salary']:
+                if w in caption_lower:
+                    is_income = True
+                    break
+            for w in ['spent', 'paid', 'money out', 'buy', 'bought']:
+                if w in caption_lower:
+                    is_income = False
+                    break
 
-        # Better category from note
+        # Better category from description
         if desc and desc != "Receipt scan":
             detected_cat, _ = detect_category(desc)
             if detected_cat != 'Other':
@@ -717,18 +1075,6 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if n == cat_name:
                 cat_emoji = e
                 break
-
-        # Direction from caption override
-        is_income = direction == "IN"
-        if caption_lower:
-            for w in ['received', 'got', 'earned', 'income', 'money in', 'salary']:
-                if w in caption_lower:
-                    is_income = True
-                    break
-            for w in ['spent', 'paid', 'money out', 'buy', 'bought']:
-                if w in caption_lower:
-                    is_income = False
-                    break
 
         db_amount = amount if is_income else -amount
         txn_type = 'income' if is_income else 'expense'
@@ -760,7 +1106,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"Error processing receipt: {e}")
         await update.message.reply_text(
             "😅 Something went wrong processing the receipt. Please log it manually:\n"
-            "Example: \"spent ฿150 food\""
+            "Example: \"spent ฿150 food bank\""
         )
 
 
@@ -959,6 +1305,7 @@ def main():
     app.add_handler(CommandHandler("help", cmd_help))
     app.add_handler(CommandHandler("balance", cmd_balance))
     app.add_handler(CommandHandler("report", cmd_report))
+    app.add_handler(CommandHandler("export", cmd_export))
     app.add_handler(CommandHandler("categories", cmd_categories))
     app.add_handler(CommandHandler("history", cmd_history))
     app.add_handler(CommandHandler("delete", cmd_delete))
@@ -990,7 +1337,7 @@ def main():
     # Run with polling
     logger.info("Starting bot polling...")
     app.run_polling(
-        drop_pending_updates=True,
+        drop_pending_updates=False,
         allowed_updates=Update.ALL_TYPES,
         poll_interval=1.0,
         timeout=30,

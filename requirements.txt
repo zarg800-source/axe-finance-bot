@@ -6,3 +6,6 @@ APScheduler
 flask
 gunicorn
 requests
+pytesseract
+Pillow
+openpyxl
