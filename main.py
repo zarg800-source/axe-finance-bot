@@ -684,6 +684,31 @@ CATEGORIES = {
     'kinokuniya': ('School', '🎓'),
     'asia books': ('School', '🎓'),
 
+    # ─── 🚬 Cigarettes ──────────────────────────────────────────────────
+    'cigarette': ('Cigarettes', '🚬'),
+    'cigarettes': ('Cigarettes', '🚬'),
+    'cig': ('Cigarettes', '🚬'),
+    'cigs': ('Cigarettes', '🚬'),
+    'smoke': ('Cigarettes', '🚬'),
+    'smoking': ('Cigarettes', '🚬'),
+    'tobacco': ('Cigarettes', '🚬'),
+    'marlboro': ('Cigarettes', '🚬'),
+    'lm': ('Cigarettes', '🚬'),
+    'winston': ('Cigarettes', '🚬'),
+    'camel': ('Cigarettes', '🚬'),
+    'lucky strike': ('Cigarettes', '🚬'),
+    'dunhill': ('Cigarettes', '🚬'),
+    'esse': ('Cigarettes', '🚬'),
+    'krong thip': ('Cigarettes', '🚬'),
+    'krongthip': ('Cigarettes', '🚬'),
+    'sai fon': ('Cigarettes', '🚬'),
+    'falling rain': ('Cigarettes', '🚬'),
+    'wonder': ('Cigarettes', '🚬'),
+    'vape': ('Cigarettes', '🚬'),
+    'pod': ('Cigarettes', '🚬'),
+    'iqos': ('Cigarettes', '🚬'),
+    'relx': ('Cigarettes', '🚬'),
+
     # ─── 💵 Income ────────────────────────────────────────────────────────
     'salary': ('Income', '💵'),
     'freelance': ('Income', '💵'),
@@ -713,6 +738,7 @@ CATEGORY_LIST = [
     ('📱', 'Subscriptions'),
     ('✈️', 'Travel'),
     ('🎓', 'School'),
+    ('🚬', 'Cigarettes'),
     ('🧾', 'Other'),
 ]
 
@@ -1848,20 +1874,32 @@ async def send_weekly_report(context: ContextTypes.DEFAULT_TYPE):
 
 
 # ─── Recurring subscription checker ──────────────────────────────────────────
-async def check_subscriptions(context: ContextTypes.DEFAULT_TYPE):
+def process_due_subscriptions(send_notification=None):
+    """Check and process any overdue subscriptions.
+    Returns list of (sub_name, amount, account) that were processed.
+    send_notification is an optional async callback for sending Telegram messages.
+    """
     conn = get_db()
     c = conn.cursor()
     today = datetime.now(BANGKOK_TZ).date()
+    today_str = str(today)
+
+    logger.info(f"Checking subscriptions for date: {today_str}")
 
     c.execute(
         "SELECT id, user_id, name, amount, category, account, next_due_date, frequency "
         "FROM recurring_subscriptions WHERE next_due_date <= ?",
-        (today,)
+        (today_str,)
     )
     due_subs = c.fetchall()
+    processed = []
+
+    logger.info(f"Found {len(due_subs)} due subscription(s)")
 
     for sub in due_subs:
         amount = sub['amount']
+        logger.info(f"Processing subscription: {sub['name']} ฿{amount} from {sub['account']} (due: {sub['next_due_date']})")
+
         c.execute(
             "INSERT INTO transactions (user_id, amount, description, type, category, account) VALUES (?, ?, ?, 'expense', ?, ?)",
             (sub['user_id'], -amount, f"🔄 {sub['name']} (auto)", sub['category'], sub['account'])
@@ -1871,6 +1909,7 @@ async def check_subscriptions(context: ContextTypes.DEFAULT_TYPE):
             (amount, sub['user_id'], sub['account'])
         )
 
+        # Calculate next due date
         due_date = datetime.strptime(sub['next_due_date'], "%Y-%m-%d").date()
         if sub['frequency'] == 'monthly':
             if due_date.month == 12:
@@ -1887,18 +1926,50 @@ async def check_subscriptions(context: ContextTypes.DEFAULT_TYPE):
         else:
             next_due = due_date + timedelta(days=30)
 
-        c.execute("UPDATE recurring_subscriptions SET next_due_date = ? WHERE id = ?", (next_due, sub['id']))
-
-        try:
-            await context.bot.send_message(
-                chat_id=sub['user_id'],
-                text=f"🔄 Auto-logged: {sub['name']}\n💸 -฿{amount:,.2f} from {sub['account']}"
-            )
-        except Exception as e:
-            logger.error(f"Error notifying about subscription: {e}")
+        c.execute("UPDATE recurring_subscriptions SET next_due_date = ? WHERE id = ?", (str(next_due), sub['id']))
+        processed.append((sub['name'], amount, sub['account'], sub['user_id']))
+        logger.info(f"Subscription '{sub['name']}' logged. Next due: {next_due}")
 
     conn.commit()
     conn.close()
+    return processed
+
+
+async def check_subscriptions(context: ContextTypes.DEFAULT_TYPE):
+    """Scheduled job: check and process due subscriptions, send notifications."""
+    try:
+        processed = process_due_subscriptions()
+        for name, amount, account, user_id in processed:
+            try:
+                await context.bot.send_message(
+                    chat_id=user_id,
+                    text=f"🔄 Auto-logged: {name}\n💸 -฿{amount:,.2f} from {account}"
+                )
+            except Exception as e:
+                logger.error(f"Error notifying about subscription {name}: {e}")
+    except Exception as e:
+        logger.error(f"Error in check_subscriptions job: {e}")
+
+
+async def startup_subscription_check(app):
+    """Run subscription check on bot startup to catch any missed due dates."""
+    try:
+        logger.info("Running startup subscription check for missed due dates...")
+        processed = process_due_subscriptions()
+        for name, amount, account, user_id in processed:
+            try:
+                await app.bot.send_message(
+                    chat_id=user_id,
+                    text=f"🔄 Auto-logged (missed): {name}\n💸 -฿{amount:,.2f} from {account}"
+                )
+            except Exception as e:
+                logger.error(f"Error notifying about missed subscription {name}: {e}")
+        if processed:
+            logger.info(f"Startup check: processed {len(processed)} missed subscription(s)")
+        else:
+            logger.info("Startup check: no missed subscriptions")
+    except Exception as e:
+        logger.error(f"Error in startup subscription check: {e}")
 
 
 # ─── Error handler ────────────────────────────────────────────────────────────
@@ -1911,6 +1982,10 @@ def main():
     init_db()
     logger.info("Database initialized.")
 
+    async def post_init(application):
+        """Called after the application is initialized but before polling starts."""
+        await startup_subscription_check(application)
+
     app = (
         Application.builder()
         .token(TELEGRAM_BOT_TOKEN)
@@ -1918,6 +1993,7 @@ def main():
         .read_timeout(30)
         .write_timeout(30)
         .pool_timeout(30)
+        .post_init(post_init)
         .build()
     )
 
@@ -1951,6 +2027,9 @@ def main():
     # Daily subscription check at 8 AM Bangkok time
     target_time_subs = datetime.now(BANGKOK_TZ).replace(hour=8, minute=0, second=0, microsecond=0).timetz()
     job_queue.run_daily(check_subscriptions, time=target_time_subs, name='check_subs')
+
+    # Also run subscription check 60 seconds after startup (catches missed ones after restarts)
+    job_queue.run_once(check_subscriptions, when=60, name='startup_sub_check')
 
     # Weekly report every Monday at 9 AM Bangkok time
     target_time_report = datetime.now(BANGKOK_TZ).replace(hour=9, minute=0, second=0, microsecond=0).timetz()
