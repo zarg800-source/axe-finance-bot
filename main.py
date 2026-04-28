@@ -1508,11 +1508,11 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if is_income:
         await update.message.reply_text(
-            f"💵 Logged income: +฿{amount:,.2f}\n📝 {desc}\n🏦 {account_name}\n📂 {cat_emoji} {cat_name}"
+            f"💵 Logged income: +฿{amount:,.2f}\n📝 {transaction_description}\n🏦 {account_name}\n📂 {cat_emoji} {cat_name}"
         )
     else:
         await update.message.reply_text(
-            f"💸 Logged expense: -฿{amount:,.2f}\n📝 {desc}\n🏦 {account_name}\n📂 {cat_emoji} {cat_name}"
+            f"💸 Logged expense: -฿{amount:,.2f}\n📝 {transaction_description}\n🏦 {account_name}\n📂 {cat_emoji} {cat_name}"
         )
 
 
@@ -1529,7 +1529,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         photo_bytes = await photo_file.download_as_bytearray()
 
         amount = None
-        desc = None
+        transaction_description = None
         account_name = 'Cash'
         cat_name = 'Other'
         is_income = False
@@ -1581,7 +1581,8 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                 if amount_match and float(amount_match.group(1).replace(',', '')) > 0:
                     amount = float(amount_match.group(1).replace(',', ''))
-                    desc = note_match.group(1).strip() if note_match else "Receipt scan"
+                    # If caption is present, it will override this later
+                    transaction_description = note_match.group(1).strip() if note_match else "Receipt scan"
                     cat_name = cat_match_ai.group(1).strip() if cat_match_ai else "Other"
                     is_income = direction_match.group(1).upper() == "IN" if direction_match else False
 
@@ -1615,12 +1616,12 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     # PRIORITY: Note field always wins over To field
                     # Note has the user's own description (e.g., "Swisse Multivitamin", "Kfc", "Pepsi")
                     # To field is just the recipient company name
-                    if parsed['note']:
-                        desc = parsed['note']
-                    elif parsed['to']:
-                        desc = parsed['to']
+                    if parsed["note"]:
+                        transaction_description = parsed["note"]
+                    elif parsed["to"]:
+                        transaction_description = parsed["to"]
                     else:
-                        desc = "Receipt scan"
+                        transaction_description = "Receipt scan"
                     is_income = parsed['direction'] == 'IN'
 
                     if parsed['bank']:
@@ -1636,13 +1637,13 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         note_match = re.search(r'Note\s*[:\s]+([A-Za-z][A-Za-z0-9\s,\.\-\']+)', ocr_text, re.IGNORECASE)
                         if note_match:
                             note = note_match.group(1).strip()
-                            skip_words = ['scan', 'verify', 'reference', 'transaction', 'bank ref']
+                            skip_words = ["scan", "verify", "reference", "transaction", "bank ref"]
                             if note and not any(sw in note.lower() for sw in skip_words):
-                                desc = note
+                                transaction_description = note
                             else:
-                                desc = "Receipt scan"
+                                transaction_description = "Receipt scan"
                         else:
-                            desc = "Receipt scan"
+                            transaction_description = "Receipt scan"
                         if 'bangkok bank' in ocr_text.lower():
                             account_name = 'Bangkok Bank'
             except Exception as e:
@@ -1656,7 +1657,26 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
-        # Caption overrides
+        # Override description and categorize based on caption if present
+        if caption:
+            transaction_description = caption
+            detected_cat, _ = detect_category(caption)
+            if detected_cat != 'Other':
+                cat_name = detected_cat
+
+        # If no caption, or caption didn't yield a category, try from OCR/AI description
+        if cat_name == 'Other' and transaction_description and transaction_description != "Receipt scan":
+            detected_cat, _ = detect_category(transaction_description)
+            if detected_cat != 'Other':
+                cat_name = detected_cat
+
+        # If still no category, try from full OCR text
+        if cat_name == 'Other' and ocr_text:
+            detected_cat, _ = detect_category(ocr_text)
+            if detected_cat != 'Other':
+                cat_name = detected_cat
+
+        # Caption can also override account and direction
         if caption_lower:
             detected_acc = detect_account(caption_lower)
             if detected_acc != 'Cash':
@@ -1669,25 +1689,6 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if w in caption_lower:
                     is_income = False
                     break
-
-        # Better category detection - try multiple sources in priority order
-        # 1. Try from the Note/description (most specific — user wrote this)
-        if desc and desc != "Receipt scan":
-            detected_cat, _ = detect_category(desc)
-            if detected_cat != 'Other':
-                cat_name = detected_cat
-
-        # 2. If still Other, try from caption
-        if cat_name == 'Other' and caption:
-            detected_cat, _ = detect_category(caption)
-            if detected_cat != 'Other':
-                cat_name = detected_cat
-
-        # 3. If still Other, try from the full OCR text (catches company names like QSR OF ASIA = KFC)
-        if cat_name == 'Other' and ocr_text:
-            detected_cat, _ = detect_category(ocr_text)
-            if detected_cat != 'Other':
-                cat_name = detected_cat
 
         valid_cats = [name for _, name in CATEGORY_LIST]
         if cat_name not in valid_cats:
@@ -1706,7 +1707,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         c = conn.cursor()
         c.execute(
             "INSERT INTO transactions (user_id, amount, description, type, category, account) VALUES (?, ?, ?, ?, ?, ?)",
-            (AUTHORIZED_USER_ID, db_amount, desc, txn_type, cat_name, account_name)
+            (AUTHORIZED_USER_ID, db_amount, transaction_description, txn_type, cat_name, account_name)
         )
         c.execute(
             "UPDATE accounts SET balance = balance + ? WHERE user_id = ? AND name = ?",
@@ -1719,7 +1720,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             f"📸 Receipt logged!\n"
             f"{sign}฿{amount:,.2f}\n"
-            f"📝 {desc}\n"
+            f"📝 {transaction_description}\n"
             f"📂 {cat_emoji} {cat_name}\n"
             f"🏦 {account_name}\n\n"
             f"Wrong? Use /delete to remove it."
