@@ -805,7 +805,6 @@ def parse_bangkok_bank_ocr(ocr_text):
         r'(?:Amount|amount)\s*[:\s]*([0-9,]+\.?\d*)\s*(?:THB|Baht)?',
         r'([0-9,]+\.\d{2})\s*THB',
         r'THB\s*([0-9,]+\.\d{2})',
-        r'([0-9]{1,3}(?:,[0-9]{3})*\.\d{2})',
     ]
     for pattern in amount_patterns:
         match = re.search(pattern, ocr_text, re.IGNORECASE)
@@ -819,19 +818,30 @@ def parse_bangkok_bank_ocr(ocr_text):
             except ValueError:
                 continue
 
-    # Extract Note field
+    # If no amount found yet, try all decimal numbers but skip 0.00 and very small amounts
+    if not result['amount']:
+        all_amounts = re.findall(r'([0-9]{1,3}(?:,[0-9]{3})*\.\d{2})', ocr_text)
+        valid = [float(a.replace(',', '')) for a in all_amounts if float(a.replace(',', '')) > 0]
+        if valid:
+            result['amount'] = max(valid)
+
+    # Extract Note field - be specific to avoid picking up "Scan to verify" etc.
     note_patterns = [
-        r'Note\s*[:\s]+([^\n]+)',
-        r'Memo\s*[:\s]+([^\n]+)',
-        r'Remark\s*[:\s]+([^\n]+)',
+        r'Note\s*[:\s]+([A-Za-z][A-Za-z0-9\s,\.\-\']+)',
+        r'Memo\s*[:\s]+([A-Za-z][A-Za-z0-9\s,\.\-\']+)',
+        r'Remark\s*[:\s]+([A-Za-z][A-Za-z0-9\s,\.\-\']+)',
     ]
     for pattern in note_patterns:
-        match = re.search(pattern, ocr_text, re.IGNORECASE)
-        if match:
-            note = match.group(1).strip()
-            if note and note.lower() not in ['', '-', 'n/a']:
+        matches = re.findall(pattern, ocr_text, re.IGNORECASE)
+        for note in matches:
+            note = note.strip()
+            # Filter out garbage OCR text
+            skip_words = ['scan', 'verify', 'reference', 'transaction', 'bank ref', 'biller', 'service code', 'optional']
+            if note and len(note) > 1 and not any(sw in note.lower() for sw in skip_words):
                 result['note'] = note
                 break
+        if result['note']:
+            break
 
     # Extract "To" field for description
     to_patterns = [
@@ -841,8 +851,10 @@ def parse_bangkok_bank_ocr(ocr_text):
     for pattern in to_patterns:
         match = re.search(pattern, ocr_text, re.IGNORECASE)
         if match:
-            result['to'] = match.group(1).strip()
-            break
+            to_text = match.group(1).strip()
+            if to_text and len(to_text) > 1:
+                result['to'] = to_text
+                break
 
     # Detect direction - if "From" contains the user's name/account, it's OUT
     if re.search(r'From.*(?:MR\s*MIN|171-4)', ocr_text, re.IGNORECASE):
@@ -1555,9 +1567,27 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     is_income = False
                     break
 
-        # Better category from description
+        # Better category detection - try multiple sources
+        # 1. Try from the Note/description
         if desc and desc != "Receipt scan":
             detected_cat, _ = detect_category(desc)
+            if detected_cat != 'Other':
+                cat_name = detected_cat
+
+        # 2. If still Other, try from the full OCR text (catches company names like QSR OF ASIA = KFC)
+        if cat_name == 'Other' and not ai_success:
+            try:
+                image = Image.open(io.BytesIO(bytes(photo_bytes)))
+                ocr_text = pytesseract.image_to_string(image, lang='eng')
+                detected_cat, _ = detect_category(ocr_text)
+                if detected_cat != 'Other':
+                    cat_name = detected_cat
+            except:
+                pass
+
+        # 3. If still Other, try from caption
+        if cat_name == 'Other' and caption:
+            detected_cat, _ = detect_category(caption)
             if detected_cat != 'Other':
                 cat_name = detected_cat
 
