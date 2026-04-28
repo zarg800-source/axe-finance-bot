@@ -196,6 +196,54 @@ CATEGORIES = {
     'the minor food': ('Food & Drinks', '🍜'),
     'central restaurants': ('Food & Drinks', '🍜'),
     'crg': ('Food & Drinks', '🍜'),
+    # Thai company names that appear on bank receipts ("To" field)
+    'yum restaurants': ('Food & Drinks', '🍜'),
+    'yum': ('Food & Drinks', '🍜'),
+    'mcdonald': ('Food & Drinks', '🍜'),
+    'mcdonalds': ('Food & Drinks', '🍜'),
+    'cpall': ('Food & Drinks', '🍜'),
+    'cp all': ('Food & Drinks', '🍜'),
+    'central food retail': ('Groceries', '🛒'),
+    'central food': ('Groceries', '🛒'),
+    'big c supercenter': ('Groceries', '🛒'),
+    'siam makro': ('Groceries', '🛒'),
+    'ek-chai distribution': ('Groceries', '🛒'),
+    'cp axtra': ('Groceries', '🛒'),
+    'true digital group': ('Subscriptions', '📱'),
+    'true digital': ('Subscriptions', '📱'),
+    'true corp': ('Subscriptions', '📱'),
+    'true corporation': ('Subscriptions', '📱'),
+    'dtac': ('Subscriptions', '📱'),
+    'ais': ('Subscriptions', '📱'),
+    'advanced info service': ('Subscriptions', '📱'),
+    'shopee thailand': ('Shopping', '👗'),
+    'shopee pay': ('Shopping', '👗'),
+    'lazada express': ('Shopping', '👗'),
+    'payment to shopee': ('Shopping', '👗'),
+    'grab holdings': ('Transport', '🚕'),
+    'grab taxi': ('Transport', '🚕'),
+    'bolt technology': ('Transport', '🚕'),
+    'ptt public': ('Transport', '🚕'),
+    'ptt oil': ('Transport', '🚕'),
+    'bts group': ('Transport', '🚕'),
+    'bangkok expressway': ('Transport', '🚕'),
+    'metropolitan electricity': ('Housing', '🏠'),
+    'metropolitan waterworks': ('Housing', '🏠'),
+    'provincial electricity': ('Housing', '🏠'),
+    'provincial waterworks': ('Housing', '🏠'),
+    'pea': ('Housing', '🏠'),
+    'mea': ('Housing', '🏠'),
+    'bumrungrad': ('Health', '💊'),
+    'samitivej': ('Health', '💊'),
+    'bangkok dusit medical': ('Health', '💊'),
+    'bdms': ('Health', '💊'),
+    'boots retail': ('Health', '💊'),
+    'watsons thailand': ('Health', '💊'),
+    'google asia': ('Subscriptions', '📱'),
+    'google payment': ('Subscriptions', '📱'),
+    'apple itunes': ('Subscriptions', '📱'),
+    'spotify': ('Subscriptions', '📱'),
+    'netflix': ('Subscriptions', '📱'),
 
     # ─── ☕ Coffee ─────────────────────────────────────────────────────────
     'coffee': ('Coffee', '☕'),
@@ -825,23 +873,62 @@ def parse_bangkok_bank_ocr(ocr_text):
         if valid:
             result['amount'] = max(valid)
 
-    # Extract Note field - be specific to avoid picking up "Scan to verify" etc.
+    # Extract Note field from Bangkok Bank receipts
+    # OCR sometimes outputs "Note  Swisse Multivitamin" and sometimes just "Swisse Multivitamin"
+    # on its own line after the Fee (0.00 THB) line.
+    skip_words = ['scan', 'verify', 'reference', 'transaction', 'bank ref', 'biller',
+                  'service code', 'optional', 'bank reference', 'transaction reference']
+
+    # Method 1: Look for explicit "Note" / "Memo" / "Remark" label
     note_patterns = [
-        r'Note\s*[:\s]+([A-Za-z][A-Za-z0-9\s,\.\-\']+)',
-        r'Memo\s*[:\s]+([A-Za-z][A-Za-z0-9\s,\.\-\']+)',
-        r'Remark\s*[:\s]+([A-Za-z][A-Za-z0-9\s,\.\-\']+)',
+        r'Note\s*[:\s]+(.+)',
+        r'Memo\s*[:\s]+(.+)',
+        r'Remark\s*[:\s]+(.+)',
     ]
     for pattern in note_patterns:
         matches = re.findall(pattern, ocr_text, re.IGNORECASE)
         for note in matches:
             note = note.strip()
-            # Filter out garbage OCR text
-            skip_words = ['scan', 'verify', 'reference', 'transaction', 'bank ref', 'biller', 'service code', 'optional']
             if note and len(note) > 1 and not any(sw in note.lower() for sw in skip_words):
                 result['note'] = note
                 break
         if result['note']:
             break
+
+    # Method 2: If no labeled Note found, look for text between Fee line and Bank reference line
+    # Bangkok Bank receipt layout: ... Fee 0.00 THB ... [Note text] ... Bank reference no.
+    if not result['note']:
+        fee_note_pattern = r'(?:0\.00\s*THB|Fee[^\n]*0\.00)\s*\n\s*(.+?)\s*\n\s*(?:Bank reference|Transaction reference|\d{5,})'
+        match = re.search(fee_note_pattern, ocr_text, re.IGNORECASE | re.DOTALL)
+        if match:
+            note = match.group(1).strip()
+            if note and len(note) > 1 and not any(sw in note.lower() for sw in skip_words):
+                result['note'] = note
+
+    # Method 3: Try matching any known vocabulary keyword from the OCR text lines
+    # This catches cases where OCR garbles the layout but the keyword is still there
+    if not result['note']:
+        lines = ocr_text.split('\n')
+        for line in lines:
+            line = line.strip()
+            if not line or len(line) < 2:
+                continue
+            # Skip lines that are clearly not notes
+            if any(sw in line.lower() for sw in skip_words + ['amount', 'thb', 'baht', 'from', 'bangkok bank', 'mr min', '171-4', 'fee']):
+                continue
+            if re.match(r'^[0-9,\.\s]+$', line):  # Skip pure number lines
+                continue
+            if re.match(r'^[0-9]{5,}', line):  # Skip reference numbers
+                continue
+            # Check if this line contains any known category keyword
+            line_lower = line.lower()
+            from collections import OrderedDict
+            for keyword in sorted(CATEGORIES.keys(), key=len, reverse=True):
+                if keyword in line_lower:
+                    result['note'] = line
+                    break
+            if result['note']:
+                break
 
     # Extract "To" field for description
     to_patterns = [
@@ -1514,6 +1601,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 logger.warning(f"AI receipt processing failed, falling back to OCR: {e}")
 
         # Fallback: OCR-based parsing
+        ocr_text = ''
         if not ai_success:
             try:
                 image = Image.open(io.BytesIO(bytes(photo_bytes)))
@@ -1524,7 +1612,15 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                 if parsed['amount'] and parsed['amount'] > 0:
                     amount = parsed['amount']
-                    desc = parsed['note'] if parsed['note'] else (parsed['to'] if parsed['to'] else "Receipt scan")
+                    # PRIORITY: Note field always wins over To field
+                    # Note has the user's own description (e.g., "Swisse Multivitamin", "Kfc", "Pepsi")
+                    # To field is just the recipient company name
+                    if parsed['note']:
+                        desc = parsed['note']
+                    elif parsed['to']:
+                        desc = parsed['to']
+                    else:
+                        desc = "Receipt scan"
                     is_income = parsed['direction'] == 'IN'
 
                     if parsed['bank']:
@@ -1535,11 +1631,18 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     all_amounts = re.findall(r'([0-9,]+\.\d{2})', ocr_text)
                     valid_amounts = [float(a.replace(',', '')) for a in all_amounts if float(a.replace(',', '')) > 0]
                     if valid_amounts:
-                        # Take the largest non-zero amount (likely the transaction amount, not the fee)
                         amount = max(valid_amounts)
-                        # Try to get note
-                        note_match = re.search(r'Note\s*[:\s]+([^\n]+)', ocr_text, re.IGNORECASE)
-                        desc = note_match.group(1).strip() if note_match else "Receipt scan"
+                        # Try to get note first
+                        note_match = re.search(r'Note\s*[:\s]+([A-Za-z][A-Za-z0-9\s,\.\-\']+)', ocr_text, re.IGNORECASE)
+                        if note_match:
+                            note = note_match.group(1).strip()
+                            skip_words = ['scan', 'verify', 'reference', 'transaction', 'bank ref']
+                            if note and not any(sw in note.lower() for sw in skip_words):
+                                desc = note
+                            else:
+                                desc = "Receipt scan"
+                        else:
+                            desc = "Receipt scan"
                         if 'bangkok bank' in ocr_text.lower():
                             account_name = 'Bangkok Bank'
             except Exception as e:
@@ -1567,27 +1670,22 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     is_income = False
                     break
 
-        # Better category detection - try multiple sources
-        # 1. Try from the Note/description
+        # Better category detection - try multiple sources in priority order
+        # 1. Try from the Note/description (most specific — user wrote this)
         if desc and desc != "Receipt scan":
             detected_cat, _ = detect_category(desc)
             if detected_cat != 'Other':
                 cat_name = detected_cat
 
-        # 2. If still Other, try from the full OCR text (catches company names like QSR OF ASIA = KFC)
-        if cat_name == 'Other' and not ai_success:
-            try:
-                image = Image.open(io.BytesIO(bytes(photo_bytes)))
-                ocr_text = pytesseract.image_to_string(image, lang='eng')
-                detected_cat, _ = detect_category(ocr_text)
-                if detected_cat != 'Other':
-                    cat_name = detected_cat
-            except:
-                pass
-
-        # 3. If still Other, try from caption
+        # 2. If still Other, try from caption
         if cat_name == 'Other' and caption:
             detected_cat, _ = detect_category(caption)
+            if detected_cat != 'Other':
+                cat_name = detected_cat
+
+        # 3. If still Other, try from the full OCR text (catches company names like QSR OF ASIA = KFC)
+        if cat_name == 'Other' and ocr_text:
+            detected_cat, _ = detect_category(ocr_text)
             if detected_cat != 'Other':
                 cat_name = detected_cat
 
