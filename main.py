@@ -15,10 +15,11 @@ import base64
 from datetime import datetime, timedelta, date
 from functools import wraps
 
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import (
     Application, CommandHandler, MessageHandler, ContextTypes,
+    CallbackQueryHandler, ConversationHandler,
     filters
 )
 from dotenv import load_dotenv
@@ -976,13 +977,14 @@ def parse_bangkok_bank_ocr(ocr_text):
 @restricted
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
+        "📱 *Axe Finance*\n\n"
         "Hey Mike! 👋 I'm your personal finance tracker.\n\n"
-        "Just text me things like:\n"
+        "Tap a button below or text me things like:\n"
         "• \"spent ฿150 BTS\"\n"
-        "• \"received ฿5,000 from gallery\"\n"
-        "• \"paid ฿200 coffee starbucks bank\"\n\n"
-        "Or send me a photo of a receipt! 📸\n\n"
-        "Use /help to see all commands."
+        "• \"received ฿5,000 from gallery\"\n\n"
+        "Or send me a photo of a receipt! 📸",
+        reply_markup=build_main_menu(),
+        parse_mode=ParseMode.MARKDOWN
     )
 
 
@@ -1541,11 +1543,11 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if is_income:
         await update.message.reply_text(
-            f"💵 Logged income: +฿{amount:,.2f}\n📝 {transaction_description}\n🏦 {account_name}\n📂 {cat_emoji} {cat_name}"
+            f"💵 Logged income: +฿{amount:,.2f}\n📝 {desc}\n🏦 {account_name}\n📂 {cat_emoji} {cat_name}"
         )
     else:
         await update.message.reply_text(
-            f"💸 Logged expense: -฿{amount:,.2f}\n📝 {transaction_description}\n🏦 {account_name}\n📂 {cat_emoji} {cat_name}"
+            f"💸 Logged expense: -฿{amount:,.2f}\n📝 {desc}\n🏦 {account_name}\n📂 {cat_emoji} {cat_name}"
         )
 
 
@@ -1979,6 +1981,818 @@ async def startup_subscription_check(app):
         logger.error(f"Error in startup subscription check: {e}")
 
 
+# ─── Inline Keyboard Button UI ────────────────────────────────────────────────
+# Conversation states for button flows
+(MENU_STATE, LOG_CAT, LOG_ACCOUNT, LOG_AMOUNT,
+ INCOME_CAT, INCOME_ACCOUNT, INCOME_AMOUNT,
+ SETTINGS_MENU, UPD_BAL_ACCOUNT, UPD_BAL_AMOUNT,
+ TRANSFER_FROM, TRANSFER_TO, TRANSFER_AMOUNT,
+ SUB_MENU, SUB_ADD_NAME, SUB_ADD_AMOUNT, SUB_ADD_ACCOUNT, SUB_ADD_DATE,
+ SUB_DEL_PICK) = range(19)
+
+ACCOUNT_NAMES = ['Bangkok Bank', 'MRT EMV Visa', 'True Money Wallet', 'Cash', 'Rabbit Card']
+
+
+def build_main_menu():
+    """Build the main menu inline keyboard."""
+    keyboard = [
+        [InlineKeyboardButton("💸 Log Expense", callback_data="menu_expense"),
+         InlineKeyboardButton("💵 Log Income", callback_data="menu_income")],
+        [InlineKeyboardButton("💰 Balance", callback_data="menu_balance"),
+         InlineKeyboardButton("📜 History", callback_data="menu_history")],
+        [InlineKeyboardButton("📊 Report", callback_data="menu_report"),
+         InlineKeyboardButton("📋 Export", callback_data="menu_export")],
+        [InlineKeyboardButton("🔄 Subscriptions", callback_data="menu_subs"),
+         InlineKeyboardButton("📂 Categories", callback_data="menu_categories")],
+        [InlineKeyboardButton("⚙️ Settings", callback_data="menu_settings")],
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+
+def build_category_keyboard():
+    """Build category selection keyboard."""
+    cats = [
+        ("🍜 Food & Drinks", "cat_Food & Drinks"),
+        ("☕ Coffee", "cat_Coffee"),
+        ("🚕 Transport", "cat_Transport"),
+        ("🛒 Groceries", "cat_Groceries"),
+        ("🏠 Housing", "cat_Housing"),
+        ("💊 Health", "cat_Health"),
+        ("👗 Shopping", "cat_Shopping"),
+        ("🎉 Entertainment", "cat_Entertainment"),
+        ("📱 Subscriptions", "cat_Subscriptions"),
+        ("✈️ Travel", "cat_Travel"),
+        ("🎓 School", "cat_School"),
+        ("🚬 Cigarettes", "cat_Cigarettes"),
+        ("🧾 Other", "cat_Other"),
+    ]
+    keyboard = []
+    for i in range(0, len(cats), 2):
+        row = [InlineKeyboardButton(cats[i][0], callback_data=cats[i][1])]
+        if i + 1 < len(cats):
+            row.append(InlineKeyboardButton(cats[i+1][0], callback_data=cats[i+1][1]))
+        keyboard.append(row)
+    keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data="back_main")])
+    return InlineKeyboardMarkup(keyboard)
+
+
+def build_account_keyboard(prefix="acc"):
+    """Build account selection keyboard."""
+    accs = [
+        ("🏦 Bangkok Bank", f"{prefix}_Bangkok Bank"),
+        ("🚇 MRT EMV Visa", f"{prefix}_MRT EMV Visa"),
+        ("📱 True Money", f"{prefix}_True Money Wallet"),
+        ("💵 Cash", f"{prefix}_Cash"),
+        ("🐇 Rabbit Card", f"{prefix}_Rabbit Card"),
+    ]
+    keyboard = []
+    for i in range(0, len(accs), 2):
+        row = [InlineKeyboardButton(accs[i][0], callback_data=accs[i][1])]
+        if i + 1 < len(accs):
+            row.append(InlineKeyboardButton(accs[i+1][0], callback_data=accs[i+1][1]))
+        keyboard.append(row)
+    keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data="back_main")])
+    return InlineKeyboardMarkup(keyboard)
+
+
+def build_subs_menu():
+    """Build subscriptions submenu."""
+    keyboard = [
+        [InlineKeyboardButton("📋 View All", callback_data="sub_view"),
+         InlineKeyboardButton("➕ Add New", callback_data="sub_add")],
+        [InlineKeyboardButton("🗑 Delete", callback_data="sub_delete")],
+        [InlineKeyboardButton("⬅️ Back", callback_data="back_main")],
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+
+def build_settings_menu():
+    """Build settings submenu."""
+    keyboard = [
+        [InlineKeyboardButton("💰 Update Balance", callback_data="set_balance"),
+         InlineKeyboardButton("🔄 Transfer", callback_data="set_transfer")],
+        [InlineKeyboardButton("⬅️ Back", callback_data="back_main")],
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+
+# ─── Menu command ─────────────────────────────────────────────────────────────
+@restricted
+async def cmd_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show the main menu with inline buttons."""
+    await update.message.reply_text(
+        "📱 *Axe Finance — Main Menu*\n\nTap a button below:",
+        reply_markup=build_main_menu(),
+        parse_mode=ParseMode.MARKDOWN
+    )
+
+
+async def button_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle main menu button presses."""
+    query = update.callback_query
+    await query.answer()
+    user_id = query.from_user.id
+    if user_id != AUTHORIZED_USER_ID:
+        return MENU_STATE
+
+    data = query.data
+
+    if data == "menu_expense":
+        context.user_data['flow'] = 'expense'
+        await query.edit_message_text(
+            "💸 *Log Expense*\n\nPick a category:",
+            reply_markup=build_category_keyboard(),
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return LOG_CAT
+
+    elif data == "menu_income":
+        context.user_data['flow'] = 'income'
+        await query.edit_message_text(
+            "💵 *Log Income*\n\nPick a category:",
+            reply_markup=build_category_keyboard(),
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return INCOME_CAT
+
+    elif data == "menu_balance":
+        conn = get_db()
+        c = conn.cursor()
+        c.execute("SELECT name, balance FROM accounts WHERE user_id = ? ORDER BY id", (AUTHORIZED_USER_ID,))
+        accounts = c.fetchall()
+        conn.close()
+        total = sum(a['balance'] for a in accounts)
+        emojis = {'Bangkok Bank': '🏦', 'True Money Wallet': '📱', 'MRT EMV Visa': '🚇', 'Rabbit Card': '🐇', 'Cash': '💵'}
+        lines = ["💰 *Account Balances:*\n"]
+        for a in accounts:
+            e = emojis.get(a['name'], '💰')
+            lines.append(f"{e} {a['name']}: ฿{a['balance']:,.2f}")
+        lines.append(f"\n🏧 *Total: ฿{total:,.2f}*")
+        keyboard = [[InlineKeyboardButton("⬅️ Back to Menu", callback_data="back_main")]]
+        await query.edit_message_text(
+            "\n".join(lines),
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return MENU_STATE
+
+    elif data == "menu_history":
+        conn = get_db()
+        c = conn.cursor()
+        c.execute(
+            "SELECT * FROM transactions WHERE user_id = ? ORDER BY timestamp DESC LIMIT 10",
+            (AUTHORIZED_USER_ID,)
+        )
+        txns = c.fetchall()
+        conn.close()
+        if not txns:
+            text = "No transactions yet."
+        else:
+            lines = ["📜 *Recent Transactions:*\n"]
+            for t in txns:
+                emoji = "💵" if t['type'] == 'income' else "💸"
+                lines.append(
+                    f"{emoji} ฿{abs(t['amount']):,.2f} — {t['description']}\n"
+                    f"   📂 {t['category']} | 🏦 {t['account']} | {t['timestamp'][:16]}"
+                )
+            text = "\n".join(lines)
+        keyboard = [[InlineKeyboardButton("⬅️ Back to Menu", callback_data="back_main")]]
+        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN)
+        return MENU_STATE
+
+    elif data == "menu_report":
+        report = generate_report(AUTHORIZED_USER_ID)
+        keyboard = [[InlineKeyboardButton("⬅️ Back to Menu", callback_data="back_main")]]
+        await query.edit_message_text(report, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN)
+        return MENU_STATE
+
+    elif data == "menu_export":
+        await query.edit_message_text("📋 Generating export... Use /export command for the Excel file.")
+        return ConversationHandler.END
+
+    elif data == "menu_categories":
+        lines = ["📂 *Expense Categories:*\n"]
+        for emoji, name in CATEGORY_LIST:
+            lines.append(f"{emoji} {name}")
+        keyboard = [[InlineKeyboardButton("⬅️ Back to Menu", callback_data="back_main")]]
+        await query.edit_message_text("\n".join(lines), reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN)
+        return MENU_STATE
+
+    elif data == "menu_subs":
+        await query.edit_message_text(
+            "🔄 *Subscriptions*\n\nWhat would you like to do?",
+            reply_markup=build_subs_menu(),
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return SUB_MENU
+
+    elif data == "menu_settings":
+        await query.edit_message_text(
+            "⚙️ *Settings*\n\nChoose an option:",
+            reply_markup=build_settings_menu(),
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return SETTINGS_MENU
+
+    elif data == "back_main":
+        await query.edit_message_text(
+            "📱 *Axe Finance — Main Menu*\n\nTap a button below:",
+            reply_markup=build_main_menu(),
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return MENU_STATE
+
+    return MENU_STATE
+
+
+# ─── Log Expense flow ─────────────────────────────────────────────────────────
+async def log_expense_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle category selection for expense."""
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == "back_main":
+        await query.edit_message_text(
+            "📱 *Axe Finance — Main Menu*\n\nTap a button below:",
+            reply_markup=build_main_menu(),
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return MENU_STATE
+
+    cat_name = query.data.replace("cat_", "")
+    context.user_data['category'] = cat_name
+    await query.edit_message_text(
+        f"💸 Category: *{cat_name}*\n\nNow pick an account:",
+        reply_markup=build_account_keyboard("acc"),
+        parse_mode=ParseMode.MARKDOWN
+    )
+    return LOG_ACCOUNT
+
+
+async def log_expense_account(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle account selection for expense."""
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == "back_main":
+        await query.edit_message_text(
+            "📱 *Axe Finance — Main Menu*\n\nTap a button below:",
+            reply_markup=build_main_menu(),
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return MENU_STATE
+
+    account_name = query.data.replace("acc_", "")
+    context.user_data['account'] = account_name
+    cat = context.user_data.get('category', 'Other')
+    await query.edit_message_text(
+        f"💸 Category: *{cat}*\n🏦 Account: *{account_name}*\n\n"
+        f"Now type the amount and description:\n"
+        f"Example: `150 KFC` or `45.50 coffee`",
+        parse_mode=ParseMode.MARKDOWN
+    )
+    return LOG_AMOUNT
+
+
+async def log_expense_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle amount+description text input for expense."""
+    text = update.message.text.strip()
+
+    amount_match = re.match(r'[฿฿B]?\s*([\d,]+(?:\.\d{1,2})?)\s*(.*)', text)
+    if not amount_match:
+        await update.message.reply_text("Please type amount first, then description.\nExample: 150 KFC")
+        return LOG_AMOUNT
+
+    amount = float(amount_match.group(1).replace(',', ''))
+    desc = amount_match.group(2).strip() or context.user_data.get('category', 'Expense')
+
+    cat_name = context.user_data.get('category', 'Other')
+    account_name = context.user_data.get('account', 'Cash')
+
+    cat_emoji = "🧾"
+    for e, n in CATEGORY_LIST:
+        if n == cat_name:
+            cat_emoji = e
+            break
+
+    conn = get_db()
+    c = conn.cursor()
+    c.execute(
+        "INSERT INTO transactions (user_id, amount, description, type, category, account) VALUES (?, ?, ?, 'expense', ?, ?)",
+        (AUTHORIZED_USER_ID, -amount, desc, cat_name, account_name)
+    )
+    c.execute(
+        "UPDATE accounts SET balance = balance - ? WHERE user_id = ? AND name = ?",
+        (amount, AUTHORIZED_USER_ID, account_name)
+    )
+    conn.commit()
+    conn.close()
+
+    await update.message.reply_text(
+        f"💸 Logged expense: -฿{amount:,.2f}\n"
+        f"📝 {desc}\n"
+        f"📂 {cat_emoji} {cat_name}\n"
+        f"🏦 {account_name}\n\n"
+        f"Wrong? Use /delete to remove it.",
+        reply_markup=build_main_menu()
+    )
+    return MENU_STATE
+
+
+# ─── Log Income flow ──────────────────────────────────────────────────────────
+async def log_income_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle category selection for income."""
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == "back_main":
+        await query.edit_message_text(
+            "📱 *Axe Finance — Main Menu*\n\nTap a button below:",
+            reply_markup=build_main_menu(),
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return MENU_STATE
+
+    cat_name = query.data.replace("cat_", "")
+    context.user_data['category'] = cat_name
+    await query.edit_message_text(
+        f"💵 Category: *{cat_name}*\n\nNow pick an account:",
+        reply_markup=build_account_keyboard("acc"),
+        parse_mode=ParseMode.MARKDOWN
+    )
+    return INCOME_ACCOUNT
+
+
+async def log_income_account(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle account selection for income."""
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == "back_main":
+        await query.edit_message_text(
+            "📱 *Axe Finance — Main Menu*\n\nTap a button below:",
+            reply_markup=build_main_menu(),
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return MENU_STATE
+
+    account_name = query.data.replace("acc_", "")
+    context.user_data['account'] = account_name
+    cat = context.user_data.get('category', 'Income')
+    await query.edit_message_text(
+        f"💵 Category: *{cat}*\n🏦 Account: *{account_name}*\n\n"
+        f"Now type the amount and description:\n"
+        f"Example: `5000 salary` or `1500 freelance`",
+        parse_mode=ParseMode.MARKDOWN
+    )
+    return INCOME_AMOUNT
+
+
+async def log_income_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle amount+description text input for income."""
+    text = update.message.text.strip()
+
+    amount_match = re.match(r'[฿฿B]?\s*([\d,]+(?:\.\d{1,2})?)\s*(.*)', text)
+    if not amount_match:
+        await update.message.reply_text("Please type amount first, then description.\nExample: 5000 salary")
+        return INCOME_AMOUNT
+
+    amount = float(amount_match.group(1).replace(',', ''))
+    desc = amount_match.group(2).strip() or context.user_data.get('category', 'Income')
+
+    cat_name = context.user_data.get('category', 'Income')
+    account_name = context.user_data.get('account', 'Cash')
+
+    cat_emoji = "🧾"
+    for e, n in CATEGORY_LIST:
+        if n == cat_name:
+            cat_emoji = e
+            break
+
+    conn = get_db()
+    c = conn.cursor()
+    c.execute(
+        "INSERT INTO transactions (user_id, amount, description, type, category, account) VALUES (?, ?, ?, 'income', ?, ?)",
+        (AUTHORIZED_USER_ID, amount, desc, cat_name, account_name)
+    )
+    c.execute(
+        "UPDATE accounts SET balance = balance + ? WHERE user_id = ? AND name = ?",
+        (amount, AUTHORIZED_USER_ID, account_name)
+    )
+    conn.commit()
+    conn.close()
+
+    await update.message.reply_text(
+        f"💵 Logged income: +฿{amount:,.2f}\n"
+        f"📝 {desc}\n"
+        f"📂 {cat_emoji} {cat_name}\n"
+        f"🏦 {account_name}",
+        reply_markup=build_main_menu()
+    )
+    return MENU_STATE
+
+
+# ─── Subscriptions submenu ─────────────────────────────────────────────────────
+async def sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle subscription submenu buttons."""
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == "back_main":
+        await query.edit_message_text(
+            "📱 *Axe Finance — Main Menu*\n\nTap a button below:",
+            reply_markup=build_main_menu(),
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return MENU_STATE
+
+    elif query.data == "sub_view":
+        conn = get_db()
+        c = conn.cursor()
+        c.execute(
+            "SELECT name, amount, account, next_due_date FROM recurring_subscriptions WHERE user_id = ? ORDER BY next_due_date",
+            (AUTHORIZED_USER_ID,)
+        )
+        subs = c.fetchall()
+        conn.close()
+        if not subs:
+            text = "No recurring subscriptions."
+        else:
+            lines = ["🔄 *Recurring Subscriptions:*\n"]
+            for s in subs:
+                lines.append(
+                    f"📱 {s['name']}: ฿{s['amount']:,.2f}/month\n"
+                    f"  Account: {s['account']} | Next: {s['next_due_date']}"
+                )
+            text = "\n".join(lines)
+        keyboard = [[InlineKeyboardButton("⬅️ Back", callback_data="back_subs")]]
+        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN)
+        return SUB_MENU
+
+    elif query.data == "sub_add":
+        await query.edit_message_text(
+            "➕ *Add Subscription*\n\n"
+            "Type the name of the subscription:\n"
+            "Example: `Netflix` or `Spotify`",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return SUB_ADD_NAME
+
+    elif query.data == "sub_delete":
+        conn = get_db()
+        c = conn.cursor()
+        c.execute(
+            "SELECT id, name, amount FROM recurring_subscriptions WHERE user_id = ?",
+            (AUTHORIZED_USER_ID,)
+        )
+        subs = c.fetchall()
+        conn.close()
+        if not subs:
+            keyboard = [[InlineKeyboardButton("⬅️ Back", callback_data="back_subs")]]
+            await query.edit_message_text("No subscriptions to delete.", reply_markup=InlineKeyboardMarkup(keyboard))
+            return SUB_MENU
+        keyboard = []
+        for s in subs:
+            keyboard.append([InlineKeyboardButton(
+                f"🗑 {s['name']} (฿{s['amount']:,.2f})",
+                callback_data=f"subdel_{s['id']}"
+            )])
+        keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data="back_subs")])
+        await query.edit_message_text(
+            "🗑 *Delete Subscription*\n\nTap one to delete:",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return SUB_DEL_PICK
+
+    elif query.data == "back_subs":
+        await query.edit_message_text(
+            "🔄 *Subscriptions*\n\nWhat would you like to do?",
+            reply_markup=build_subs_menu(),
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return SUB_MENU
+
+    return SUB_MENU
+
+
+async def sub_add_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Get subscription name."""
+    context.user_data['sub_name'] = update.message.text.strip()
+    await update.message.reply_text(
+        f"Name: *{context.user_data['sub_name']}*\n\n"
+        f"Now type the monthly amount:\n"
+        f"Example: `199` or `30.45`",
+        parse_mode=ParseMode.MARKDOWN
+    )
+    return SUB_ADD_AMOUNT
+
+
+async def sub_add_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Get subscription amount."""
+    try:
+        amount = float(update.message.text.strip().replace(',', ''))
+        context.user_data['sub_amount'] = amount
+    except ValueError:
+        await update.message.reply_text("Invalid amount. Please type a number like 199 or 30.45")
+        return SUB_ADD_AMOUNT
+
+    await update.message.reply_text(
+        f"Name: *{context.user_data['sub_name']}*\n"
+        f"Amount: *฿{amount:,.2f}*\n\n"
+        f"Pick the account to charge from:",
+        reply_markup=build_account_keyboard("subacc"),
+        parse_mode=ParseMode.MARKDOWN
+    )
+    return SUB_ADD_ACCOUNT
+
+
+async def sub_add_account(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Get subscription account."""
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == "back_main":
+        await query.edit_message_text(
+            "🔄 *Subscriptions*\n\nWhat would you like to do?",
+            reply_markup=build_subs_menu(),
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return SUB_MENU
+
+    account_name = query.data.replace("subacc_", "")
+    context.user_data['sub_account'] = account_name
+    await query.edit_message_text(
+        f"Name: *{context.user_data['sub_name']}*\n"
+        f"Amount: *฿{context.user_data['sub_amount']:,.2f}*\n"
+        f"Account: *{account_name}*\n\n"
+        f"Type the next due date (YYYY-MM-DD):\n"
+        f"Example: `2026-05-25`",
+        parse_mode=ParseMode.MARKDOWN
+    )
+    return SUB_ADD_DATE
+
+
+async def sub_add_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Get subscription due date and save."""
+    text = update.message.text.strip()
+    if not re.match(r'^\d{4}-\d{2}-\d{2}$', text):
+        await update.message.reply_text("Please use format YYYY-MM-DD, like 2026-05-25")
+        return SUB_ADD_DATE
+
+    name = context.user_data['sub_name']
+    amount = context.user_data['sub_amount']
+    account = context.user_data['sub_account']
+
+    conn = get_db()
+    c = conn.cursor()
+    c.execute(
+        "INSERT INTO recurring_subscriptions (user_id, name, amount, category, account, next_due_date, frequency) "
+        "VALUES (?, ?, ?, 'Subscriptions', ?, ?, 'monthly')",
+        (AUTHORIZED_USER_ID, name, amount, account, text)
+    )
+    conn.commit()
+    conn.close()
+
+    await update.message.reply_text(
+        f"✅ Subscription added!\n\n"
+        f"📱 {name}: ฿{amount:,.2f}/month\n"
+        f"🏦 {account}\n"
+        f"📅 Next due: {text}",
+        reply_markup=build_main_menu()
+    )
+    return MENU_STATE
+
+
+async def sub_del_pick(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle subscription deletion pick."""
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == "back_subs":
+        await query.edit_message_text(
+            "🔄 *Subscriptions*\n\nWhat would you like to do?",
+            reply_markup=build_subs_menu(),
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return SUB_MENU
+
+    sub_id = int(query.data.replace("subdel_", ""))
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT name FROM recurring_subscriptions WHERE id = ?", (sub_id,))
+    row = c.fetchone()
+    name = row['name'] if row else "Unknown"
+    c.execute("DELETE FROM recurring_subscriptions WHERE id = ? AND user_id = ?", (sub_id, AUTHORIZED_USER_ID))
+    conn.commit()
+    conn.close()
+
+    await query.edit_message_text(
+        f"🗑 Deleted subscription: {name}",
+        reply_markup=build_main_menu()
+    )
+    return MENU_STATE
+
+
+# ─── Settings submenu ─────────────────────────────────────────────────────────
+async def settings_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle settings submenu buttons."""
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == "back_main":
+        await query.edit_message_text(
+            "📱 *Axe Finance — Main Menu*\n\nTap a button below:",
+            reply_markup=build_main_menu(),
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return MENU_STATE
+
+    elif query.data == "set_balance":
+        await query.edit_message_text(
+            "💰 *Update Balance*\n\nPick the account:",
+            reply_markup=build_account_keyboard("updbal"),
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return UPD_BAL_ACCOUNT
+
+    elif query.data == "set_transfer":
+        await query.edit_message_text(
+            "🔄 *Transfer*\n\nPick the *FROM* account:",
+            reply_markup=build_account_keyboard("trfrom"),
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return TRANSFER_FROM
+
+    return SETTINGS_MENU
+
+
+async def upd_bal_account(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle account selection for balance update."""
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == "back_main":
+        await query.edit_message_text(
+            "⚙️ *Settings*\n\nChoose an option:",
+            reply_markup=build_settings_menu(),
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return SETTINGS_MENU
+
+    account_name = query.data.replace("updbal_", "")
+    context.user_data['upd_account'] = account_name
+
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT balance FROM accounts WHERE user_id = ? AND name = ?", (AUTHORIZED_USER_ID, account_name))
+    row = c.fetchone()
+    conn.close()
+    current = row['balance'] if row else 0
+
+    await query.edit_message_text(
+        f"💰 *Update Balance*\n\n"
+        f"Account: *{account_name}*\n"
+        f"Current balance: ฿{current:,.2f}\n\n"
+        f"Type the new balance amount:",
+        parse_mode=ParseMode.MARKDOWN
+    )
+    return UPD_BAL_AMOUNT
+
+
+async def upd_bal_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle new balance amount."""
+    try:
+        new_balance = float(update.message.text.strip().replace(',', ''))
+    except ValueError:
+        await update.message.reply_text("Invalid amount. Please type a number.")
+        return UPD_BAL_AMOUNT
+
+    account_name = context.user_data.get('upd_account', 'Cash')
+    conn = get_db()
+    c = conn.cursor()
+    c.execute(
+        "UPDATE accounts SET balance = ? WHERE user_id = ? AND name = ?",
+        (new_balance, AUTHORIZED_USER_ID, account_name)
+    )
+    conn.commit()
+    conn.close()
+
+    await update.message.reply_text(
+        f"✅ {account_name} balance updated to ฿{new_balance:,.2f}",
+        reply_markup=build_main_menu()
+    )
+    return MENU_STATE
+
+
+# ─── Transfer flow ────────────────────────────────────────────────────────────
+async def transfer_from(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle FROM account selection for transfer."""
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == "back_main":
+        await query.edit_message_text(
+            "⚙️ *Settings*\n\nChoose an option:",
+            reply_markup=build_settings_menu(),
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return SETTINGS_MENU
+
+    account_name = query.data.replace("trfrom_", "")
+    context.user_data['transfer_from'] = account_name
+    await query.edit_message_text(
+        f"🔄 *Transfer*\n\n"
+        f"From: *{account_name}*\n\n"
+        f"Now pick the *TO* account:",
+        reply_markup=build_account_keyboard("trto"),
+        parse_mode=ParseMode.MARKDOWN
+    )
+    return TRANSFER_TO
+
+
+async def transfer_to(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle TO account selection for transfer."""
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == "back_main":
+        await query.edit_message_text(
+            "⚙️ *Settings*\n\nChoose an option:",
+            reply_markup=build_settings_menu(),
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return SETTINGS_MENU
+
+    account_name = query.data.replace("trto_", "")
+    from_acc = context.user_data.get('transfer_from', '')
+
+    if account_name == from_acc:
+        await query.answer("Can't transfer to the same account!", show_alert=True)
+        return TRANSFER_TO
+
+    context.user_data['transfer_to'] = account_name
+    await query.edit_message_text(
+        f"🔄 *Transfer*\n\n"
+        f"From: *{from_acc}*\n"
+        f"To: *{account_name}*\n\n"
+        f"Type the amount to transfer:",
+        parse_mode=ParseMode.MARKDOWN
+    )
+    return TRANSFER_AMOUNT
+
+
+async def transfer_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle transfer amount."""
+    try:
+        amount = float(update.message.text.strip().replace(',', ''))
+    except ValueError:
+        await update.message.reply_text("Invalid amount. Please type a number.")
+        return TRANSFER_AMOUNT
+
+    from_acc = context.user_data.get('transfer_from', 'Cash')
+    to_acc = context.user_data.get('transfer_to', 'Cash')
+
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("UPDATE accounts SET balance = balance - ? WHERE user_id = ? AND name = ?", (amount, AUTHORIZED_USER_ID, from_acc))
+    c.execute("UPDATE accounts SET balance = balance + ? WHERE user_id = ? AND name = ?", (amount, AUTHORIZED_USER_ID, to_acc))
+    c.execute(
+        "INSERT INTO transactions (user_id, amount, description, type, category, account) VALUES (?, ?, ?, 'expense', 'Other', ?)",
+        (AUTHORIZED_USER_ID, -amount, f"Transfer to {to_acc}", from_acc)
+    )
+    c.execute(
+        "INSERT INTO transactions (user_id, amount, description, type, category, account) VALUES (?, ?, ?, 'income', 'Other', ?)",
+        (AUTHORIZED_USER_ID, amount, f"Transfer from {from_acc}", to_acc)
+    )
+    conn.commit()
+
+    c.execute("SELECT balance FROM accounts WHERE user_id = ? AND name = ?", (AUTHORIZED_USER_ID, from_acc))
+    new_from = c.fetchone()['balance']
+    c.execute("SELECT balance FROM accounts WHERE user_id = ? AND name = ?", (AUTHORIZED_USER_ID, to_acc))
+    new_to = c.fetchone()['balance']
+    conn.close()
+
+    await update.message.reply_text(
+        f"🔄 Transfer complete!\n\n"
+        f"💸 {from_acc}: -฿{amount:,.2f} → ฿{new_from:,.2f}\n"
+        f"💵 {to_acc}: +฿{amount:,.2f} → ฿{new_to:,.2f}",
+        reply_markup=build_main_menu()
+    )
+    return MENU_STATE
+
+
+# ─── Fallback / Cancel ────────────────────────────────────────────────────────
+async def cancel_conversation(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Cancel any active conversation and return to main menu."""
+    if update.message:
+        await update.message.reply_text(
+            "Cancelled. Back to main menu.",
+            reply_markup=build_main_menu()
+        )
+    return ConversationHandler.END
+
+
 # ─── Error handler ────────────────────────────────────────────────────────────
 async def error_handler(update, context: ContextTypes.DEFAULT_TYPE):
     logger.error(f"Error: {context.error}")
@@ -2007,8 +2821,82 @@ def main():
     # Error handler
     app.add_error_handler(error_handler)
 
-    # Command handlers
-    app.add_handler(CommandHandler("start", cmd_start))
+    # Conversation handler for button-based UI (must be added BEFORE plain text handler)
+    conv_handler = ConversationHandler(
+        entry_points=[
+            CommandHandler("start", cmd_start),
+            CommandHandler("menu", cmd_menu),
+            CallbackQueryHandler(button_main_menu, pattern=r'^menu_|^back_main$'),
+        ],
+        states={
+            MENU_STATE: [
+                CallbackQueryHandler(button_main_menu, pattern=r'^menu_|^back_main$'),
+            ],
+            LOG_CAT: [
+                CallbackQueryHandler(log_expense_category, pattern=r'^cat_|^back_main$'),
+            ],
+            LOG_ACCOUNT: [
+                CallbackQueryHandler(log_expense_account, pattern=r'^acc_|^back_main$'),
+            ],
+            LOG_AMOUNT: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, log_expense_amount),
+            ],
+            INCOME_CAT: [
+                CallbackQueryHandler(log_income_category, pattern=r'^cat_|^back_main$'),
+            ],
+            INCOME_ACCOUNT: [
+                CallbackQueryHandler(log_income_account, pattern=r'^acc_|^back_main$'),
+            ],
+            INCOME_AMOUNT: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, log_income_amount),
+            ],
+            SETTINGS_MENU: [
+                CallbackQueryHandler(settings_menu_handler, pattern=r'^set_|^back_main$'),
+            ],
+            UPD_BAL_ACCOUNT: [
+                CallbackQueryHandler(upd_bal_account, pattern=r'^updbal_|^back_main$'),
+            ],
+            UPD_BAL_AMOUNT: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, upd_bal_amount),
+            ],
+            TRANSFER_FROM: [
+                CallbackQueryHandler(transfer_from, pattern=r'^trfrom_|^back_main$'),
+            ],
+            TRANSFER_TO: [
+                CallbackQueryHandler(transfer_to, pattern=r'^trto_|^back_main$'),
+            ],
+            TRANSFER_AMOUNT: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, transfer_amount),
+            ],
+            SUB_MENU: [
+                CallbackQueryHandler(sub_menu_handler, pattern=r'^sub_|^back_main$|^back_subs$'),
+            ],
+            SUB_ADD_NAME: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, sub_add_name),
+            ],
+            SUB_ADD_AMOUNT: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, sub_add_amount),
+            ],
+            SUB_ADD_ACCOUNT: [
+                CallbackQueryHandler(sub_add_account, pattern=r'^subacc_|^back_main$'),
+            ],
+            SUB_ADD_DATE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, sub_add_date),
+            ],
+            SUB_DEL_PICK: [
+                CallbackQueryHandler(sub_del_pick, pattern=r'^subdel_|^back_subs$'),
+            ],
+        },
+        fallbacks=[
+            CommandHandler("cancel", cancel_conversation),
+            CommandHandler("menu", cmd_menu),
+            CommandHandler("start", cmd_start),
+        ],
+        per_message=False,
+    )
+    app.add_handler(conv_handler)
+
+    # Command handlers (these work independently of the conversation)
     app.add_handler(CommandHandler("help", cmd_help))
     app.add_handler(CommandHandler("balance", cmd_balance))
     app.add_handler(CommandHandler("report", cmd_report))
@@ -2025,7 +2913,7 @@ def main():
     # Photo handler
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
 
-    # Text handler (must be last)
+    # Text handler (must be last — catches natural language when NOT in a conversation)
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
     # Scheduled jobs using v20 JobQueue
