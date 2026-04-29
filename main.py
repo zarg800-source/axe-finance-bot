@@ -986,6 +986,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=build_main_menu(),
         parse_mode=ParseMode.MARKDOWN
     )
+    return MENU_STATE
 
 
 @restricted
@@ -2085,6 +2086,7 @@ async def cmd_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=build_main_menu(),
         parse_mode=ParseMode.MARKDOWN
     )
+    return MENU_STATE
 
 
 async def button_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
