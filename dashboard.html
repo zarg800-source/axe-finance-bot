@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mike Finance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300&family=JetBrains+Mono:wght@300;400;500&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:          #07090f;
+    --bg-2:        #0c0f18;
+    --surface:     #0f1320;
+    --surface-2:   #141926;
+    --border:      rgba(255,255,255,0.055);
+    --border-gold: rgba(240,180,41,0.25);
+    --gold:        #f0b429;
+    --gold-glow:   rgba(240,180,41,0.12);
+    --green:       #1fd6a0;
+    --green-dim:   rgba(31,214,160,0.1);
+    --red:         #f0645a;
+    --red-dim:     rgba(240,100,90,0.1);
+    --text:        #dde3ed;
+    --text-mid:    #8896a8;
+    --text-dim:    #4a566a;
+    --font-serif:  'Cormorant Garamond', Georgia, serif;
+    --font-mono:   'JetBrains Mono', monospace;
+    --font-sans:   'Outfit', sans-serif;
+    --r:           14px;
+    --r-sm:        8px;
+  }
+
+  *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-weight: 300;
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Atmospheric background ───────────────────────────────────────────── */
+  .bg-glow {
+    position: fixed; top: -200px; left: 50%;
+    transform: translateX(-50%);
+    width: 800px; height: 400px;
+    background: radial-gradient(ellipse, rgba(240,180,41,0.04) 0%, transparent 70%);
+    pointer-events: none; z-index: 0;
+  }
+  .bg-grid {
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(240,180,41,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(240,180,41,0.025) 1px, transparent 1px);
+    background-size: 56px 56px;
+    pointer-events: none; z-index: 0;
+    mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+  }
+
+  /* ── Layout ────────────────────────────────────────────────────────────── */
+  .wrap {
+    max-width: 1160px; margin: 0 auto;
+    padding: 0 28px 80px;
+    position: relative; z-index: 1;
+  }
+
+  /* ── Header ────────────────────────────────────────────────────────────── */
+  header {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    padding: 36px 0 32px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 44px;
+  }
+  .logo {
+    display: flex; align-items: center; gap: 12px;
+  }
+  .logo-mark {
+    width: 34px; height: 34px;
+    border: 1px solid var(--border-gold);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--gold-glow);
+    font-size: 16px;
+  }
+  .logo-name {
+    font-family: var(--font-serif);
+    font-size: 24px; font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--text);
+  }
+  .logo-name em {
+    font-style: italic; color: var(--gold);
+  }
+  .header-right {
+    text-align: right;
+  }
+  .header-date {
+    font-family: var(--font-mono);
+    font-size: 11px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--text-dim);
+  }
+  .header-live {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-top: 5px;
+    font-family: var(--font-mono); font-size: 10px;
+    color: var(--green); letter-spacing: 0.1em;
+  }
+  .live-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--green);
+    animation: blink 2.4s ease-in-out infinite;
+  }
+  @keyframes blink {
+    0%,100%{opacity:1;} 50%{opacity:0.2;}
+  }
+
+  /* ── Section label ─────────────────────────────────────────────────────── */
+  .sec-label {
+    font-family: var(--font-mono);
+    font-size: 10px; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--text-dim);
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .sec-label::after {
+    content: ''; flex: 1; height: 1px;
+    background: var(--border);
+  }
+
+  /* ── Cards ─────────────────────────────────────────────────────────────── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 22px 24px;
+    transition: border-color 0.35s ease, box-shadow 0.35s ease, transform 0.4s ease, opacity 0.4s ease;
+    opacity: 0; transform: translateY(18px);
+  }
+  .card.in {
+    opacity: 1; transform: translateY(0);
+  }
+  .card:hover {
+    border-color: var(--border-gold);
+    box-shadow: 0 4px 40px rgba(240,180,41,0.06);
+  }
+
+  /* ── Balance grid ──────────────────────────────────────────────────────── */
+  .bal-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 14px; margin-bottom: 44px;
+  }
+  .bal-card { position: relative; overflow: hidden; }
+  .bal-card .glow-corner {
+    position: absolute; top: -30px; right: -30px;
+    width: 100px; height: 100px;
+    background: radial-gradient(circle, var(--gold-glow) 0%, transparent 65%);
+    pointer-events: none;
+  }
+  .bal-acct {
+    font-family: var(--font-mono); font-size: 10px;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--text-dim); margin-bottom: 14px;
+  }
+  .bal-num {
+    font-family: var(--font-mono); font-size: 20px;
+    font-weight: 400; letter-spacing: -0.02em; color: var(--text);
+  }
+  .bal-num .cur { font-size: 13px; color: var(--gold); margin-right: 2px; }
+
+  .bal-total {
+    border-color: rgba(240,180,41,0.18);
+    background: linear-gradient(145deg, #0e1320 0%, #121c2e 100%);
+  }
+  .bal-total .bal-num { font-size: 28px; color: var(--gold); }
+
+  /* ── Summary row ───────────────────────────────────────────────────────── */
+  .sum-grid {
+    display: grid; grid-template-columns: repeat(3,1fr);
+    gap: 14px; margin-bottom: 44px;
+  }
+  .sum-label {
+    font-family: var(--font-mono); font-size: 10px;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--text-dim); margin-bottom: 10px;
+  }
+  .sum-val {
+    font-family: var(--font-mono); font-size: 24px;
+    font-weight: 400; letter-spacing: -0.03em;
+  }
+  .sum-val.c-inc  { color: var(--green); }
+  .sum-val.c-exp  { color: var(--red); }
+  .sum-val.c-pos  { color: var(--gold); }
+  .sum-val.c-neg  { color: var(--red); }
+  .sum-change {
+    margin-top: 7px; font-size: 11px; color: var(--text-dim);
+    font-family: var(--font-mono);
+  }
+  .sum-change.up   { color: var(--green); }
+  .sum-change.down { color: var(--red); }
+
+  /* ── Charts row ────────────────────────────────────────────────────────── */
+  .charts-row {
+    display: grid; grid-template-columns: 1fr 1.6fr;
+    gap: 16px; margin-bottom: 44px;
+  }
+  .card-title {
+    font-family: var(--font-serif);
+    font-size: 20px; font-weight: 500;
+    color: var(--text); margin-bottom: 20px;
+    letter-spacing: 0.01em;
+  }
+  .chart-wrap {
+    position: relative;
+  }
+  /* Category list */
+  .cat-list { margin-top: 18px; }
+  .cat-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: opacity 0.2s;
+  }
+  .cat-row:last-child { border-bottom: none; }
+  .cat-row:hover { opacity: 0.75; }
+  .cat-left {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; color: var(--text-mid);
+  }
+  .cat-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .cat-amount {
+    font-family: var(--font-mono); font-size: 13px; color: var(--text);
+  }
+
+  /* ── Transactions ──────────────────────────────────────────────────────── */
+  .txn-list { display: flex; flex-direction: column; gap: 1px; }
+  .txn {
+    display: flex; align-items: center; gap: 14px;
+    padding: 13px 10px; border-radius: var(--r-sm);
+    transition: background 0.2s;
+  }
+  .txn:hover { background: var(--surface-2); }
+  .txn-icon {
+    width: 38px; height: 38px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; flex-shrink: 0;
+  }
+  .txn-icon.inc { background: var(--green-dim); }
+  .txn-icon.exp { background: var(--red-dim); }
+  .txn-body { flex: 1; min-width: 0; }
+  .txn-desc {
+    font-size: 13.5px; font-weight: 400; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .txn-meta {
+    font-size: 11px; color: var(--text-dim);
+    font-family: var(--font-mono); margin-top: 3px;
+    letter-spacing: 0.04em;
+  }
+  .txn-amt {
+    font-family: var(--font-mono); font-size: 14px;
+    font-weight: 500; white-space: nowrap;
+  }
+  .txn-amt.inc { color: var(--green); }
+  .txn-amt.exp { color: var(--red); }
+
+  /* ── Skeleton ──────────────────────────────────────────────────────────── */
+  .skel {
+    height: 20px; border-radius: 4px;
+    background: linear-gradient(90deg, var(--surface) 25%, var(--surface-2) 50%, var(--surface) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.6s infinite;
+  }
+  @keyframes shimmer {
+    0%  { background-position: 200% 0; }
+    100%{ background-position: -200% 0; }
+  }
+  .loading-txt {
+    color: var(--text-dim); font-family: var(--font-mono);
+    font-size: 12px; letter-spacing: 0.1em;
+    padding: 40px 0; text-align: center;
+  }
+
+  /* ── Footer ────────────────────────────────────────────────────────────── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 28px 0 0; text-align: center;
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--text-dim); letter-spacing: 0.1em;
+  }
+
+  /* ── Responsive ────────────────────────────────────────────────────────── */
+  @media(max-width: 800px) {
+    .charts-row { grid-template-columns: 1fr; }
+    .sum-grid   { grid-template-columns: 1fr 1fr; }
+  }
+  @media(max-width: 560px) {
+    .sum-grid   { grid-template-columns: 1fr; }
+    .bal-grid   { grid-template-columns: repeat(2,1fr); }
+    .wrap       { padding: 0 16px 60px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-glow"></div>
+<div class="bg-grid"></div>
+
+<div class="wrap">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <div class="logo-mark">💰</div>
+      <div class="logo-name">Mike <em>Finance</em></div>
+    </div>
+    <div class="header-right">
+      <div class="header-date" id="hdr-date">—</div>
+      <div class="header-live">
+        <span class="live-dot"></span> LIVE
+      </div>
+    </div>
+  </header>
+
+  <!-- Balances -->
+  <div class="sec-label">Account Balances</div>
+  <div class="bal-grid" id="bal-grid">
+    <div class="loading-txt">Loading…</div>
+  </div>
+
+  <!-- This Month -->
+  <div class="sec-label">This Month</div>
+  <div class="sum-grid" id="sum-grid">
+    <div class="loading-txt" style="grid-column:1/-1">Loading…</div>
+  </div>
+
+  <!-- Charts -->
+  <div class="sec-label">Analytics</div>
+  <div class="charts-row">
+    <div class="card" id="card-cat">
+      <div class="card-title">Spending Categories</div>
+      <div class="chart-wrap" style="height:190px">
+        <canvas id="c-donut"></canvas>
+      </div>
+      <div class="cat-list" id="cat-list"></div>
+    </div>
+    <div class="card" id="card-trend">
+      <div class="card-title">6-Month Overview</div>
+      <div class="chart-wrap" style="height:260px">
+        <canvas id="c-bar"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Transactions -->
+  <div class="sec-label">Recent Transactions</div>
+  <div class="card" id="card-txn">
+    <div class="txn-list" id="txn-list">
+      <div class="loading-txt">Loading…</div>
+    </div>
+  </div>
+
+  <footer>Mike Finance · Bangkok Time · Built with Claude</footer>
+</div>
+
+<script>
+// ── Helpers ────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+
+function fmt(n, sign = '') {
+  const abs = Math.abs(n);
+  const s = abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return sign + '฿' + s;
+}
+
+function countUp(el, target, prefix = '฿', ms = 1100) {
+  const t0 = performance.now();
+  const tick = now => {
+    const p  = Math.min((now - t0) / ms, 1);
+    const ep = 1 - Math.pow(1 - p, 3);           // ease-out-cubic
+    el.textContent = prefix + (target * ep).toLocaleString('en-US', {
+      minimumFractionDigits: 2, maximumFractionDigits: 2
+    });
+    if (p < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+function reveal(sel, baseDelay = 0) {
+  document.querySelectorAll(sel).forEach((el, i) => {
+    setTimeout(() => el.classList.add('in'), baseDelay + i * 70);
+  });
+}
+
+function pct(cur, prev) {
+  if (!prev) return null;
+  return ((cur - prev) / Math.abs(prev) * 100).toFixed(1);
+}
+
+// ── Static maps ───────────────────────────────────────────────────────────
+const ACC_EMOJI = {
+  'Bangkok Bank': '🏦', 'True Money Wallet': '📱',
+  'MRT EMV Visa': '🚇', 'Rabbit Card': '🐇', 'Cash': '💵'
+};
+const CAT_EMOJI = {
+  'Food & Drinks':'🍜','Coffee':'☕','Transport':'🚕','Groceries':'🛒',
+  'Housing':'🏠','Health':'💊','Shopping':'👗','Entertainment':'🎉',
+  'Subscriptions':'📱','Travel':'✈️','School':'🎓','Cigarettes':'🚬',
+  'Other':'🧾','Salary':'💵','Freelance':'💼','Gallery Sales':'🖼️',
+  'Artwork / Commission':'🎨','Bonus':'🏆','Gift Money':'🎁',
+  'Cashback / Refund':'💳','Investment':'💹','Business':'🤝','Other Income':'🧾'
+};
+const PALETTE = ['#f0b429','#1fd6a0','#7b6ffc','#f0645a','#4dc4ff','#ffb347','#b4e4a2','#ffd3b6'];
+
+// Chart global defaults
+Chart.defaults.color = '#4a566a';
+Chart.defaults.font.family = "'JetBrains Mono', monospace";
+
+// ── Date header ───────────────────────────────────────────────────────────
+(function() {
+  const opts = { timeZone:'Asia/Bangkok', weekday:'short', year:'numeric', month:'long', day:'numeric' };
+  $('hdr-date').textContent = new Date().toLocaleDateString('en-US', opts).toUpperCase();
+})();
+
+// ── Load balances ─────────────────────────────────────────────────────────
+async function loadBalances() {
+  const accs = await fetch('/api/balances').then(r => r.json());
+  const total = accs.reduce((s, a) => s + a.balance, 0);
+
+  $('bal-grid').innerHTML = accs.map(a => `
+    <div class="card bal-card">
+      <div class="glow-corner"></div>
+      <div class="bal-acct">${ACC_EMOJI[a.name] || '💰'} ${a.name}</div>
+      <div class="bal-num" data-v="${a.balance}">
+        <span class="cur">฿</span><span class="n">—</span>
+      </div>
+    </div>
+  `).join('') + `
+    <div class="card bal-card bal-total">
+      <div class="glow-corner"></div>
+      <div class="bal-acct">⚡ Net Worth</div>
+      <div class="bal-num" data-v="${total}">
+        <span class="cur">฿</span><span class="n">—</span>
+      </div>
+    </div>
+  `;
+
+  reveal('#bal-grid .card', 0);
+  setTimeout(() => {
+    document.querySelectorAll('#bal-grid .bal-num').forEach(el => {
+      countUp(el.querySelector('.n'), parseFloat(el.dataset.v), '', 1200);
+    });
+  }, 100);
+}
+
+// ── Load summary ──────────────────────────────────────────────────────────
+async function loadSummary() {
+  const { this_month: cur, last_month: prev } = await fetch('/api/summary').then(r => r.json());
+
+  const delta = (c, p, inverse = false) => {
+    const d = pct(c, p);
+    if (d === null) return '';
+    const up   = inverse ? d < 0 : d > 0;
+    const cls  = up ? 'up' : 'down';
+    const arrow = d > 0 ? '↑' : '↓';
+    return `<div class="sum-change ${cls}">${arrow} ${Math.abs(d)}% vs last month</div>`;
+  };
+
+  const netCls = cur.net >= 0 ? 'c-pos' : 'c-neg';
+
+  $('sum-grid').innerHTML = `
+    <div class="card">
+      <div class="sum-label">💚 Income</div>
+      <div class="sum-val c-inc" data-v="${cur.income}">฿—</div>
+      ${delta(cur.income, prev.income)}
+    </div>
+    <div class="card">
+      <div class="sum-label">🔴 Expenses</div>
+      <div class="sum-val c-exp" data-v="${cur.expense}">฿—</div>
+      ${delta(cur.expense, prev.expense, true)}
+    </div>
+    <div class="card">
+      <div class="sum-label">✨ Net Savings</div>
+      <div class="sum-val ${netCls}" data-v="${Math.abs(cur.net)}">${cur.net < 0 ? '-' : ''}฿—</div>
+      ${delta(cur.net, prev.net)}
+    </div>
+  `;
+
+  reveal('#sum-grid .card', 80);
+  setTimeout(() => {
+    document.querySelectorAll('#sum-grid .sum-val').forEach(el => {
+      const neg = el.textContent.startsWith('-');
+      countUp(el, parseFloat(el.dataset.v), neg ? '-฿' : '฿', 1200);
+    });
+  }, 200);
+}
+
+// ── Load categories ───────────────────────────────────────────────────────
+async function loadCategories() {
+  const cats = await fetch('/api/categories').then(r => r.json());
+  $('card-cat').classList.add('in');
+
+  if (!cats.length) {
+    $('cat-list').innerHTML = '<div style="color:var(--text-dim);font-size:13px;padding:16px 0;font-family:var(--font-mono)">No expense data this month</div>';
+    return;
+  }
+
+  new Chart($('c-donut').getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: cats.map(c => c.category),
+      datasets: [{
+        data: cats.map(c => c.total),
+        backgroundColor: PALETTE,
+        borderWidth: 0,
+        hoverOffset: 6
+      }]
+    },
+    options: {
+      cutout: '72%',
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: { label: ctx => '  ' + fmt(ctx.raw) },
+          backgroundColor: '#0c0f18',
+          borderColor: 'rgba(240,180,41,0.2)',
+          borderWidth: 1,
+          titleColor: '#dde3ed',
+          bodyColor: '#8896a8',
+          padding: 10,
+          cornerRadius: 8
+        }
+      }
+    }
+  });
+
+  $('cat-list').innerHTML = cats.slice(0, 6).map((c, i) => `
+    <div class="cat-row">
+      <div class="cat-left">
+        <span class="cat-dot" style="background:${PALETTE[i]}"></span>
+        ${CAT_EMOJI[c.category] || '🧾'} ${c.category}
+      </div>
+      <span class="cat-amount">${fmt(c.total)}</span>
+    </div>
+  `).join('');
+}
+
+// ── Load monthly trend ────────────────────────────────────────────────────
+async function loadMonthly() {
+  const data = await fetch('/api/monthly').then(r => r.json());
+  $('card-trend').classList.add('in');
+
+  new Chart($('c-bar').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: data.map(d => d.month),
+      datasets: [
+        {
+          label: 'Income',
+          data: data.map(d => d.income),
+          backgroundColor: 'rgba(31,214,160,0.65)',
+          borderRadius: 5, borderSkipped: false
+        },
+        {
+          label: 'Expense',
+          data: data.map(d => d.expense),
+          backgroundColor: 'rgba(240,100,90,0.65)',
+          borderRadius: 5, borderSkipped: false
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          labels: {
+            font: { size: 11 },
+            boxWidth: 10, boxHeight: 10,
+            color: '#8896a8', borderRadius: 3,
+            usePointStyle: true
+          }
+        },
+        tooltip: {
+          callbacks: { label: ctx => '  ' + ctx.dataset.label + ': ' + fmt(ctx.raw) },
+          backgroundColor: '#0c0f18',
+          borderColor: 'rgba(240,180,41,0.2)',
+          borderWidth: 1,
+          titleColor: '#dde3ed',
+          bodyColor: '#8896a8',
+          padding: 10, cornerRadius: 8
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { font: { size: 11 }, color: '#4a566a' }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: {
+            font: { size: 11 }, color: '#4a566a',
+            callback: v => '฿' + (v >= 1000 ? (v/1000).toFixed(0)+'k' : v)
+          }
+        }
+      }
+    }
+  });
+}
+
+// ── Load transactions ─────────────────────────────────────────────────────
+async function loadTransactions() {
+  const txns = await fetch('/api/transactions').then(r => r.json());
+  $('card-txn').classList.add('in');
+
+  if (!txns.length) {
+    $('txn-list').innerHTML = '<div class="loading-txt">No transactions yet</div>';
+    return;
+  }
+
+  $('txn-list').innerHTML = txns.map(t => {
+    const isInc = t.type === 'income';
+    const emoji = CAT_EMOJI[t.category] || (isInc ? '💵' : '💸');
+    const date  = (t.timestamp || '').substring(0, 10);
+    const cls   = isInc ? 'inc' : 'exp';
+    return `
+      <div class="txn">
+        <div class="txn-icon ${cls}">${emoji}</div>
+        <div class="txn-body">
+          <div class="txn-desc">${t.description}</div>
+          <div class="txn-meta">${t.category} · ${t.account} · ${date}</div>
+        </div>
+        <div class="txn-amt ${cls}">${isInc ? '+' : '−'}${fmt(t.amount)}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+Promise.all([
+  loadBalances(),
+  loadSummary(),
+  loadCategories(),
+  loadMonthly(),
+  loadTransactions()
+]).catch(err => console.error('Dashboard error:', err));
+</script>
+</body>
+</html>
