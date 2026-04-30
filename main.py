@@ -1736,31 +1736,92 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 cat_emoji = e
                 break
 
-        db_amount = amount if is_income else -amount
-        txn_type = 'income' if is_income else 'expense'
+        # ─── Auto-detect internal transfers (top-ups) ─────────────────────────
+        # If the receipt is FROM Bangkok Bank TO TrueMoney/Rabbit/MRT,
+        # treat it as a transfer between accounts, not an expense.
+        is_transfer = False
+        transfer_to_account = None
 
-        conn = get_db()
-        c = conn.cursor()
-        c.execute(
-            "INSERT INTO transactions (user_id, amount, description, type, category, account) VALUES (?, ?, ?, ?, ?, ?)",
-            (AUTHORIZED_USER_ID, db_amount, transaction_description, txn_type, cat_name, account_name)
-        )
-        c.execute(
-            "UPDATE accounts SET balance = balance + ? WHERE user_id = ? AND name = ?",
-            (db_amount, AUTHORIZED_USER_ID, account_name)
-        )
-        conn.commit()
-        conn.close()
+        # Build a combined text to check for transfer destination
+        check_text = (transaction_description or '').lower() + ' ' + ocr_text.lower()
 
-        sign = "💵 +" if is_income else "💸 -"
-        await update.message.reply_text(
-            f"📸 Receipt logged!\n"
-            f"{sign}฿{amount:,.2f}\n"
-            f"📝 {transaction_description}\n"
-            f"📂 {cat_emoji} {cat_name}\n"
-            f"🏦 {account_name}\n\n"
-            f"Wrong? Use /delete to remove it."
-        )
+        # Detect transfers from Bangkok Bank to other accounts
+        if account_name == 'Bangkok Bank' and not is_income:
+            # TrueMoney top-up detection
+            if any(kw in check_text for kw in ['truemoney', 'true money', 'tmninapp', 'transfer to true money']):
+                is_transfer = True
+                transfer_to_account = 'True Money Wallet'
+            # Rabbit Card top-up detection
+            elif any(kw in check_text for kw in ['rabbit', 'rabbit card', 'rabbit line pay', 'bts top up', 'bts topup']):
+                is_transfer = True
+                transfer_to_account = 'Rabbit Card'
+            # MRT EMV Visa top-up detection
+            elif any(kw in check_text for kw in ['mrt', 'mrt card', 'mrt emv', 'mangmoom']):
+                is_transfer = True
+                transfer_to_account = 'MRT EMV Visa'
+
+        if is_transfer and transfer_to_account:
+            # Log as internal transfer: deduct from Bangkok Bank, add to destination
+            conn = get_db()
+            c = conn.cursor()
+            c.execute(
+                "UPDATE accounts SET balance = balance - ? WHERE user_id = ? AND name = ?",
+                (amount, AUTHORIZED_USER_ID, 'Bangkok Bank')
+            )
+            c.execute(
+                "UPDATE accounts SET balance = balance + ? WHERE user_id = ? AND name = ?",
+                (amount, AUTHORIZED_USER_ID, transfer_to_account)
+            )
+            c.execute(
+                "INSERT INTO transactions (user_id, amount, description, type, category, account) VALUES (?, ?, ?, 'expense', 'Other', ?)",
+                (AUTHORIZED_USER_ID, -amount, f"Transfer to {transfer_to_account}", 'Bangkok Bank')
+            )
+            c.execute(
+                "INSERT INTO transactions (user_id, amount, description, type, category, account) VALUES (?, ?, ?, 'income', 'Other', ?)",
+                (AUTHORIZED_USER_ID, amount, f"Transfer from Bangkok Bank", transfer_to_account)
+            )
+            conn.commit()
+
+            # Get updated balances
+            c.execute("SELECT balance FROM accounts WHERE user_id = ? AND name = ?", (AUTHORIZED_USER_ID, 'Bangkok Bank'))
+            new_bank = c.fetchone()['balance']
+            c.execute("SELECT balance FROM accounts WHERE user_id = ? AND name = ?", (AUTHORIZED_USER_ID, transfer_to_account))
+            new_dest = c.fetchone()['balance']
+            conn.close()
+
+            await update.message.reply_text(
+                f"🔄 Top-up detected! Logged as transfer:\n\n"
+                f"💸 Bangkok Bank: -฿{amount:,.2f} → ฿{new_bank:,.2f}\n"
+                f"💵 {transfer_to_account}: +฿{amount:,.2f} → ฿{new_dest:,.2f}\n\n"
+                f"Wrong? Use /delete to remove it."
+            )
+        else:
+            # Normal expense/income logging
+            db_amount = amount if is_income else -amount
+            txn_type = 'income' if is_income else 'expense'
+
+            conn = get_db()
+            c = conn.cursor()
+            c.execute(
+                "INSERT INTO transactions (user_id, amount, description, type, category, account) VALUES (?, ?, ?, ?, ?, ?)",
+                (AUTHORIZED_USER_ID, db_amount, transaction_description, txn_type, cat_name, account_name)
+            )
+            c.execute(
+                "UPDATE accounts SET balance = balance + ? WHERE user_id = ? AND name = ?",
+                (db_amount, AUTHORIZED_USER_ID, account_name)
+            )
+            conn.commit()
+            conn.close()
+
+            sign = "💵 +" if is_income else "💸 -"
+            await update.message.reply_text(
+                f"📸 Receipt logged!\n"
+                f"{sign}฿{amount:,.2f}\n"
+                f"📝 {transaction_description}\n"
+                f"📂 {cat_emoji} {cat_name}\n"
+                f"🏦 {account_name}\n\n"
+                f"Wrong? Use /delete to remove it."
+            )
 
     except Exception as e:
         logger.error(f"Error processing receipt: {e}")
