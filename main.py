@@ -711,20 +711,23 @@ CATEGORIES = {
     'relx': ('Cigarettes', '🚬'),
 
     # ─── 💵 Income ────────────────────────────────────────────────────────
-    'salary': ('Income', '💵'),
-    'freelance': ('Income', '💵'),
-    'gallery': ('Income', '💵'),
-    'artwork': ('Income', '💵'),
-    'sold': ('Income', '💵'),
-    'commission': ('Income', '💵'),
-    'bonus': ('Income', '💵'),
-    'refund': ('Income', '💵'),
-    'cashback': ('Income', '💵'),
-    'dividend': ('Income', '💵'),
-    'interest': ('Income', '💵'),
-    'gift money': ('Income', '💵'),
-    'angpao': ('Income', '💵'),
-    'prize': ('Income', '💵'),
+    'salary': ('Salary', '💵'),
+    'freelance': ('Freelance', '💼'),
+    'gallery': ('Gallery Sales', '🖼️'),
+    'gallery sales': ('Gallery Sales', '🖼️'),
+    'artwork': ('Artwork / Commission', '🎨'),
+    'sold': ('Gallery Sales', '🖼️'),
+    'commission': ('Artwork / Commission', '🎨'),
+    'bonus': ('Bonus', '🏆'),
+    'refund': ('Cashback / Refund', '💳'),
+    'cashback': ('Cashback / Refund', '💳'),
+    'dividend': ('Investment', '💹'),
+    'interest': ('Investment', '💹'),
+    'investment': ('Investment', '💹'),
+    'gift money': ('Gift Money', '🎁'),
+    'angpao': ('Gift Money', '🎁'),
+    'prize': ('Bonus', '🏆'),
+    'business': ('Business', '🤝'),
 }
 
 CATEGORY_LIST = [
@@ -741,6 +744,19 @@ CATEGORY_LIST = [
     ('🎓', 'School'),
     ('🚬', 'Cigarettes'),
     ('🧾', 'Other'),
+]
+
+INCOME_CATEGORY_LIST = [
+    ('💵', 'Salary'),
+    ('💼', 'Freelance'),
+    ('🖼️', 'Gallery Sales'),
+    ('🎨', 'Artwork / Commission'),
+    ('🏆', 'Bonus'),
+    ('🎁', 'Gift Money'),
+    ('💳', 'Cashback / Refund'),
+    ('💹', 'Investment'),
+    ('🤝', 'Business'),
+    ('🧾', 'Other Income'),
 ]
 
 ACCOUNT_KEYWORDS = {
@@ -2098,6 +2114,30 @@ def build_category_keyboard():
     return InlineKeyboardMarkup(keyboard)
 
 
+def build_income_category_keyboard():
+    """Build income-specific category selection keyboard."""
+    cats = [
+        ("💵 Salary", "inc_cat_Salary"),
+        ("💼 Freelance", "inc_cat_Freelance"),
+        ("🖼️ Gallery Sales", "inc_cat_Gallery Sales"),
+        ("🎨 Artwork / Commission", "inc_cat_Artwork / Commission"),
+        ("🏆 Bonus", "inc_cat_Bonus"),
+        ("🎁 Gift Money", "inc_cat_Gift Money"),
+        ("💳 Cashback / Refund", "inc_cat_Cashback / Refund"),
+        ("💹 Investment", "inc_cat_Investment"),
+        ("🤝 Business", "inc_cat_Business"),
+        ("🧾 Other Income", "inc_cat_Other Income"),
+    ]
+    keyboard = []
+    for i in range(0, len(cats), 2):
+        row = [InlineKeyboardButton(cats[i][0], callback_data=cats[i][1])]
+        if i + 1 < len(cats):
+            row.append(InlineKeyboardButton(cats[i+1][0], callback_data=cats[i+1][1]))
+        keyboard.append(row)
+    keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data="back_main")])
+    return InlineKeyboardMarkup(keyboard)
+
+
 def build_account_keyboard(prefix="acc"):
     """Build account selection keyboard."""
     accs = [
@@ -2173,7 +2213,7 @@ async def button_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['flow'] = 'income'
         await query.edit_message_text(
             "💵 *Log Income*\n\nPick a category:",
-            reply_markup=build_category_keyboard(),
+            reply_markup=build_income_category_keyboard(),
             parse_mode=ParseMode.MARKDOWN
         )
         return INCOME_CAT
@@ -2376,7 +2416,7 @@ async def log_income_category(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
         return MENU_STATE
 
-    cat_name = query.data.replace("cat_", "")
+    cat_name = query.data.replace("inc_cat_", "").replace("cat_", "")
     context.user_data['category'] = cat_name
     await query.edit_message_text(
         f"💵 Category: *{cat_name}*\n\nNow pick an account:",
@@ -2427,7 +2467,7 @@ async def log_income_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
     account_name = context.user_data.get('account', 'Cash')
 
     cat_emoji = "🧾"
-    for e, n in CATEGORY_LIST:
+    for e, n in INCOME_CATEGORY_LIST + CATEGORY_LIST:
         if n == cat_name:
             cat_emoji = e
             break
