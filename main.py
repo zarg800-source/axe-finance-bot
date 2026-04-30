@@ -2945,7 +2945,7 @@ def main():
                 MessageHandler(filters.TEXT & ~filters.COMMAND, log_expense_amount),
             ],
             INCOME_CAT: [
-                CallbackQueryHandler(log_income_category, pattern=r'^cat_|^back_main$'),
+                CallbackQueryHandler(log_income_category, pattern=r'^inc_cat_|^back_main$'),
             ],
             INCOME_ACCOUNT: [
                 CallbackQueryHandler(log_income_account, pattern=r'^acc_|^back_main$'),

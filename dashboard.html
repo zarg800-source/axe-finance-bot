@@ -124,8 +124,9 @@
   /* ── Section label ─────────────────────────────────────────────────────── */
   .sec-label {
     font-family: var(--font-mono);
-    font-size: 10px; letter-spacing: 0.22em;
-    text-transform: uppercase; color: var(--text-dim);
+    font-size: 11px; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--text-mid);
+    font-weight: 600;
     margin-bottom: 14px;
     display: flex; align-items: center; gap: 10px;
   }
@@ -167,7 +168,7 @@
   .bal-acct {
     font-family: var(--font-mono); font-size: 10px;
     letter-spacing: 0.12em; text-transform: uppercase;
-    color: var(--text-dim); margin-bottom: 14px;
+    color: var(--text-mid); font-weight: 600; margin-bottom: 14px;
   }
   .bal-num {
     font-family: var(--font-mono); font-size: 20px;
@@ -189,7 +190,7 @@
   .sum-label {
     font-family: var(--font-mono); font-size: 10px;
     letter-spacing: 0.12em; text-transform: uppercase;
-    color: var(--text-dim); margin-bottom: 10px;
+    color: var(--text-mid); font-weight: 600; margin-bottom: 10px;
   }
   .sum-val {
     font-family: var(--font-mono); font-size: 24px;
@@ -273,6 +274,23 @@
   }
   .txn-amt.inc { color: var(--green); }
   .txn-amt.exp { color: var(--red); }
+
+  /* ── Expand button ─────────────────────────────────────────────────────── */
+  .expand-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; padding: 12px;
+    background: none; border: 1px solid var(--border);
+    border-radius: var(--r-sm); cursor: pointer;
+    font-family: var(--font-mono); font-size: 11px;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--text-dim); margin-top: 14px;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .expand-btn:hover { border-color: var(--border-gold); color: var(--gold); }
+  .expand-arrow { transition: transform 0.3s ease; display: inline-block; }
+  .expand-arrow.open { transform: rotate(180deg); }
+  #txn-expandable { display: none; }
+  #txn-expandable.open { display: block; }
 
   /* ── Skeleton ──────────────────────────────────────────────────────────── */
   .skel {
@@ -365,9 +383,14 @@
   <!-- Transactions -->
   <div class="sec-label">Recent Transactions</div>
   <div class="card" id="card-txn">
-    <div class="txn-list" id="txn-list">
-      <div class="loading-txt">Loading…</div>
+    <div class="txn-list" id="txn-today"></div>
+    <div id="txn-expandable">
+      <div class="txn-list" id="txn-older"></div>
     </div>
+    <button class="expand-btn" id="expand-btn" style="display:none" onclick="toggleExpand()">
+      <span id="expand-label">Show older transactions</span>
+      <span class="expand-arrow" id="expand-arrow">▼</span>
+    </button>
   </div>
 
   <footer>Mike Finance · Bangkok Time · Built with Claude</footer>
@@ -440,7 +463,7 @@ async function loadBalances() {
   $('bal-grid').innerHTML = accs.map(a => `
     <div class="card bal-card">
       <div class="glow-corner"></div>
-      <div class="bal-acct">${ACC_EMOJI[a.name] || '💰'} ${a.name}</div>
+      <div class="bal-acct">${a.name}</div>
       <div class="bal-num" data-v="${a.balance}">
         <span class="cur">฿</span><span class="n">—</span>
       </div>
@@ -448,7 +471,7 @@ async function loadBalances() {
   `).join('') + `
     <div class="card bal-card bal-total">
       <div class="glow-corner"></div>
-      <div class="bal-acct">⚡ Net Worth</div>
+      <div class="bal-acct">Net Worth</div>
       <div class="bal-num" data-v="${total}">
         <span class="cur">฿</span><span class="n">—</span>
       </div>
@@ -480,17 +503,17 @@ async function loadSummary() {
 
   $('sum-grid').innerHTML = `
     <div class="card">
-      <div class="sum-label">💚 Income</div>
+      <div class="sum-label">Income</div>
       <div class="sum-val c-inc" data-v="${cur.income}">฿—</div>
       ${delta(cur.income, prev.income)}
     </div>
     <div class="card">
-      <div class="sum-label">🔴 Expenses</div>
+      <div class="sum-label">Expenses</div>
       <div class="sum-val c-exp" data-v="${cur.expense}">฿—</div>
       ${delta(cur.expense, prev.expense, true)}
     </div>
     <div class="card">
-      <div class="sum-label">✨ Net Savings</div>
+      <div class="sum-label">Net Savings</div>
       <div class="sum-val ${netCls}" data-v="${Math.abs(cur.net)}">${cur.net < 0 ? '-' : ''}฿—</div>
       ${delta(cur.net, prev.net)}
     </div>
@@ -619,32 +642,61 @@ async function loadMonthly() {
   });
 }
 
+// ── Expand toggle ─────────────────────────────────────────────────────────
+function toggleExpand() {
+  const box   = $('txn-expandable');
+  const arrow = $('expand-arrow');
+  const label = $('expand-label');
+  const open  = box.classList.toggle('open');
+  arrow.classList.toggle('open', open);
+  label.textContent = open ? 'Hide older transactions' : 'Show older transactions';
+}
+
 // ── Load transactions ─────────────────────────────────────────────────────
-async function loadTransactions() {
-  const txns = await fetch('/api/transactions').then(r => r.json());
-  $('card-txn').classList.add('in');
-
-  if (!txns.length) {
-    $('txn-list').innerHTML = '<div class="loading-txt">No transactions yet</div>';
-    return;
-  }
-
-  $('txn-list').innerHTML = txns.map(t => {
+function buildTxnHTML(txns) {
+  return txns.map(t => {
     const isInc = t.type === 'income';
     const emoji = CAT_EMOJI[t.category] || (isInc ? '💵' : '💸');
-    const date  = (t.timestamp || '').substring(0, 10);
+    const ts    = t.timestamp || '';
+    const timeStr = ts.length >= 16 ? ts.substring(11, 16) : ts.substring(0, 10);
     const cls   = isInc ? 'inc' : 'exp';
     return `
       <div class="txn">
         <div class="txn-icon ${cls}">${emoji}</div>
         <div class="txn-body">
           <div class="txn-desc">${t.description}</div>
-          <div class="txn-meta">${t.category} · ${t.account} · ${date}</div>
+          <div class="txn-meta">${t.category} · ${t.account} · ${timeStr}</div>
         </div>
         <div class="txn-amt ${cls}">${isInc ? '+' : '−'}${fmt(t.amount)}</div>
       </div>
     `;
   }).join('');
+}
+
+async function loadTransactions() {
+  const txns = await fetch('/api/transactions').then(r => r.json());
+  $('card-txn').classList.add('in');
+
+  if (!txns.length) {
+    $('txn-today').innerHTML = '<div class="loading-txt">No transactions yet</div>';
+    return;
+  }
+
+  // Split into last 24h and older
+  const now24 = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const today  = txns.filter(t => new Date(t.timestamp) >= now24);
+  const older  = txns.filter(t => new Date(t.timestamp) <  now24);
+
+  if (today.length) {
+    $('txn-today').innerHTML = buildTxnHTML(today);
+  } else {
+    $('txn-today').innerHTML = '<div class="loading-txt" style="padding:20px 0">No transactions in the last 24 hours</div>';
+  }
+
+  if (older.length) {
+    $('txn-older').innerHTML = buildTxnHTML(older);
+    $('expand-btn').style.display = 'flex';
+  }
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────
