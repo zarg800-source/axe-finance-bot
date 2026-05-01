@@ -35,6 +35,12 @@
 
   html { scroll-behavior: smooth; }
 
+  html {
+    scroll-behavior: smooth;
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+
   body {
     background: var(--bg);
     color: var(--text);
@@ -43,6 +49,7 @@
     font-size: 15px;
     min-height: 100vh;
     overflow-x: hidden;
+    max-width: 100%;
     -webkit-font-smoothing: antialiased;
   }
 
@@ -50,18 +57,21 @@
   .bg-glow {
     position: fixed; top: -200px; left: 50%;
     transform: translateX(-50%);
-    width: 800px; height: 400px;
+    width: min(800px, 100vw); height: 400px;
     background: radial-gradient(ellipse, rgba(240,180,41,0.04) 0%, transparent 70%);
     pointer-events: none; z-index: 0;
+    overflow: hidden;
   }
   .bg-grid {
     position: fixed; inset: 0;
+    width: 100%; max-width: 100vw;
     background-image:
       linear-gradient(rgba(240,180,41,0.025) 1px, transparent 1px),
       linear-gradient(90deg, rgba(240,180,41,0.025) 1px, transparent 1px);
     background-size: 56px 56px;
     pointer-events: none; z-index: 0;
     mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+    overflow: hidden;
   }
 
   /* ── Layout ────────────────────────────────────────────────────────────── */
@@ -330,20 +340,22 @@
   }
   .msum-row {
     display: grid; grid-template-columns: repeat(3,1fr);
-    gap: 12px; margin-bottom: 28px;
+    gap: 8px; margin-bottom: 28px;
   }
   .msum-box {
     background: var(--surface-2); border-radius: var(--r-sm);
-    padding: 16px;
+    padding: 12px 10px; min-width: 0; overflow: hidden;
   }
   .msum-lbl {
-    font-family: var(--font-mono); font-size: 11px;
-    letter-spacing: 0.12em; text-transform: uppercase;
+    font-family: var(--font-mono); font-size: 10px;
+    letter-spacing: 0.08em; text-transform: uppercase;
     color: var(--text-mid); font-weight: 600; margin-bottom: 8px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .msum-val {
-    font-family: var(--font-mono); font-size: 18px;
-    font-weight: 400; letter-spacing: -0.02em;
+    font-family: var(--font-mono); font-size: 15px;
+    font-weight: 400; letter-spacing: -0.01em;
+    word-break: break-all;
   }
   .mcat-title {
     font-family: var(--font-mono); font-size: 11px;
@@ -542,7 +554,8 @@ function pct(cur, prev) {
 // ── Static maps ───────────────────────────────────────────────────────────
 const ACC_EMOJI = {
   'Bangkok Bank': '🏦', 'True Money Wallet': '📱',
-  'MRT EMV Visa': '🚇', 'Rabbit Card': '🐇', 'Cash': '💵'
+  'MRT EMV Visa': '🚇', 'Rabbit Card': '🐇', 'Cash': '💵',
+  'Muvmi': '🛺', 'Solsot Member': '🎫'
 };
 const CAT_EMOJI = {
   'Food & Drinks':'🍜','Coffee':'☕','Transport':'🚕','Groceries':'🛒',
