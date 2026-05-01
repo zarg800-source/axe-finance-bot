@@ -806,48 +806,81 @@ async function loadTransactions() {
 }
 
 // ── Monthly History ───────────────────────────────────────────────────────
-let allMonths   = [];   // [{year, month}, ...] sorted newest first
-let monthIndex  = 0;   // 0 = most recent
+let allMonths  = [];
+let monthIndex = 0;
 
-const MONTH_NAMES = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTH_NAMES = ['','January','February','March','April','May','June',
+                     'July','August','September','October','November','December'];
 const BAR_COLORS  = ['#f0b429','#1fd6a0','#7b6ffc','#f0645a','#4dc4ff','#ffb347','#b4e4a2','#ffd3b6'];
 
 async function initMonthHistory() {
-  allMonths = await fetch('/api/months').then(r => r.json());
-  if (!allMonths.length) {
-    $('card-history').innerHTML = '<div class="m-empty">No transaction history yet</div>';
-    $('card-history').classList.add('in');
+  const card = $('card-history');
+  if (!card) return;
+  try {
+    const res = await fetch('/api/months');
+    if (!res.ok) throw new Error('API not ready');
+    allMonths = await res.json();
+  } catch(e) {
+    card.innerHTML = '<div class="m-empty">Month history unavailable — make sure render_main.py is updated.</div>';
+    card.classList.add('in');
     return;
   }
-  $('card-history').classList.add('in');
+
+  card.classList.add('in');
+
+  if (!allMonths.length) {
+    $('m-cats').innerHTML  = '';
+    $('m-txns').innerHTML  = '';
+    $('mnav-label').textContent = 'No data yet';
+    $('mnav-prev').disabled = true;
+    $('mnav-next').disabled = true;
+    $('m-income').textContent  = '฿0.00';
+    $('m-expense').textContent = '฿0.00';
+    $('m-net').textContent     = '฿0.00';
+    return;
+  }
+
   monthIndex = 0;
-  renderMonthDetail();
+  await renderMonthDetail();
 }
 
 function changeMonth(dir) {
-  monthIndex = Math.max(0, Math.min(allMonths.length - 1, monthIndex + dir));
+  if (!allMonths.length) return;
+  const next = monthIndex + dir;
+  if (next < 0 || next >= allMonths.length) return;
+  monthIndex = next;
   renderMonthDetail();
 }
 
 async function renderMonthDetail() {
+  if (!allMonths.length) return;
   const { year, month } = allMonths[monthIndex];
 
-  // Update nav
-  $('mnav-label').textContent = `${MONTH_NAMES[month]} ${year}`;
-  $('mnav-prev').disabled = monthIndex >= allMonths.length - 1;
-  $('mnav-next').disabled = monthIndex <= 0;
+  $('mnav-label').textContent    = `${MONTH_NAMES[month]} ${year}`;
+  $('mnav-prev').disabled        = monthIndex >= allMonths.length - 1;
+  $('mnav-next').disabled        = monthIndex <= 0;
+  $('m-income').textContent      = '…';
+  $('m-expense').textContent     = '…';
+  $('m-net').textContent         = '…';
+  $('m-cats').innerHTML          = '<div class="m-empty">Loading…</div>';
+  $('m-txns').innerHTML          = '';
 
-  // Fetch data
-  const d = await fetch(`/api/month/${year}/${month}`).then(r => r.json());
+  let d;
+  try {
+    const res = await fetch(`/api/month/${year}/${month}`);
+    if (!res.ok) throw new Error('fetch failed');
+    d = await res.json();
+  } catch(e) {
+    $('m-cats').innerHTML = '<div class="m-empty">Failed to load data.</div>';
+    return;
+  }
 
-  // Totals
   $('m-income').textContent  = fmt(d.income);
   $('m-expense').textContent = fmt(d.expense);
   const netEl = $('m-net');
-  netEl.textContent  = (d.net < 0 ? '−' : '') + fmt(Math.abs(d.net));
-  netEl.className    = 'msum-val ' + (d.net >= 0 ? 'c-pos' : 'c-neg');
+  netEl.textContent = (d.net < 0 ? '−' : '') + fmt(Math.abs(d.net));
+  netEl.className   = 'msum-val ' + (d.net >= 0 ? 'c-pos' : 'c-neg');
 
-  // Category bars
   const maxCat = d.categories.length ? d.categories[0].total : 1;
   if (d.categories.length) {
     $('m-cats').innerHTML = d.categories.map((cat, i) => `
@@ -863,12 +896,9 @@ async function renderMonthDetail() {
     $('m-cats').innerHTML = '<div class="m-empty">No expenses this month</div>';
   }
 
-  // Transactions
-  if (d.transactions.length) {
-    $('m-txns').innerHTML = buildTxnHTML(d.transactions);
-  } else {
-    $('m-txns').innerHTML = '<div class="m-empty">No transactions this month</div>';
-  }
+  $('m-txns').innerHTML = d.transactions.length
+    ? buildTxnHTML(d.transactions)
+    : '<div class="m-empty">No transactions this month</div>';
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────

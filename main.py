@@ -2066,7 +2066,7 @@ async def startup_subscription_check(app):
  SETTINGS_MENU, UPD_BAL_ACCOUNT, UPD_BAL_AMOUNT,
  TRANSFER_FROM, TRANSFER_TO, TRANSFER_AMOUNT,
  SUB_MENU, SUB_ADD_NAME, SUB_ADD_AMOUNT, SUB_ADD_ACCOUNT, SUB_ADD_DATE,
- SUB_DEL_PICK) = range(19)
+ SUB_DEL_PICK, EXPORT_TYPE, EXPORT_INPUT) = range(21)
 
 ACCOUNT_NAMES = ['Bangkok Bank', 'MRT EMV Visa', 'True Money Wallet', 'Cash', 'Rabbit Card']
 
@@ -2270,8 +2270,17 @@ async def button_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return MENU_STATE
 
     elif data == "menu_export":
-        await query.edit_message_text("📋 Generating export... Use /export command for the Excel file.")
-        return ConversationHandler.END
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("📅  By Month", callback_data="export_month"),
+             InlineKeyboardButton("📆  By Year",  callback_data="export_year")],
+            [InlineKeyboardButton("⬅️ Back", callback_data="back_main")],
+        ])
+        await query.edit_message_text(
+            "📋 *Export to Excel*\n\nChoose what you want to export:",
+            reply_markup=keyboard,
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return EXPORT_TYPE
 
     elif data == "menu_categories":
         lines = ["📂 *Expense Categories:*\n"]
@@ -2901,6 +2910,435 @@ async def error_handler(update, context: ContextTypes.DEFAULT_TYPE):
     logger.error(f"Error: {context.error}")
 
 
+# ─── Export Conversation Handlers ─────────────────────────────────────────────
+@restricted
+async def export_type_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle export_month / export_year button press."""
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+
+    if data == "back_main":
+        await query.edit_message_text(
+            "👋 *Mike Finance*\n\nWhat would you like to do?",
+            reply_markup=build_main_menu(),
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return MENU_STATE
+
+    if data == "export_month":
+        context.user_data['export_mode'] = 'month'
+        now = datetime.now(BANGKOK_TZ)
+        example = now.strftime("%B %Y")
+        await query.edit_message_text(
+            f"📅 *Export by Month*\n\n"
+            f"Type the month you want, e.g:\n"
+            f"`{example}` · `Apr 2026` · `4 2026`\n\n"
+            f"Or just type `this` for the current month.",
+            parse_mode=ParseMode.MARKDOWN
+        )
+    else:
+        context.user_data['export_mode'] = 'year'
+        now = datetime.now(BANGKOK_TZ)
+        await query.edit_message_text(
+            f"📆 *Export by Year*\n\n"
+            f"Type the year you want, e.g:\n"
+            f"`{now.year}` · `{now.year - 1}`\n\n"
+            f"Or just type `this` for the current year.",
+            parse_mode=ParseMode.MARKDOWN
+        )
+    return EXPORT_INPUT
+
+
+def _parse_month_input(text: str, now) -> tuple:
+    """Parse natural language month input. Returns (month, year) or (None, None)."""
+    import calendar as cal_mod
+    text = text.strip().lower()
+
+    if text in ('this', 'current', 'now'):
+        return now.month, now.year
+
+    month_names = {name.lower(): i for i, name in enumerate(cal_mod.month_name) if name}
+    month_abbrs = {name.lower(): i for i, name in enumerate(cal_mod.month_abbr) if name}
+
+    # Try "June 2026", "jun 2026", "june 26"
+    parts = text.replace(',', ' ').split()
+    if len(parts) == 2:
+        a, b = parts
+        # word month + year
+        m = month_names.get(a) or month_abbrs.get(a)
+        if m:
+            try:
+                yr = int(b)
+                if yr < 100:
+                    yr += 2000
+                return m, yr
+            except ValueError:
+                pass
+        # numeric month + year: "4 2026" or "2026 4"
+        try:
+            ia, ib = int(a), int(b)
+            if 1 <= ia <= 12 and ib > 100:
+                return ia, ib
+            if 1 <= ib <= 12 and ia > 100:
+                return ib, ia
+        except ValueError:
+            pass
+
+    # Single word — month name only (use current year)
+    if len(parts) == 1:
+        m = month_names.get(parts[0]) or month_abbrs.get(parts[0])
+        if m:
+            return m, now.year
+        try:
+            m = int(parts[0])
+            if 1 <= m <= 12:
+                return m, now.year
+        except ValueError:
+            pass
+
+    return None, None
+
+
+def _parse_year_input(text: str, now) -> int:
+    """Parse year input. Returns year int or None."""
+    text = text.strip().lower()
+    if text in ('this', 'current', 'now'):
+        return now.year
+    try:
+        yr = int(text)
+        if yr < 100:
+            yr += 2000
+        if 2000 <= yr <= 2100:
+            return yr
+    except ValueError:
+        pass
+    return None
+
+
+@restricted
+async def export_input_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle typed month/year for export."""
+    import calendar as cal_mod
+    text   = update.message.text.strip()
+    mode   = context.user_data.get('export_mode', 'month')
+    now    = datetime.now(BANGKOK_TZ)
+
+    thinking = await update.message.reply_text("⏳ Generating your export...")
+
+    if mode == 'month':
+        month, year = _parse_month_input(text, now)
+        if not month:
+            await thinking.edit_text(
+                "❌ Couldn't understand that. Try something like:\n`June 2026` · `Apr 2026` · `4 2026`",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            return EXPORT_INPUT
+
+        month_start = f"{year}-{month:02d}-01"
+        month_end   = f"{year}-{month+1:02d}-01" if month < 12 else f"{year+1}-01-01"
+        label       = f"{cal_mod.month_name[month]} {year}"
+        filename    = f"Finance_{cal_mod.month_name[month]}_{year}.xlsx"
+        date_filter = ("timestamp >= ? AND timestamp < ?", (month_start, month_end))
+
+    else:
+        year = _parse_year_input(text, now)
+        if not year:
+            await thinking.edit_text(
+                "❌ Couldn't understand that. Try something like:\n`2026` · `2025`",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            return EXPORT_INPUT
+
+        label       = str(year)
+        filename    = f"Finance_{year}.xlsx"
+        date_filter = ("strftime('%Y', timestamp) = ?", (str(year),))
+
+    conn = get_db()
+    c    = conn.cursor()
+
+    where_clause, where_params = date_filter
+    c.execute(
+        f"SELECT timestamp, type, amount, description, category, account "
+        f"FROM transactions WHERE user_id = ? AND {where_clause} ORDER BY timestamp",
+        (AUTHORIZED_USER_ID, *where_params)
+    )
+    txns = c.fetchall()
+    c.execute("SELECT name, balance FROM accounts WHERE user_id = ? ORDER BY id", (AUTHORIZED_USER_ID,))
+    accounts = c.fetchall()
+    conn.close()
+
+    if not txns:
+        await thinking.edit_text(f"📭 No transactions found for *{label}*.", parse_mode=ParseMode.MARKDOWN)
+        return EXPORT_INPUT
+
+    # ── Build Excel ──────────────────────────────────────────────────────────
+    from openpyxl import Workbook
+    from openpyxl.styles import (Font, PatternFill, Alignment, Border, Side,
+                                  GradientFill)
+    from openpyxl.utils import get_column_letter
+    from openpyxl.chart import BarChart, Reference
+    from openpyxl.chart.series import DataPoint
+    import io, calendar as cal_mod
+
+    wb = Workbook()
+
+    # ── Styles ──
+    DARK      = "0D1117"
+    GOLD      = "F0B429"
+    GREEN     = "1FD6A0"
+    RED       = "F0645A"
+    MID       = "8896A8"
+    LIGHT     = "DDE3ED"
+    SURFACE   = "0F1320"
+
+    def hdr_font(size=11, bold=True, color=LIGHT):
+        return Font(bold=bold, color=color, size=size, name="Calibri")
+
+    def cell_font(size=10, bold=False, color=LIGHT):
+        return Font(bold=bold, color=color, size=size, name="Calibri")
+
+    def fill(hex_color):
+        return PatternFill("solid", fgColor=hex_color)
+
+    def border(color="1E2530"):
+        s = Side(style="thin", color=color)
+        return Border(left=s, right=s, top=s, bottom=s)
+
+    money_fmt = '#,##0.00'
+    center    = Alignment(horizontal="center", vertical="center")
+    right_al  = Alignment(horizontal="right",  vertical="center")
+    left_al   = Alignment(horizontal="left",   vertical="center")
+
+    # ── Sheet 1: Transactions ──────────────────────────────────────────────
+    ws = wb.active
+    ws.title = "Transactions"
+    ws.sheet_view.showGridLines = False
+    ws.sheet_properties.tabColor = GOLD
+
+    # Title row
+    ws.merge_cells("A1:G1")
+    title_cell = ws["A1"]
+    title_cell.value         = f"Mike Finance — {label}"
+    title_cell.font          = Font(bold=True, color=GOLD, size=16, name="Calibri")
+    title_cell.fill          = fill(DARK)
+    title_cell.alignment     = center
+    ws.row_dimensions[1].height = 36
+
+    # Subtitle
+    ws.merge_cells("A2:G2")
+    sub = ws["A2"]
+    sub.value     = f"Generated {now.strftime('%d %b %Y %H:%M')} (Bangkok Time)"
+    sub.font      = Font(color=MID, size=9, name="Calibri")
+    sub.fill      = fill(DARK)
+    sub.alignment = center
+    ws.row_dimensions[2].height = 18
+
+    # Blank spacer
+    for col in range(1, 8):
+        ws.cell(3, col).fill = fill(DARK)
+    ws.row_dimensions[3].height = 6
+
+    # Headers
+    headers = ["Date & Time", "Type", "Amount (฿)", "Description", "Category", "Account", "Running Balance"]
+    header_row = 4
+    for ci, h in enumerate(headers, 1):
+        cell          = ws.cell(header_row, ci, h)
+        cell.font     = hdr_font(size=10, color="000000")
+        cell.fill     = fill(GOLD)
+        cell.alignment = center
+        cell.border   = border(GOLD)
+    ws.row_dimensions[header_row].height = 22
+
+    # Data rows
+    running = 0.0
+    income_total  = 0.0
+    expense_total = 0.0
+
+    for ri, txn in enumerate(txns, header_row + 1):
+        ts, typ, amt, desc, cat, acc = txn
+        is_inc = typ == 'income'
+        val    = abs(float(amt))
+        running += val if is_inc else -val
+        if is_inc: income_total  += val
+        else:      expense_total += val
+
+        row_fill   = fill("131B27") if ri % 2 == 0 else fill(SURFACE)
+        amt_color  = GREEN if is_inc else RED
+        row_data   = [
+            (ts[:16].replace("T", " ") if ts else "", left_al,   cell_font(color=MID),          None),
+            (typ.title(),                              center,    cell_font(color=GOLD, bold=True), None),
+            (val if is_inc else -val,                  right_al,  cell_font(color=amt_color, bold=True), money_fmt),
+            (desc or "",                               left_al,   cell_font(color=LIGHT),         None),
+            (cat or "",                                left_al,   cell_font(color=MID),           None),
+            (acc or "",                                left_al,   cell_font(color=MID),           None),
+            (running,                                  right_al,  cell_font(color=LIGHT),         money_fmt),
+        ]
+        for ci, (val2, aln, fnt, fmt2) in enumerate(row_data, 1):
+            cell           = ws.cell(ri, ci, val2)
+            cell.fill      = row_fill
+            cell.font      = fnt
+            cell.alignment = aln
+            cell.border    = border()
+            if fmt2:
+                cell.number_format = fmt2
+        ws.row_dimensions[ri].height = 18
+
+    # Column widths
+    col_widths = [20, 10, 14, 32, 18, 20, 18]
+    for ci, w in enumerate(col_widths, 1):
+        ws.column_dimensions[get_column_letter(ci)].width = w
+
+    # Freeze panes
+    ws.freeze_panes = "A5"
+
+    # ── Sheet 2: Summary ──────────────────────────────────────────────────
+    ws2 = wb.create_sheet("Summary")
+    ws2.sheet_view.showGridLines = False
+    ws2.sheet_properties.tabColor = GREEN
+
+    def summary_block(ws, row, label, value, color):
+        ws.merge_cells(f"A{row}:B{row}")
+        lc = ws.cell(row, 1, label)
+        lc.font      = Font(bold=True, color=MID, size=10, name="Calibri")
+        lc.fill      = fill(SURFACE)
+        lc.alignment = left_al
+        lc.border    = border()
+        vc = ws.cell(row, 3, value)
+        vc.font           = Font(bold=True, color=color, size=12, name="Calibri")
+        vc.fill           = fill(SURFACE)
+        vc.alignment      = right_al
+        vc.border         = border()
+        vc.number_format  = money_fmt
+        ws.row_dimensions[row].height = 24
+
+    # Title
+    ws2.merge_cells("A1:C1")
+    t2 = ws2["A1"]
+    t2.value     = f"Summary — {label}"
+    t2.font      = Font(bold=True, color=GOLD, size=14, name="Calibri")
+    t2.fill      = fill(DARK)
+    t2.alignment = center
+    ws2.row_dimensions[1].height = 30
+
+    for col in range(1, 4):
+        ws2.cell(2, col).fill = fill(DARK)
+    ws2.row_dimensions[2].height = 8
+
+    summary_block(ws2, 3,  "Total Income",   income_total,              GREEN)
+    summary_block(ws2, 4,  "Total Expenses",  expense_total,             RED)
+    summary_block(ws2, 5,  "Net Savings",     income_total - expense_total,
+                  GREEN if income_total >= expense_total else RED)
+
+    for col in range(1, 4):
+        ws2.cell(6, col).fill = fill(DARK)
+    ws2.row_dimensions[6].height = 8
+
+    # Account balances
+    ab_hdr = ws2.cell(7, 1, "Account Balances")
+    ab_hdr.font      = Font(bold=True, color=GOLD, size=10, name="Calibri")
+    ab_hdr.fill      = fill(fill("1A2235").fgColor)
+    ws2.merge_cells("A7:C7")
+    ab_hdr.alignment = center
+    ws2.row_dimensions[7].height = 20
+
+    for ri2, (aname, abal) in enumerate(accounts, 8):
+        ws2.merge_cells(f"A{ri2}:B{ri2}")
+        nc = ws2.cell(ri2, 1, aname)
+        nc.font = cell_font(color=LIGHT); nc.fill = fill(SURFACE)
+        nc.alignment = left_al; nc.border = border()
+        bc = ws2.cell(ri2, 3, float(abal))
+        bc.font = cell_font(color=GOLD, bold=True); bc.fill = fill(SURFACE)
+        bc.alignment = right_al; bc.border = border()
+        bc.number_format = money_fmt
+        ws2.row_dimensions[ri2].height = 20
+
+    ws2.column_dimensions["A"].width = 14
+    ws2.column_dimensions["B"].width = 14
+    ws2.column_dimensions["C"].width = 16
+
+    # ── Sheet 3: Category Breakdown ───────────────────────────────────────
+    ws3 = wb.create_sheet("By Category")
+    ws3.sheet_view.showGridLines = False
+    ws3.sheet_properties.tabColor = RED
+
+    ws3.merge_cells("A1:C1")
+    t3 = ws3["A1"]
+    t3.value = f"Spending by Category — {label}"
+    t3.font  = Font(bold=True, color=GOLD, size=14, name="Calibri")
+    t3.fill  = fill(DARK); t3.alignment = center
+    ws3.row_dimensions[1].height = 30
+
+    # Build category totals from txns
+    cat_totals = {}
+    for ts, typ, amt, desc, cat, acc in txns:
+        if typ == 'expense':
+            cat_totals[cat] = cat_totals.get(cat, 0) + abs(float(amt))
+    sorted_cats = sorted(cat_totals.items(), key=lambda x: x[1], reverse=True)
+
+    hrow = 2
+    for ci2, h in enumerate(["Category", "Amount (฿)", "% of Total"], 1):
+        cell          = ws3.cell(hrow, ci2, h)
+        cell.font     = hdr_font(size=10, color="000000")
+        cell.fill     = fill(GOLD)
+        cell.alignment = center
+        cell.border   = border(GOLD)
+    ws3.row_dimensions[hrow].height = 22
+
+    for ri3, (cat, total) in enumerate(sorted_cats, hrow + 1):
+        pct = (total / expense_total * 100) if expense_total else 0
+        row_fill3 = fill("131B27") if ri3 % 2 == 0 else fill(SURFACE)
+        for ci3, (v3, fmt3, aln3) in enumerate([
+            (cat, None, left_al),
+            (total, money_fmt, right_al),
+            (pct / 100, "0.0%", center),
+        ], 1):
+            cell3 = ws3.cell(ri3, ci3, v3)
+            cell3.font = cell_font(color=LIGHT); cell3.fill = row_fill3
+            cell3.alignment = aln3; cell3.border = border()
+            if fmt3: cell3.number_format = fmt3
+        ws3.row_dimensions[ri3].height = 18
+
+    ws3.column_dimensions["A"].width = 22
+    ws3.column_dimensions["B"].width = 16
+    ws3.column_dimensions["C"].width = 14
+
+    # ── Save & send ──────────────────────────────────────────────────────
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    net    = income_total - expense_total
+    net_em = "✅" if net >= 0 else "⚠️"
+    caption = (
+        f"📊 *{label} Export*\n\n"
+        f"💚 Income:   ฿{income_total:,.2f}\n"
+        f"🔴 Expenses: ฿{expense_total:,.2f}\n"
+        f"{net_em} Net:      ฿{net:+,.2f}\n\n"
+        f"_{len(txns)} transactions · 3 sheets_"
+    )
+
+    await thinking.delete()
+    await update.message.reply_document(
+        document=buf,
+        filename=filename,
+        caption=caption,
+        parse_mode=ParseMode.MARKDOWN
+    )
+
+    # Offer another export
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("📅 Export another month", callback_data="export_month"),
+         InlineKeyboardButton("📆 Export a year",       callback_data="export_year")],
+        [InlineKeyboardButton("🏠 Back to Menu", callback_data="back_main")],
+    ])
+    await update.message.reply_text(
+        "Export done! Want another?",
+        reply_markup=keyboard
+    )
+    return EXPORT_TYPE
+
+
 # ─── Main ─────────────────────────────────────────────────────────────────────
 def main():
     init_db()
@@ -2988,6 +3426,13 @@ def main():
             ],
             SUB_DEL_PICK: [
                 CallbackQueryHandler(sub_del_pick, pattern=r'^subdel_|^back_subs$'),
+            ],
+            EXPORT_TYPE: [
+                CallbackQueryHandler(export_type_handler, pattern=r'^export_month$|^export_year$|^back_main$'),
+            ],
+            EXPORT_INPUT: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, export_input_handler),
+                CallbackQueryHandler(export_type_handler, pattern=r'^export_month$|^export_year$|^back_main$'),
             ],
         },
         fallbacks=[
