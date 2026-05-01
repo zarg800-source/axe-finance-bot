@@ -483,9 +483,9 @@
 
     <!-- Month Selector -->
     <div class="month-nav">
-      <button class="mnav-btn" id="mnav-prev" onclick="changeMonth(-1)">&#8592;</button>
+      <button class="mnav-btn" id="mnav-prev">&#8592;</button>
       <div class="mnav-label" id="mnav-label">Loading…</div>
-      <button class="mnav-btn" id="mnav-next" onclick="changeMonth(1)">&#8594;</button>
+      <button class="mnav-btn" id="mnav-next">&#8594;</button>
     </div>
 
     <!-- Month Totals -->
@@ -819,46 +819,41 @@ async function loadTransactions() {
 }
 
 // ── Monthly History ───────────────────────────────────────────────────────
-let allMonths  = [];
 let monthIndex = 0;
+let allMonths  = [];
 
 const MONTH_NAMES = ['','January','February','March','April','May','June',
                      'July','August','September','October','November','December'];
 const BAR_COLORS  = ['#f0b429','#1fd6a0','#7b6ffc','#f0645a','#4dc4ff','#ffb347','#b4e4a2','#ffd3b6'];
 
+function buildMonthList() {
+  // Build last 24 months starting from current month, no API needed
+  const now = new Date();
+  const list = [];
+  for (let i = 0; i < 24; i++) {
+    let m = now.getMonth() + 1 - i;
+    let y = now.getFullYear();
+    while (m <= 0) { m += 12; y--; }
+    list.push({ year: y, month: m });
+  }
+  return list; // newest first
+}
+
 async function initMonthHistory() {
   const card = $('card-history');
   if (!card) return;
-  try {
-    const res = await fetch('/api/months');
-    if (!res.ok) throw new Error('API not ready');
-    allMonths = await res.json();
-  } catch(e) {
-    card.innerHTML = '<div class="m-empty">Month history unavailable — make sure render_main.py is updated.</div>';
-    card.classList.add('in');
-    return;
-  }
-
-  card.classList.add('in');
-
-  if (!allMonths.length) {
-    $('m-cats').innerHTML  = '';
-    $('m-txns').innerHTML  = '';
-    $('mnav-label').textContent = 'No data yet';
-    $('mnav-prev').disabled = true;
-    $('mnav-next').disabled = true;
-    $('m-income').textContent  = '฿0.00';
-    $('m-expense').textContent = '฿0.00';
-    $('m-net').textContent     = '฿0.00';
-    return;
-  }
-
+  allMonths  = buildMonthList();
   monthIndex = 0;
+  card.classList.add('in');
+  // Wire buttons directly here to guarantee they work
+  const prevBtn = $('mnav-prev');
+  const nextBtn = $('mnav-next');
+  prevBtn.onclick = () => changeMonth(-1);
+  nextBtn.onclick = () => changeMonth(1);
   await renderMonthDetail();
 }
 
 function changeMonth(dir) {
-  if (!allMonths.length) return;
   const next = monthIndex + dir;
   if (next < 0 || next >= allMonths.length) return;
   monthIndex = next;
@@ -866,9 +861,7 @@ function changeMonth(dir) {
 }
 
 async function renderMonthDetail() {
-  if (!allMonths.length) return;
   const { year, month } = allMonths[monthIndex];
-
   $('mnav-label').textContent    = `${MONTH_NAMES[month]} ${year}`;
   $('mnav-prev').disabled        = monthIndex >= allMonths.length - 1;
   $('mnav-next').disabled        = monthIndex <= 0;
@@ -881,10 +874,14 @@ async function renderMonthDetail() {
   let d;
   try {
     const res = await fetch(`/api/month/${year}/${month}`);
-    if (!res.ok) throw new Error('fetch failed');
+    if (!res.ok) throw new Error('not found');
     d = await res.json();
   } catch(e) {
-    $('m-cats').innerHTML = '<div class="m-empty">Failed to load data.</div>';
+    $('m-income').textContent  = '฿0.00';
+    $('m-expense').textContent = '฿0.00';
+    $('m-net').textContent     = '฿0.00';
+    $('m-cats').innerHTML = '<div class="m-empty">No data for this month</div>';
+    $('m-txns').innerHTML = '';
     return;
   }
 
@@ -895,19 +892,16 @@ async function renderMonthDetail() {
   netEl.className   = 'msum-val ' + (d.net >= 0 ? 'c-pos' : 'c-neg');
 
   const maxCat = d.categories.length ? d.categories[0].total : 1;
-  if (d.categories.length) {
-    $('m-cats').innerHTML = d.categories.map((cat, i) => `
-      <div class="mcat-bar-row">
-        <div class="mcat-name">${CAT_EMOJI[cat.category] || '🧾'} ${cat.category}</div>
-        <div class="mcat-track">
-          <div class="mcat-fill" style="width:${(cat.total/maxCat*100).toFixed(1)}%;background:${BAR_COLORS[i % BAR_COLORS.length]}"></div>
-        </div>
-        <div class="mcat-amt">${fmt(cat.total)}</div>
-      </div>
-    `).join('');
-  } else {
-    $('m-cats').innerHTML = '<div class="m-empty">No expenses this month</div>';
-  }
+  $('m-cats').innerHTML = d.categories.length
+    ? d.categories.map((cat, i) => `
+        <div class="mcat-bar-row">
+          <div class="mcat-name">${CAT_EMOJI[cat.category] || '🧾'} ${cat.category}</div>
+          <div class="mcat-track">
+            <div class="mcat-fill" style="width:${(cat.total/maxCat*100).toFixed(1)}%;background:${BAR_COLORS[i%BAR_COLORS.length]}"></div>
+          </div>
+          <div class="mcat-amt">${fmt(cat.total)}</div>
+        </div>`).join('')
+    : '<div class="m-empty">No expenses this month</div>';
 
   $('m-txns').innerHTML = d.transactions.length
     ? buildTxnHTML(d.transactions)

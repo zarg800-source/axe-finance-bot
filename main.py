@@ -2144,11 +2144,13 @@ def build_income_category_keyboard():
 def build_account_keyboard(prefix="acc"):
     """Build account selection keyboard."""
     accs = [
-        ("🏦 Bangkok Bank", f"{prefix}_Bangkok Bank"),
-        ("🚇 MRT EMV Visa", f"{prefix}_MRT EMV Visa"),
-        ("📱 True Money", f"{prefix}_True Money Wallet"),
-        ("💵 Cash", f"{prefix}_Cash"),
-        ("🐇 Rabbit Card", f"{prefix}_Rabbit Card"),
+        ("🏦 Bangkok Bank",    f"{prefix}_Bangkok Bank"),
+        ("🚇 MRT EMV Visa",    f"{prefix}_MRT EMV Visa"),
+        ("📱 True Money",      f"{prefix}_True Money Wallet"),
+        ("💵 Cash",            f"{prefix}_Cash"),
+        ("🐇 Rabbit Card",     f"{prefix}_Rabbit Card"),
+        ("🛺 Muvmi",           f"{prefix}_Muvmi"),
+        ("🎫 Solsot Member",   f"{prefix}_Solsot Member"),
     ]
     keyboard = []
     for i in range(0, len(accs), 2):
@@ -2913,156 +2915,6 @@ async def error_handler(update, context: ContextTypes.DEFAULT_TYPE):
     logger.error(f"Error: {context.error}")
 
 
-
-    init_db()
-    logger.info("Database initialized.")
-
-    async def post_init(application):
-        """Called after the application is initialized but before polling starts."""
-        await startup_subscription_check(application)
-
-    app = (
-        Application.builder()
-        .token(TELEGRAM_BOT_TOKEN)
-        .connect_timeout(30)
-        .read_timeout(30)
-        .write_timeout(30)
-        .pool_timeout(30)
-        .post_init(post_init)
-        .build()
-    )
-
-    # Error handler
-    app.add_error_handler(error_handler)
-
-    # Conversation handler for button-based UI (must be added BEFORE plain text handler)
-    conv_handler = ConversationHandler(
-        entry_points=[
-            CommandHandler("start", cmd_start),
-            CommandHandler("menu", cmd_menu),
-            CallbackQueryHandler(button_main_menu, pattern=r'^menu_|^back_main$'),
-        ],
-        states={
-            MENU_STATE: [
-                CallbackQueryHandler(button_main_menu, pattern=r'^menu_|^back_main$'),
-            ],
-            LOG_CAT: [
-                CallbackQueryHandler(log_expense_category, pattern=r'^cat_|^back_main$'),
-            ],
-            LOG_ACCOUNT: [
-                CallbackQueryHandler(log_expense_account, pattern=r'^acc_|^back_main$'),
-            ],
-            LOG_AMOUNT: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, log_expense_amount),
-            ],
-            INCOME_CAT: [
-                CallbackQueryHandler(log_income_category, pattern=r'^inc_cat_|^back_main$'),
-            ],
-            INCOME_ACCOUNT: [
-                CallbackQueryHandler(log_income_account, pattern=r'^acc_|^back_main$'),
-            ],
-            INCOME_AMOUNT: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, log_income_amount),
-            ],
-            SETTINGS_MENU: [
-                CallbackQueryHandler(settings_menu_handler, pattern=r'^set_|^back_main$'),
-            ],
-            UPD_BAL_ACCOUNT: [
-                CallbackQueryHandler(upd_bal_account, pattern=r'^updbal_|^back_main$'),
-            ],
-            UPD_BAL_AMOUNT: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, upd_bal_amount),
-            ],
-            TRANSFER_FROM: [
-                CallbackQueryHandler(transfer_from, pattern=r'^trfrom_|^back_main$'),
-            ],
-            TRANSFER_TO: [
-                CallbackQueryHandler(transfer_to, pattern=r'^trto_|^back_main$'),
-            ],
-            TRANSFER_AMOUNT: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, transfer_amount),
-            ],
-            SUB_MENU: [
-                CallbackQueryHandler(sub_menu_handler, pattern=r'^sub_|^back_main$|^back_subs$'),
-            ],
-            SUB_ADD_NAME: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, sub_add_name),
-            ],
-            SUB_ADD_AMOUNT: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, sub_add_amount),
-            ],
-            SUB_ADD_ACCOUNT: [
-                CallbackQueryHandler(sub_add_account, pattern=r'^subacc_|^back_main$'),
-            ],
-            SUB_ADD_DATE: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, sub_add_date),
-            ],
-            SUB_DEL_PICK: [
-                CallbackQueryHandler(sub_del_pick, pattern=r'^subdel_|^back_subs$'),
-            ],
-            EXPORT_TYPE: [
-                CallbackQueryHandler(export_type_handler, pattern=r'^export_month$|^export_year$|^back_main$'),
-            ],
-            EXPORT_INPUT: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, export_input_handler),
-                CallbackQueryHandler(export_type_handler, pattern=r'^export_month$|^export_year$|^back_main$'),
-            ],
-        },
-        fallbacks=[
-            CommandHandler("cancel", cancel_conversation),
-            CommandHandler("menu", cmd_menu),
-            CommandHandler("start", cmd_start),
-        ],
-        per_message=False,
-    )
-    app.add_handler(conv_handler)
-
-    # Command handlers (these work independently of the conversation)
-    app.add_handler(CommandHandler("help", cmd_help))
-    app.add_handler(CommandHandler("balance", cmd_balance))
-    app.add_handler(CommandHandler("report", cmd_report))
-    app.add_handler(CommandHandler("export", cmd_export))
-    app.add_handler(CommandHandler("categories", cmd_categories))
-    app.add_handler(CommandHandler("history", cmd_history))
-    app.add_handler(CommandHandler("delete", cmd_delete))
-    app.add_handler(CommandHandler("updatebalance", cmd_update_balance))
-    app.add_handler(CommandHandler("subscriptions", cmd_subscriptions))
-    app.add_handler(CommandHandler("addsubscription", cmd_add_subscription))
-    app.add_handler(CommandHandler("deletesubscription", cmd_delete_subscription))
-    app.add_handler(CommandHandler("transfer", cmd_transfer))
-
-    # Photo handler
-    app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
-
-    # Text handler (must be last — catches natural language when NOT in a conversation)
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-
-    # Scheduled jobs using v20 JobQueue
-    job_queue = app.job_queue
-
-    # Daily subscription check at 8 AM Bangkok time
-    target_time_subs = datetime.now(BANGKOK_TZ).replace(hour=8, minute=0, second=0, microsecond=0).timetz()
-    job_queue.run_daily(check_subscriptions, time=target_time_subs, name='check_subs')
-
-    # Also run subscription check 60 seconds after startup (catches missed ones after restarts)
-    job_queue.run_once(check_subscriptions, when=60, name='startup_sub_check')
-
-    # Weekly report every Monday at 9 AM Bangkok time
-    target_time_report = datetime.now(BANGKOK_TZ).replace(hour=9, minute=0, second=0, microsecond=0).timetz()
-    job_queue.run_daily(send_weekly_report, time=target_time_report, days=(0,), name='weekly_report')  # 0 = Monday
-
-    logger.info("Scheduler configured. Weekly reports: Monday 9AM, Sub checks: daily 8AM (Bangkok time)")
-
-    # Run with polling
-    logger.info("Starting bot polling...")
-    app.run_polling(
-        drop_pending_updates=False,
-        allowed_updates=Update.ALL_TYPES,
-        poll_interval=1.0,
-        timeout=30,
-    )
-
-
 # ─── Export Conversation Handlers ─────────────────────────────────────────────
 @restricted
 async def export_type_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3490,8 +3342,6 @@ async def export_input_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         reply_markup=keyboard
     )
     return EXPORT_TYPE
-
-
 
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
