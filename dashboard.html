@@ -197,6 +197,10 @@
   .sum-val.c-exp  { color: var(--red); }
   .sum-val.c-pos  { color: var(--gold); }
   .sum-val.c-neg  { color: var(--red); }
+  .msum-val.c-inc { color: var(--green); }
+  .msum-val.c-exp { color: var(--red); }
+  .msum-val.c-pos { color: var(--gold); }
+  .msum-val.c-neg { color: var(--red); }
   .sum-change {
     margin-top: 7px; font-size: 12px; color: var(--text-dim);
     font-family: var(--font-mono);
@@ -305,6 +309,79 @@
     padding: 40px 0; text-align: center;
   }
 
+  /* ── Monthly History ───────────────────────────────────────────────────── */
+  .month-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .mnav-btn {
+    background: none; border: 1px solid var(--border);
+    border-radius: var(--r-sm); color: var(--text-mid);
+    font-size: 18px; width: 38px; height: 38px;
+    cursor: pointer; transition: border-color 0.2s, color 0.2s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .mnav-btn:hover { border-color: var(--border-gold); color: var(--gold); }
+  .mnav-btn:disabled { opacity: 0.25; cursor: default; }
+  .mnav-label {
+    font-family: var(--font-display);
+    font-size: 22px; letter-spacing: 0.06em;
+    color: var(--text); text-align: center;
+  }
+  .msum-row {
+    display: grid; grid-template-columns: repeat(3,1fr);
+    gap: 12px; margin-bottom: 28px;
+  }
+  .msum-box {
+    background: var(--surface-2); border-radius: var(--r-sm);
+    padding: 16px;
+  }
+  .msum-lbl {
+    font-family: var(--font-mono); font-size: 11px;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--text-mid); font-weight: 600; margin-bottom: 8px;
+  }
+  .msum-val {
+    font-family: var(--font-mono); font-size: 18px;
+    font-weight: 400; letter-spacing: -0.02em;
+  }
+  .mcat-title {
+    font-family: var(--font-mono); font-size: 11px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--text-mid); font-weight: 600;
+    margin-bottom: 12px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .mcat-list { margin-bottom: 8px; }
+  .mcat-bar-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+  }
+  .mcat-bar-row:last-child { border-bottom: none; }
+  .mcat-name {
+    font-size: 13px; color: var(--text-mid);
+    width: 130px; flex-shrink: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .mcat-track {
+    flex: 1; height: 5px; background: var(--surface-2);
+    border-radius: 99px; overflow: hidden;
+  }
+  .mcat-fill {
+    height: 100%; border-radius: 99px;
+    background: var(--gold); transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+  }
+  .mcat-amt {
+    font-family: var(--font-mono); font-size: 13px;
+    color: var(--text); width: 90px; text-align: right; flex-shrink: 0;
+  }
+  .m-empty {
+    text-align: center; padding: 32px 0;
+    font-family: var(--font-mono); font-size: 12px;
+    color: var(--text-dim); letter-spacing: 0.1em;
+  }
+
   /* ── Footer ────────────────────────────────────────────────────────────── */
   footer {
     border-top: 1px solid var(--border);
@@ -386,6 +463,43 @@
       <span id="expand-label">Show older transactions</span>
       <span class="expand-arrow" id="expand-arrow">▼</span>
     </button>
+  </div>
+
+  <!-- Monthly History -->
+  <div class="sec-label" style="margin-top:44px">Monthly History</div>
+  <div class="card" id="card-history">
+
+    <!-- Month Selector -->
+    <div class="month-nav">
+      <button class="mnav-btn" id="mnav-prev" onclick="changeMonth(-1)">&#8592;</button>
+      <div class="mnav-label" id="mnav-label">Loading…</div>
+      <button class="mnav-btn" id="mnav-next" onclick="changeMonth(1)">&#8594;</button>
+    </div>
+
+    <!-- Month Totals -->
+    <div class="msum-row" id="msum-row">
+      <div class="msum-box">
+        <div class="msum-lbl">Income</div>
+        <div class="msum-val c-inc" id="m-income">—</div>
+      </div>
+      <div class="msum-box">
+        <div class="msum-lbl">Expenses</div>
+        <div class="msum-val c-exp" id="m-expense">—</div>
+      </div>
+      <div class="msum-box">
+        <div class="msum-lbl">Net</div>
+        <div class="msum-val" id="m-net">—</div>
+      </div>
+    </div>
+
+    <!-- Category Breakdown -->
+    <div class="mcat-title">Spending Breakdown</div>
+    <div id="m-cats" class="mcat-list"></div>
+
+    <!-- Month Transactions -->
+    <div class="mcat-title" style="margin-top:24px">All Transactions</div>
+    <div class="txn-list" id="m-txns"></div>
+
   </div>
 
   <footer>Mike Finance · Bangkok Time · Built with Claude</footer>
@@ -691,13 +805,80 @@ async function loadTransactions() {
   }
 }
 
+// ── Monthly History ───────────────────────────────────────────────────────
+let allMonths   = [];   // [{year, month}, ...] sorted newest first
+let monthIndex  = 0;   // 0 = most recent
+
+const MONTH_NAMES = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const BAR_COLORS  = ['#f0b429','#1fd6a0','#7b6ffc','#f0645a','#4dc4ff','#ffb347','#b4e4a2','#ffd3b6'];
+
+async function initMonthHistory() {
+  allMonths = await fetch('/api/months').then(r => r.json());
+  if (!allMonths.length) {
+    $('card-history').innerHTML = '<div class="m-empty">No transaction history yet</div>';
+    $('card-history').classList.add('in');
+    return;
+  }
+  $('card-history').classList.add('in');
+  monthIndex = 0;
+  renderMonthDetail();
+}
+
+function changeMonth(dir) {
+  monthIndex = Math.max(0, Math.min(allMonths.length - 1, monthIndex + dir));
+  renderMonthDetail();
+}
+
+async function renderMonthDetail() {
+  const { year, month } = allMonths[monthIndex];
+
+  // Update nav
+  $('mnav-label').textContent = `${MONTH_NAMES[month]} ${year}`;
+  $('mnav-prev').disabled = monthIndex >= allMonths.length - 1;
+  $('mnav-next').disabled = monthIndex <= 0;
+
+  // Fetch data
+  const d = await fetch(`/api/month/${year}/${month}`).then(r => r.json());
+
+  // Totals
+  $('m-income').textContent  = fmt(d.income);
+  $('m-expense').textContent = fmt(d.expense);
+  const netEl = $('m-net');
+  netEl.textContent  = (d.net < 0 ? '−' : '') + fmt(Math.abs(d.net));
+  netEl.className    = 'msum-val ' + (d.net >= 0 ? 'c-pos' : 'c-neg');
+
+  // Category bars
+  const maxCat = d.categories.length ? d.categories[0].total : 1;
+  if (d.categories.length) {
+    $('m-cats').innerHTML = d.categories.map((cat, i) => `
+      <div class="mcat-bar-row">
+        <div class="mcat-name">${CAT_EMOJI[cat.category] || '🧾'} ${cat.category}</div>
+        <div class="mcat-track">
+          <div class="mcat-fill" style="width:${(cat.total/maxCat*100).toFixed(1)}%;background:${BAR_COLORS[i % BAR_COLORS.length]}"></div>
+        </div>
+        <div class="mcat-amt">${fmt(cat.total)}</div>
+      </div>
+    `).join('');
+  } else {
+    $('m-cats').innerHTML = '<div class="m-empty">No expenses this month</div>';
+  }
+
+  // Transactions
+  if (d.transactions.length) {
+    $('m-txns').innerHTML = buildTxnHTML(d.transactions);
+  } else {
+    $('m-txns').innerHTML = '<div class="m-empty">No transactions this month</div>';
+  }
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────
 Promise.all([
   loadBalances(),
   loadSummary(),
   loadCategories(),
   loadMonthly(),
-  loadTransactions()
+  loadTransactions(),
+  initMonthHistory()
 ]).catch(err => console.error('Dashboard error:', err));
 </script>
 </body>

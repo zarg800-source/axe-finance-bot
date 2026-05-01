@@ -163,7 +163,78 @@ def api_transactions():
     conn.close()
     return jsonify(txns)
 
-# ── Flask runner ──────────────────────────────────────────────────────────────
+# ── API: Full detail for a specific month ─────────────────────────────────────
+@app.route('/api/month/<int:year>/<int:month>')
+def api_month_detail(year, month):
+    conn = get_db()
+    c = conn.cursor()
+
+    month_start = f"{year}-{month:02d}-01"
+    if month == 12:
+        month_end = f"{year + 1}-01-01"
+    else:
+        month_end = f"{year}-{month + 1:02d}-01"
+
+    # Totals
+    c.execute(
+        """SELECT type, SUM(ABS(amount)) as total
+           FROM transactions
+           WHERE timestamp >= ? AND timestamp < ?
+           GROUP BY type""",
+        (month_start, month_end)
+    )
+    totals = {row['type']: float(row['total'] or 0) for row in c.fetchall()}
+    income  = totals.get('income',  0.0)
+    expense = totals.get('expense', 0.0)
+
+    # Categories
+    c.execute(
+        """SELECT category, SUM(ABS(amount)) as total
+           FROM transactions
+           WHERE type='expense' AND timestamp >= ? AND timestamp < ?
+           GROUP BY category
+           ORDER BY total DESC""",
+        (month_start, month_end)
+    )
+    categories = [dict(r) for r in c.fetchall()]
+
+    # All transactions
+    c.execute(
+        """SELECT amount, description, type, category, account, timestamp
+           FROM transactions
+           WHERE timestamp >= ? AND timestamp < ?
+           ORDER BY timestamp DESC""",
+        (month_start, month_end)
+    )
+    transactions = [dict(r) for r in c.fetchall()]
+
+    conn.close()
+    return jsonify({
+        'year':         year,
+        'month':        month,
+        'income':       income,
+        'expense':      expense,
+        'net':          income - expense,
+        'categories':   categories,
+        'transactions': transactions
+    })
+
+# ── API: List all months that have data ───────────────────────────────────────
+@app.route('/api/months')
+def api_months():
+    conn = get_db()
+    c = conn.cursor()
+    c.execute(
+        """SELECT DISTINCT strftime('%Y', timestamp) as year,
+                           strftime('%m', timestamp) as month
+           FROM transactions
+           ORDER BY year DESC, month DESC"""
+    )
+    months = [{'year': int(r['year']), 'month': int(r['month'])} for r in c.fetchall()]
+    conn.close()
+    return jsonify(months)
+
+
 def run_flask():
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)
