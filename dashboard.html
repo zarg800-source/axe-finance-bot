@@ -141,8 +141,16 @@ header{
 /* charts */
 .charts-row{
   display:grid;grid-template-columns:1fr 1.6fr;
-  gap:14px;margin-bottom:40px;align-items:stretch;
+  gap:14px;margin-bottom:40px;
+  align-items:start;
 }
+/* Both chart cards fixed same height so they match each other */
+#card-cat, #card-trend{
+  height:340px;
+  display:flex;flex-direction:column;
+}
+#card-cat .chart-canvas-wrap  { flex:1; min-height:0; position:relative; }
+#card-trend .chart-canvas-wrap { flex:1; min-height:0; position:relative; }
 .chart-ttl{font-family:var(--display);font-size:18px;letter-spacing:.05em;color:var(--text);margin-bottom:18px}
 .cat-row{
   display:flex;align-items:center;justify-content:space-between;
@@ -296,12 +304,12 @@ footer{
   <div class="charts-row">
     <div class="card" id="card-cat">
       <div class="chart-ttl">Spending Categories</div>
-      <div style="position:relative;height:180px"><canvas id="c-donut"></canvas></div>
-      <div id="cat-list" style="margin-top:16px"></div>
+      <div class="chart-canvas-wrap"><canvas id="c-donut"></canvas></div>
+      <div id="cat-list" style="margin-top:12px"></div>
     </div>
     <div class="card" id="card-trend">
       <div class="chart-ttl">6-Month Overview</div>
-      <div style="position:relative;height:250px"><canvas id="c-bar"></canvas></div>
+      <div class="chart-canvas-wrap"><canvas id="c-bar"></canvas></div>
     </div>
   </div>
 
@@ -476,7 +484,7 @@ async function loadCategories() {
       datasets: [{ data: cats.map(function(c) { return c.total; }), backgroundColor: PALETTE, borderWidth: 0, hoverOffset: 5 }]
     },
     options: {
-      cutout: '72%', responsive: true, maintainAspectRatio: true,
+      cutout: '72%', responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
         tooltip: {
