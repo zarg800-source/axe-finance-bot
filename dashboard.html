@@ -142,15 +142,21 @@ header{
 .charts-row{
   display:grid;grid-template-columns:1fr 1.6fr;
   gap:14px;margin-bottom:40px;
-  align-items:start;
+  align-items:stretch;
 }
-/* Both chart cards fixed same height so they match each other */
+/* Cards match each other's height on desktop via stretch */
 #card-cat, #card-trend{
-  height:340px;
   display:flex;flex-direction:column;
 }
-#card-cat .chart-canvas-wrap  { flex:1; min-height:0; position:relative; }
-#card-trend .chart-canvas-wrap { flex:1; min-height:0; position:relative; }
+/* Canvas wrappers get explicit heights — this controls chart size */
+#card-cat  .chart-canvas-wrap { position:relative; height:160px; flex-shrink:0; }
+#card-trend .chart-canvas-wrap { position:relative; flex:1; min-height:180px; }
+/* On mobile, stack and use natural heights */
+@media(max-width:800px){
+  .charts-row{ grid-template-columns:1fr; align-items:start; }
+  #card-cat  .chart-canvas-wrap { height:140px; }
+  #card-trend .chart-canvas-wrap { height:180px; flex:none; }
+}
 .chart-ttl{font-family:var(--display);font-size:18px;letter-spacing:.05em;color:var(--text);margin-bottom:18px}
 .cat-row{
   display:flex;align-items:center;justify-content:space-between;
@@ -262,8 +268,11 @@ footer{
   font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:.08em;
 }
 
+/* On mobile hide cat rows beyond 3rd */
+@media(max-width:800px){
+  #cat-list .cat-row:nth-child(n+4){ display:none; }
+}
 /* responsive */
-@media(max-width:800px){.charts-row{grid-template-columns:1fr}}
 @media(max-width:560px){
   .sum-grid{grid-template-columns:1fr}
   .bal-grid{grid-template-columns:repeat(2,1fr)}
