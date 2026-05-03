@@ -828,6 +828,8 @@ def init_db():
         (uid, 'MRT EMV Visa'),
         (uid, 'Rabbit Card'),
         (uid, 'Cash'),
+        (uid, 'Muvmi'),
+        (uid, 'Solsot Member'),
     ]:
         c.execute("INSERT OR IGNORE INTO accounts (user_id, name, balance) VALUES (?, ?, 0.0)", (user_id, name))
     # Note: Subscriptions are managed via /addsubscription and /deletesubscription commands.
@@ -846,10 +848,13 @@ def get_db():
 def restricted(func):
     @wraps(func)
     async def wrapped(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
-        user_id = update.effective_user.id
+        user_id = update.effective_user.id if update.effective_user else None
         if user_id != AUTHORIZED_USER_ID:
             logger.warning(f"Unauthorized access attempt by {user_id}")
-            await update.message.reply_text("Sorry, this bot is private. 🔒")
+            # Safe reply that works for both messages and callback queries
+            msg = update.effective_message
+            if msg:
+                await msg.reply_text("Sorry, this bot is private. 🔒")
             return
         return await func(update, context, *args, **kwargs)
     return wrapped
@@ -1017,6 +1022,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/balance — Show all account balances\n"
         "/report — Get financial summary\n"
         "/export — Download Excel spreadsheet\n"
+        "/backup — Download the database file\n"
         "/categories — List categories\n"
         "/subscriptions — Show recurring subscriptions\n"
         "/addsubscription — Add a subscription\n"
@@ -1088,11 +1094,12 @@ async def cmd_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 @restricted
+@restricted
 async def cmd_delete(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn = get_db()
     c = conn.cursor()
     c.execute(
-        "SELECT id, amount, account, description FROM transactions WHERE user_id = ? ORDER BY id DESC LIMIT 1",
+        "SELECT id, amount, account, description, type FROM transactions WHERE user_id = ? ORDER BY id DESC LIMIT 1",
         (AUTHORIZED_USER_ID,)
     )
     txn = c.fetchone()
@@ -1101,15 +1108,18 @@ async def cmd_delete(update: Update, context: ContextTypes.DEFAULT_TYPE):
         conn.close()
         return
 
-    c.execute("DELETE FROM transactions WHERE id = ?", (txn['id'],))
+    c.execute("DELETE FROM transactions WHERE id = ? AND user_id = ?", (txn['id'], AUTHORIZED_USER_ID))
+    # Reverse the balance effect correctly: subtract what was added
     c.execute(
         "UPDATE accounts SET balance = balance - ? WHERE user_id = ? AND name = ?",
         (txn['amount'], AUTHORIZED_USER_ID, txn['account'])
     )
     conn.commit()
     conn.close()
+    sign = "+" if txn['amount'] > 0 else "-"
     await update.message.reply_text(
-        f"🗑 Deleted last transaction (฿{abs(txn['amount']):,.2f} from {txn['account']})."
+        f"🗑 Deleted: {txn['description']}\n"
+        f"💰 {sign}฿{abs(txn['amount']):,.2f} from {txn['account']}"
     )
 
 
@@ -1496,6 +1506,7 @@ async def cmd_export(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ─── Natural language handler ────────────────────────────────────────────────
+@restricted
 @restricted
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
@@ -1897,7 +1908,7 @@ def generate_report(user_id):
     report += f"📅 {now.strftime('%A, %B %d, %Y')}\n\n"
     report += "💰 *Account Balances:*\n"
     for acc in accounts:
-        emoji = {'Bangkok Bank': '🏦', 'True Money Wallet': '📱', 'MRT EMV Visa': '🚇', 'Rabbit Card': '🐇'}.get(acc['name'], '💵')
+        emoji = {'Bangkok Bank': '🏦', 'True Money Wallet': '📱', 'MRT EMV Visa': '🚇', 'Rabbit Card': '🐇', 'Cash': '💵', 'Muvmi': '🛺', 'Solsot Member': '🎫'}.get(acc['name'], '💰')
         report += f"  {emoji} {acc['name']}: ฿{acc['balance']:,.2f}\n"
     report += f"  *Total: ฿{total_balance:,.2f}*\n\n"
 
@@ -1964,10 +1975,9 @@ async def send_weekly_report(context: ContextTypes.DEFAULT_TYPE):
 
 
 # ─── Recurring subscription checker ──────────────────────────────────────────
-def process_due_subscriptions(send_notification=None):
+def process_due_subscriptions():
     """Check and process any overdue subscriptions.
-    Returns list of (sub_name, amount, account) that were processed.
-    send_notification is an optional async callback for sending Telegram messages.
+    Returns list of (sub_name, amount, account, user_id) tuples that were processed.
     """
     conn = get_db()
     c = conn.cursor()
@@ -2381,6 +2391,9 @@ async def log_expense_amount(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return LOG_AMOUNT
 
     amount = float(amount_match.group(1).replace(',', ''))
+    if amount <= 0:
+        await update.message.reply_text("Amount must be greater than zero. Try again:")
+        return LOG_AMOUNT
     desc = amount_match.group(2).strip() or context.user_data.get('category', 'Expense')
 
     cat_name = context.user_data.get('category', 'Other')
@@ -2475,6 +2488,9 @@ async def log_income_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return INCOME_AMOUNT
 
     amount = float(amount_match.group(1).replace(',', ''))
+    if amount <= 0:
+        await update.message.reply_text("Amount must be greater than zero. Try again:")
+        return INCOME_AMOUNT
     desc = amount_match.group(2).strip() or context.user_data.get('category', 'Income')
 
     cat_name = context.user_data.get('category', 'Income')
@@ -2810,11 +2826,11 @@ async def transfer_from(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if query.data == "back_main":
         await query.edit_message_text(
-            "⚙️ *Settings*\n\nChoose an option:",
-            reply_markup=build_settings_menu(),
+            "📱 *Mike Finance — Main Menu*\n\nTap a button below:",
+            reply_markup=build_main_menu(),
             parse_mode=ParseMode.MARKDOWN
         )
-        return SETTINGS_MENU
+        return MENU_STATE
 
     account_name = query.data.replace("trfrom_", "")
     context.user_data['transfer_from'] = account_name
@@ -3344,6 +3360,36 @@ async def export_input_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     return EXPORT_TYPE
 
 
+# ─── Backup command ───────────────────────────────────────────────────────────
+@restricted
+async def cmd_backup(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Send the live database file to the user via Telegram."""
+    try:
+        db_path = DATABASE_NAME
+        if not os.path.exists(db_path):
+            await update.message.reply_text("⚠️ Database file not found.")
+            return
+        size_kb = os.path.getsize(db_path) / 1024
+        now_str = datetime.now(BANGKOK_TZ).strftime('%Y%m%d_%H%M')
+        filename = f"finance_backup_{now_str}.db"
+        with open(db_path, 'rb') as f:
+            await update.message.reply_document(
+                document=f,
+                filename=filename,
+                caption=(
+                    f"💾 *Database Backup*\n"
+                    f"📅 {datetime.now(BANGKOK_TZ).strftime('%d %b %Y %H:%M')} (Bangkok)\n"
+                    f"📦 Size: {size_kb:.1f} KB\n\n"
+                    f"Keep this safe — it contains all your transactions.\n"
+                    f"Upload it to GitHub to replace finance.db if needed."
+                ),
+                parse_mode=ParseMode.MARKDOWN
+            )
+    except Exception as e:
+        logger.error(f"Backup error: {e}")
+        await update.message.reply_text(f"❌ Backup failed: {e}")
+
+
 # ─── Main ─────────────────────────────────────────────────────────────────────
 def main():
     init_db()
@@ -3462,6 +3508,7 @@ def main():
     app.add_handler(CommandHandler("addsubscription", cmd_add_subscription))
     app.add_handler(CommandHandler("deletesubscription", cmd_delete_subscription))
     app.add_handler(CommandHandler("transfer", cmd_transfer))
+    app.add_handler(CommandHandler("backup", cmd_backup))
 
     # Photo handler
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
@@ -3476,19 +3523,19 @@ def main():
     target_time_subs = datetime.now(BANGKOK_TZ).replace(hour=8, minute=0, second=0, microsecond=0).timetz()
     job_queue.run_daily(check_subscriptions, time=target_time_subs, name='check_subs')
 
-    # Also run subscription check 60 seconds after startup (catches missed ones after restarts)
-    job_queue.run_once(check_subscriptions, when=60, name='startup_sub_check')
+    # Note: startup subscription check is handled by post_init via startup_subscription_check()
+    # which runs before polling starts. A separate run_once would double-log subscriptions.
 
     # Weekly report every Monday at 9 AM Bangkok time
     target_time_report = datetime.now(BANGKOK_TZ).replace(hour=9, minute=0, second=0, microsecond=0).timetz()
-    job_queue.run_daily(send_weekly_report, time=target_time_report, days=(0,), name='weekly_report')  # 0 = Monday
+    job_queue.run_daily(send_weekly_report, time=target_time_report, days=(1,), name='weekly_report')  # 1 = Monday (0=Sunday in PTB v20)
 
     logger.info("Scheduler configured. Weekly reports: Monday 9AM, Sub checks: daily 8AM (Bangkok time)")
 
     # Run with polling
     logger.info("Starting bot polling...")
     app.run_polling(
-        drop_pending_updates=False,
+        drop_pending_updates=True,
         allowed_updates=Update.ALL_TYPES,
         poll_interval=1.0,
         timeout=30,

@@ -31,6 +31,12 @@ def now_bkk():
 def health_check():
     return "Bot is running!", 200
 
+# Short URL redirect — visit /d instead of /dashboard
+@app.route('/d')
+def dashboard_redirect():
+    from flask import redirect
+    return redirect('/dashboard', code=301)
+
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 @app.route('/dashboard')
 def dashboard():
