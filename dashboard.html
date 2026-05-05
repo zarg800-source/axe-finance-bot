@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Mike Finance</title>
-
-<!-- PWA -->
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#07090f">
 <meta name="mobile-web-app-capable" content="yes">
@@ -25,7 +23,7 @@
   --border:    rgba(255,255,255,0.06);
   --bord-gold: rgba(240,180,41,0.28);
   --gold:      #f0b429;
-  --gold-glow: rgba(240,180,41,0.09);
+  --gold-dim:  rgba(240,180,41,0.09);
   --green:     #1fd6a0;
   --green-dim: rgba(31,214,160,0.1);
   --red:       #f0645a;
@@ -38,24 +36,29 @@
   --sans:      'Outfit', sans-serif;
   --r:         14px;
   --rsm:       9px;
-}
-*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
-html,body{overflow-x:hidden;max-width:100vw;scroll-behavior:smooth;background:#07090f}
-body{
-  background:var(--bg);color:var(--text);font-family:var(--sans);
-  font-size:15px;font-weight:300;min-height:100vh;
-  -webkit-font-smoothing:antialiased;
+  --nav-h:     56px;
 }
 
-/* bg */
-.bg-glow{
-  position:fixed;top:-180px;left:50%;transform:translateX(-50%);
-  width:min(700px,100vw);height:360px;pointer-events:none;z-index:0;
+*,*::before,*::after { margin:0; padding:0; box-sizing:border-box; }
+html,body {
+  overflow-x:hidden; max-width:100vw;
+  background:#07090f; height:100%;
+}
+body {
+  background:var(--bg); color:var(--text);
+  font-family:var(--sans); font-size:15px; font-weight:300;
+  min-height:100vh; -webkit-font-smoothing:antialiased;
+}
+
+/* ── Atmospheric bg ──────────────────────────────────────────────────── */
+.bg-glow {
+  position:fixed; top:-180px; left:50%; transform:translateX(-50%);
+  width:min(700px,100vw); height:360px; pointer-events:none; z-index:0;
   background:radial-gradient(ellipse,rgba(240,180,41,0.05) 0%,transparent 70%);
 }
-.bg-grid{
-  position:fixed;inset:0;width:100%;height:100%;
-  pointer-events:none;z-index:0;
+.bg-grid {
+  position:fixed; inset:0; width:100%; height:100%;
+  pointer-events:none; z-index:0;
   background-image:
     linear-gradient(rgba(240,180,41,0.022) 1px,transparent 1px),
     linear-gradient(90deg,rgba(240,180,41,0.022) 1px,transparent 1px);
@@ -63,230 +66,292 @@ body{
   mask-image:radial-gradient(ellipse at 50% 0%,black 20%,transparent 75%);
 }
 
-/* layout */
-.wrap{
-  max-width:1100px;margin:0 auto;padding:0 20px 80px;
-  position:relative;z-index:1;
+/* ── Top nav bar ─────────────────────────────────────────────────────── */
+.topbar {
+  position:fixed; top:0; left:0; right:0; height:var(--nav-h);
+  background:rgba(7,9,15,0.92); backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 20px; z-index:100;
+}
+.topbar-logo {
+  font-family:var(--display); font-size:22px;
+  letter-spacing:0.06em; color:var(--text);
+}
+.topbar-logo span { color:var(--gold); }
+.topbar-right { display:flex; align-items:center; gap:10px; }
+.topbar-date {
+  font-family:var(--mono); font-size:10px;
+  letter-spacing:0.1em; color:var(--text-dim);
+}
+.live-badge {
+  display:flex; align-items:center; gap:5px;
+  font-family:var(--mono); font-size:10px;
+  color:var(--green); letter-spacing:0.08em;
+}
+.live-dot {
+  width:5px; height:5px; border-radius:50%;
+  background:var(--green); animation:blink 2.4s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+/* hamburger */
+.ham-btn {
+  width:40px; height:40px; border-radius:var(--rsm);
+  border:1px solid var(--border); background:none;
+  display:flex; flex-direction:column; align-items:center;
+  justify-content:center; gap:5px; cursor:pointer;
+  transition:border-color .2s, background .2s;
+  -webkit-tap-highlight-color:transparent;
+  flex-shrink:0;
+}
+.ham-btn:active { background:var(--gold-dim); border-color:var(--bord-gold); }
+.ham-line {
+  width:18px; height:2px; border-radius:2px;
+  background:var(--text-mid); transition:background .2s;
+}
+.ham-btn:active .ham-line { background:var(--gold); }
+
+/* ── Drawer menu ─────────────────────────────────────────────────────── */
+.drawer-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,0.6);
+  z-index:200; opacity:0; pointer-events:none;
+  transition:opacity .25s ease;
+}
+.drawer-overlay.open { opacity:1; pointer-events:all; }
+
+.drawer {
+  position:fixed; top:0; right:-300px; width:300px; height:100%;
+  background:#0c1019; border-left:1px solid rgba(255,255,255,0.08);
+  z-index:201; transition:right .3s cubic-bezier(0.4,0,0.2,1);
+  display:flex; flex-direction:column; overflow:hidden;
+  box-shadow:-20px 0 60px rgba(0,0,0,0.5);
+}
+.drawer.open { right:0; }
+.drawer-header {
+  padding:56px 24px 22px;
+  border-bottom:1px solid var(--border);
+  background:linear-gradient(180deg, rgba(240,180,41,0.04) 0%, transparent 100%);
+}
+.drawer-title {
+  font-family:var(--display); font-size:24px;
+  letter-spacing:0.08em; color:var(--text);
+}
+.drawer-sub {
+  font-family:var(--mono); font-size:9px;
+  letter-spacing:0.18em; color:var(--text-dim);
+  text-transform:uppercase; margin-top:6px;
 }
 
-/* header */
-header{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:32px 0 28px;border-bottom:1px solid var(--border);margin-bottom:40px;
-}
-.logo{font-family:var(--display);font-size:28px;letter-spacing:.06em;color:var(--text)}
-.logo span{color:var(--gold)}
-.hdr-right{text-align:right}
-.hdr-date{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim)}
-.hdr-live{
-  display:inline-flex;align-items:center;gap:6px;margin-top:5px;
-  font-family:var(--mono);font-size:10px;color:var(--green);letter-spacing:.1em;
-}
-.live-dot{
-  width:5px;height:5px;border-radius:50%;background:var(--green);
-  animation:blink 2.4s ease-in-out infinite;
-}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.drawer-nav { flex:1; padding:12px 0; overflow-y:auto; }
 
-/* section label */
-.sec{
-  font-family:var(--mono);font-size:11px;letter-spacing:.2em;
-  text-transform:uppercase;color:var(--text-mid);font-weight:600;
-  margin-bottom:14px;display:flex;align-items:center;gap:10px;
+.nav-item {
+  display:flex; align-items:center; gap:16px;
+  padding:18px 24px; cursor:pointer;
+  transition:background .18s;
+  -webkit-tap-highlight-color:transparent;
+  border-left:2px solid transparent;
+  position:relative;
 }
-.sec::after{content:'';flex:1;height:1px;background:var(--border)}
+.nav-item:active,
+.nav-item.active {
+  background:rgba(240,180,41,0.07);
+  border-left-color:var(--gold);
+}
+.nav-item.active .nav-label { color:var(--gold); letter-spacing:0.1em; }
+.nav-icon {
+  width:28px; height:20px; display:flex; align-items:center;
+  justify-content:center; flex-shrink:0; color:var(--text-dim);
+  transition:color .2s;
+}
+.nav-item.active .nav-icon,
+.nav-item:active .nav-icon { color:var(--gold); }
+.nav-label {
+  font-family:var(--mono); font-size:13px;
+  font-weight:400; color:var(--text);
+  letter-spacing:0.08em; text-transform:uppercase;
+}
 
-/* card */
-.card{
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--r);padding:22px 20px;
-  opacity:0;transform:translateY(14px);
-  transition:opacity .4s ease,transform .4s ease,border-color .3s,box-shadow .3s;
+/* ── Pages ───────────────────────────────────────────────────────────── */
+.page {
+  display:none;
+  padding-top:calc(var(--nav-h) + 20px);
+  padding-bottom:40px;
+  padding-left:20px;
+  padding-right:20px;
+  max-width:1100px; margin:0 auto;
+  position:relative; z-index:1;
+  animation:fadeUp .3s ease both;
 }
-.card.in{opacity:1;transform:translateY(0)}
-.card:hover{border-color:var(--bord-gold);box-shadow:0 4px 32px rgba(240,180,41,.05)}
+.page.active { display:block; }
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(12px); }
+  to   { opacity:1; transform:translateY(0); }
+}
 
-/* balances */
-.bal-grid{
-  display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
-  gap:12px;margin-bottom:40px;
+/* ── Shared components ───────────────────────────────────────────────── */
+.sec {
+  font-family:var(--mono); font-size:11px; letter-spacing:0.2em;
+  text-transform:uppercase; color:var(--text-mid); font-weight:600;
+  margin-bottom:14px; display:flex; align-items:center; gap:10px;
 }
-.bal-card{position:relative;overflow:hidden}
-.glow-c{
-  position:absolute;top:-24px;right:-24px;width:90px;height:90px;
-  background:radial-gradient(circle,var(--gold-glow) 0%,transparent 70%);
+.sec::after { content:''; flex:1; height:1px; background:var(--border); }
+
+.card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r); padding:22px 20px;
+  transition:border-color .3s, box-shadow .3s;
+}
+.card:hover { border-color:var(--bord-gold); box-shadow:0 4px 32px rgba(240,180,41,.05); }
+
+/* balance grid */
+.bal-grid {
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+  gap:12px; margin-bottom:28px;
+}
+.bal-card { position:relative; overflow:hidden; }
+.glow-c {
+  position:absolute; top:-24px; right:-24px; width:90px; height:90px;
+  background:radial-gradient(circle,var(--gold-dim) 0%,transparent 70%);
   pointer-events:none;
 }
-.bal-acct{
-  font-family:var(--mono);font-size:10px;letter-spacing:.1em;
-  text-transform:uppercase;color:var(--text-mid);font-weight:600;margin-bottom:12px;
+.bal-acct {
+  font-family:var(--mono); font-size:10px; letter-spacing:0.1em;
+  text-transform:uppercase; color:var(--text-mid); font-weight:600; margin-bottom:12px;
 }
-.bal-num{font-family:var(--mono);font-size:20px;font-weight:400;letter-spacing:-.02em;color:var(--text)}
-.bal-num .cur{font-size:12px;color:var(--gold);margin-right:1px}
-.bal-total{border-color:rgba(240,180,41,.2);background:linear-gradient(135deg,#0d1220,#111b2c)}
-.bal-total .bal-num{color:var(--gold)}
+.bal-num {
+  font-family:var(--mono); font-size:20px; font-weight:400;
+  letter-spacing:-.02em; color:var(--text);
+}
+.bal-num .cur { font-size:12px; color:var(--gold); margin-right:1px; }
+.bal-total {
+  border-color:rgba(240,180,41,.2);
+  background:linear-gradient(135deg,#0d1220,#111b2c);
+}
+.bal-total .bal-num { color:var(--gold); }
 
 /* summary */
-.sum-grid{
-  display:grid;grid-template-columns:repeat(3,1fr);
-  gap:12px;margin-bottom:40px;align-items:stretch;
+.sum-grid {
+  display:grid; grid-template-columns:repeat(3,1fr);
+  gap:12px; align-items:stretch;
 }
-.sum-grid .card{display:flex;flex-direction:column}
-.sum-lbl{
-  font-family:var(--mono);font-size:10px;letter-spacing:.1em;
-  text-transform:uppercase;color:var(--text-mid);font-weight:600;margin-bottom:10px;
+.sum-grid .card { display:flex; flex-direction:column; }
+.sum-lbl {
+  font-family:var(--mono); font-size:10px; letter-spacing:0.1em;
+  text-transform:uppercase; color:var(--text-mid); font-weight:600; margin-bottom:10px;
 }
-.sum-val{
-  font-family:var(--mono);font-size:20px;font-weight:400;
-  letter-spacing:-.02em;word-break:break-all;flex:1;
+.sum-val {
+  font-family:var(--mono); font-size:20px; font-weight:400;
+  letter-spacing:-.02em; word-break:break-all; flex:1;
 }
-.sum-val.c-inc{color:var(--green)}
-.sum-val.c-exp{color:var(--red)}
-.sum-val.c-pos{color:var(--gold)}
-.sum-val.c-neg{color:var(--red)}
-.sum-chg{margin-top:8px;font-size:11px;font-family:var(--mono);color:var(--text-dim)}
-.sum-chg.up{color:var(--green)}
-.sum-chg.down{color:var(--red)}
+.c-inc { color:var(--green); }
+.c-exp { color:var(--red); }
+.c-pos { color:var(--gold); }
+.c-neg { color:var(--red); }
+.sum-chg { margin-top:8px; font-size:11px; font-family:var(--mono); color:var(--text-dim); }
+.sum-chg.up { color:var(--green); }
+.sum-chg.down { color:var(--red); }
 
 /* charts */
-.charts-row{
-  display:grid;grid-template-columns:1fr 1.6fr;
-  gap:14px;margin-bottom:40px;
-  align-items:stretch;
+.charts-row {
+  display:grid; grid-template-columns:1fr 1.6fr;
+  gap:14px; align-items:stretch; margin-top:20px;
 }
-/* Cards match each other's height on desktop via stretch */
-#card-cat, #card-trend{
-  display:flex;flex-direction:column;
+#card-cat, #card-trend { display:flex; flex-direction:column; }
+#card-cat  .cwrap { position:relative; height:160px; flex-shrink:0; }
+#card-trend .cwrap { position:relative; flex:1; min-height:180px; }
+.chart-ttl {
+  font-family:var(--display); font-size:18px;
+  letter-spacing:0.05em; color:var(--text); margin-bottom:14px;
 }
-/* Canvas wrappers get explicit heights — this controls chart size */
-#card-cat  .chart-canvas-wrap { position:relative; height:160px; flex-shrink:0; }
-#card-trend .chart-canvas-wrap { position:relative; flex:1; min-height:180px; }
-/* On mobile, stack and use natural heights */
-@media(max-width:800px){
-  .charts-row{ grid-template-columns:1fr; align-items:start; }
-  #card-cat  .chart-canvas-wrap { height:140px; }
-  #card-trend .chart-canvas-wrap { height:180px; flex:none; }
+.cat-row {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:7px 0; border-bottom:1px solid rgba(255,255,255,.04);
 }
-.chart-ttl{font-family:var(--display);font-size:18px;letter-spacing:.05em;color:var(--text);margin-bottom:18px}
-.cat-row{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);
-}
-.cat-row:last-child{border-bottom:none}
-.cat-left{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-mid)}
-.cat-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.cat-amt{font-family:var(--mono);font-size:13px;color:var(--text)}
+.cat-row:last-child { border-bottom:none; }
+.cat-left { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-mid); }
+.cat-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.cat-amt { font-family:var(--mono); font-size:13px; color:var(--text); }
 
 /* transactions */
-.txn-list{display:flex;flex-direction:column}
-.txn{
-  display:flex;align-items:center;gap:12px;
-  padding:12px 8px;border-radius:var(--rsm);transition:background .18s;
+.txn-list { display:flex; flex-direction:column; }
+.txn {
+  display:flex; align-items:center; gap:12px;
+  padding:12px 8px; border-radius:var(--rsm); transition:background .15s;
 }
-.txn:hover{background:var(--surface2)}
-.txn-icon{
-  width:38px;height:38px;border-radius:9px;flex-shrink:0;
-  display:flex;align-items:center;justify-content:center;font-size:17px;
+.txn:active { background:var(--surface2); }
+.txn-icon {
+  width:38px; height:38px; border-radius:9px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; font-size:17px;
 }
-.txn-icon.inc{background:var(--green-dim)}
-.txn-icon.exp{background:var(--red-dim)}
-.txn-body{flex:1;min-width:0}
-.txn-desc{font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.txn-meta{font-size:11px;color:var(--text-dim);font-family:var(--mono);margin-top:3px}
-.txn-amt{font-family:var(--mono);font-size:14px;font-weight:500;white-space:nowrap;flex-shrink:0}
-.txn-amt.inc{color:var(--green)}
-.txn-amt.exp{color:var(--red)}
+.txn-icon.inc { background:var(--green-dim); }
+.txn-icon.exp { background:var(--red-dim); }
+.txn-body { flex:1; min-width:0; }
+.txn-desc {
+  font-size:14px; color:var(--text);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.txn-meta { font-size:11px; color:var(--text-dim); font-family:var(--mono); margin-top:3px; }
+.txn-amt { font-family:var(--mono); font-size:14px; font-weight:500; white-space:nowrap; flex-shrink:0; }
+.txn-amt.inc { color:var(--green); }
+.txn-amt.exp { color:var(--red); }
 
-/* expand btn */
-.xbtn{
-  display:flex;align-items:center;justify-content:center;gap:8px;
-  width:100%;margin-top:12px;padding:11px;
-  background:none;border:1px solid var(--border);border-radius:var(--rsm);
-  cursor:pointer;font-family:var(--mono);font-size:11px;
-  letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);
-  transition:border-color .2s,color .2s;
+/* monthly history */
+.hist-nav {
+  display:flex; align-items:center; justify-content:space-between; margin-bottom:22px;
 }
-.xbtn:hover{border-color:var(--bord-gold);color:var(--gold)}
-.xarrow{display:inline-block;transition:transform .3s}
-.xarrow.open{transform:rotate(180deg)}
-
-/* ═══════════════════════════════════════════════════════
-   MONTHLY HISTORY
-   ═══════════════════════════════════════════════════════ */
-.hist-nav{
-  display:flex;align-items:center;justify-content:space-between;
-  margin-bottom:22px;
-}
-.hist-btn{
-  width:44px;height:44px;border-radius:var(--rsm);
-  border:1px solid var(--border);background:none;
-  color:var(--text-mid);font-size:20px;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;
-  flex-shrink:0;
+.hist-btn {
+  width:44px; height:44px; border-radius:var(--rsm);
+  border:1px solid var(--border); background:none;
+  color:var(--text-mid); font-size:20px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
   transition:border-color .2s,color .2s,background .15s;
-  /* generous tap target on mobile */
-  -webkit-tap-highlight-color:rgba(240,180,41,.15);
-  touch-action:manipulation;
-  user-select:none;
+  -webkit-tap-highlight-color:transparent; touch-action:manipulation;
 }
-.hist-btn:not([disabled]):hover{border-color:var(--bord-gold);color:var(--gold);background:var(--gold-glow)}
-.hist-btn:not([disabled]):active{background:rgba(240,180,41,.18)}
-.hist-btn[disabled]{opacity:.2;cursor:default;pointer-events:none}
-.hist-month{
-  font-family:var(--display);font-size:22px;
-  letter-spacing:.05em;color:var(--text);text-align:center;flex:1;padding:0 10px;
+.hist-btn:not([disabled]):active { border-color:var(--bord-gold); color:var(--gold); background:var(--gold-dim); }
+.hist-btn[disabled] { opacity:.2; pointer-events:none; }
+.hist-month {
+  font-family:var(--display); font-size:22px;
+  letter-spacing:0.05em; color:var(--text); text-align:center; flex:1; padding:0 10px;
 }
-.hist-sum{
-  display:grid;grid-template-columns:repeat(3,1fr);
-  gap:8px;margin-bottom:24px;
+.hist-sum {
+  display:grid; grid-template-columns:repeat(3,1fr);
+  gap:8px; margin-bottom:24px;
 }
-.hbox{background:var(--surface2);border-radius:var(--rsm);padding:12px 10px;min-width:0;overflow:hidden}
-.hbox-lbl{
-  font-family:var(--mono);font-size:10px;letter-spacing:.08em;
-  text-transform:uppercase;color:var(--text-mid);font-weight:600;margin-bottom:6px;
+.hbox { background:var(--surface2); border-radius:var(--rsm); padding:12px 10px; min-width:0; overflow:hidden; }
+.hbox-lbl {
+  font-family:var(--mono); font-size:10px; letter-spacing:0.08em;
+  text-transform:uppercase; color:var(--text-mid); font-weight:600; margin-bottom:6px;
 }
-.hbox-val{font-family:var(--mono);font-size:15px;font-weight:400;word-break:break-all}
-.hbox-val.c-inc{color:var(--green)}
-.hbox-val.c-exp{color:var(--red)}
-.hbox-val.c-pos{color:var(--gold)}
-.hbox-val.c-neg{color:var(--red)}
-.hist-sub{
-  font-family:var(--mono);font-size:10px;letter-spacing:.15em;
-  text-transform:uppercase;color:var(--text-mid);font-weight:600;
-  padding-bottom:8px;margin-bottom:10px;border-bottom:1px solid var(--border);
+.hbox-val { font-family:var(--mono); font-size:15px; font-weight:400; word-break:break-all; }
+.hist-sub {
+  font-family:var(--mono); font-size:10px; letter-spacing:0.15em;
+  text-transform:uppercase; color:var(--text-mid); font-weight:600;
+  padding-bottom:8px; margin-bottom:10px; border-bottom:1px solid var(--border);
 }
-.hbar{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.03)}
-.hbar:last-child{border-bottom:none}
-.hbar-name{font-size:13px;color:var(--text-mid);width:120px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hbar-track{flex:1;height:5px;background:var(--surface2);border-radius:99px;overflow:hidden}
-.hbar-fill{height:100%;border-radius:99px;transition:width .5s cubic-bezier(.4,0,.2,1)}
-.hbar-amt{font-family:var(--mono);font-size:12px;color:var(--text);width:80px;text-align:right;flex-shrink:0}
-.hempty{
-  font-family:var(--mono);font-size:12px;color:var(--text-dim);
-  letter-spacing:.08em;padding:20px 0;text-align:center;
-}
-.hloading{
-  font-family:var(--mono);font-size:12px;color:var(--text-dim);
-  letter-spacing:.08em;padding:16px 0;text-align:center;
-  animation:pulse 1.4s ease-in-out infinite;
-}
-@keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+.hbar { display:flex; align-items:center; gap:8px; padding:7px 0; border-bottom:1px solid rgba(255,255,255,.03); }
+.hbar:last-child { border-bottom:none; }
+.hbar-name { font-size:13px; color:var(--text-mid); width:120px; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hbar-track { flex:1; height:5px; background:var(--surface2); border-radius:99px; overflow:hidden; }
+.hbar-fill { height:100%; border-radius:99px; transition:width .5s cubic-bezier(.4,0,.2,1); }
+.hbar-amt { font-family:var(--mono); font-size:12px; color:var(--text); width:80px; text-align:right; flex-shrink:0; }
+.hempty { font-family:var(--mono); font-size:12px; color:var(--text-dim); letter-spacing:.08em; padding:20px 0; text-align:center; }
+.hloading { font-family:var(--mono); font-size:12px; color:var(--text-dim); letter-spacing:.08em; padding:16px 0; text-align:center; animation:pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:.4} 50%{opacity:1} }
 
-/* footer */
-footer{
-  border-top:1px solid var(--border);padding-top:24px;text-align:center;
-  font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:.08em;
-}
+/* loading placeholder */
+.loading-ph { color:var(--text-dim); font-family:var(--mono); font-size:12px; padding:20px 0; text-align:center; }
 
-/* On mobile hide cat rows beyond 3rd */
-@media(max-width:800px){
-  #cat-list .cat-row:nth-child(n+4){ display:none; }
-}
 /* responsive */
-@media(max-width:560px){
-  .sum-grid{grid-template-columns:1fr}
-  .bal-grid{grid-template-columns:repeat(2,1fr)}
-  .wrap{padding:0 14px 60px}
+@media(max-width:800px) {
+  .charts-row { grid-template-columns:1fr; }
+  #card-cat  .cwrap { height:140px; }
+  #card-trend .cwrap { height:180px; flex:none; }
+}
+@media(max-width:560px) {
+  .sum-grid { grid-template-columns:1fr; }
+  .bal-grid { grid-template-columns:repeat(2,1fr); }
+  .page { padding-left:14px; padding-right:14px; }
 }
 </style>
 </head>
@@ -295,96 +360,126 @@ footer{
 <div class="bg-glow"></div>
 <div class="bg-grid"></div>
 
-<div class="wrap">
-
-  <!-- Header -->
-  <header>
-    <div class="logo">Mike <span>Finance</span></div>
-    <div class="hdr-right">
-      <div class="hdr-date" id="hdr-date">—</div>
-      <div class="hdr-live"><span class="live-dot"></span> LIVE</div>
+<!-- Top Bar -->
+<div class="topbar">
+  <div class="topbar-logo">Mike <span>Finance</span></div>
+  <div class="topbar-right">
+    <div style="text-align:right">
+      <div class="topbar-date" id="hdr-date">—</div>
+      <div class="live-badge"><span class="live-dot"></span> LIVE</div>
     </div>
-  </header>
+    <button class="ham-btn" id="ham-btn" aria-label="Menu">
+      <div class="ham-line"></div>
+      <div class="ham-line"></div>
+      <div class="ham-line"></div>
+    </button>
+  </div>
+</div>
 
-  <!-- Balances -->
+<!-- Drawer Overlay -->
+<div class="drawer-overlay" id="drawer-overlay"></div>
+
+<!-- Drawer -->
+<div class="drawer" id="drawer">
+  <div class="drawer-header">
+    <div class="drawer-title">Mike <span style="color:var(--gold)">Finance</span></div>
+    <div class="drawer-sub">Navigate to a section</div>
+  </div>
+  <nav class="drawer-nav">
+    <div class="nav-item active" data-page="page-balances">
+      <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg></span>
+      <span class="nav-label">Account Balances</span>
+    </div>
+    <div class="nav-item" data-page="page-thismonth">
+      <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+      <span class="nav-label">This Month</span>
+    </div>
+    <div class="nav-item" data-page="page-analytics">
+      <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
+      <span class="nav-label">Analytics</span>
+    </div>
+    <div class="nav-item" data-page="page-transactions">
+      <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg></span>
+      <span class="nav-label">Transactions</span>
+    </div>
+    <div class="nav-item" data-page="page-history">
+      <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><line x1="12" y1="7" x2="12" y2="12"/><line x1="12" y1="12" x2="15" y2="14"/></svg></span>
+      <span class="nav-label">Monthly History</span>
+    </div>
+  </nav>
+</div>
+
+<!-- ══ PAGE: Account Balances ════════════════════════════════════════════ -->
+<div class="page active" id="page-balances">
   <div class="sec">Account Balances</div>
   <div class="bal-grid" id="bal-grid">
-    <div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:20px 0">Loading…</div>
+    <div class="loading-ph">Loading…</div>
   </div>
+</div>
 
-  <!-- This Month -->
+<!-- ══ PAGE: This Month ══════════════════════════════════════════════════ -->
+<div class="page" id="page-thismonth">
   <div class="sec">This Month</div>
   <div class="sum-grid" id="sum-grid">
-    <div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:20px 0;grid-column:1/-1">Loading…</div>
+    <div class="loading-ph" style="grid-column:1/-1">Loading…</div>
   </div>
+</div>
 
-  <!-- Analytics -->
+<!-- ══ PAGE: Analytics ══════════════════════════════════════════════════ -->
+<div class="page" id="page-analytics">
   <div class="sec">Analytics</div>
   <div class="charts-row">
     <div class="card" id="card-cat">
       <div class="chart-ttl">Spending Categories</div>
-      <div class="chart-canvas-wrap"><canvas id="c-donut"></canvas></div>
+      <div class="cwrap"><canvas id="c-donut"></canvas></div>
       <div id="cat-list" style="margin-top:12px"></div>
     </div>
     <div class="card" id="card-trend">
       <div class="chart-ttl">6-Month Overview</div>
-      <div class="chart-canvas-wrap"><canvas id="c-bar"></canvas></div>
+      <div class="cwrap"><canvas id="c-bar"></canvas></div>
     </div>
   </div>
+</div>
 
-  <!-- Recent Transactions -->
+<!-- ══ PAGE: Transactions ════════════════════════════════════════════════ -->
+<div class="page" id="page-transactions">
   <div class="sec">Recent Transactions</div>
-  <div class="card" id="card-txn">
+  <div class="card">
     <div class="txn-list" id="txn-latest">
-      <div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:20px 0;text-align:center">Loading…</div>
+      <div class="loading-ph">Loading…</div>
     </div>
     <div id="txn-older-wrap" style="display:none">
       <div class="txn-list" id="txn-older"></div>
     </div>
-    <button class="xbtn" id="xbtn" style="display:none">
-      <span id="xlbl">Show older transactions</span>
-      <span class="xarrow" id="xarrow">▼</span>
+    <button id="xbtn" style="display:none;width:100%;margin-top:12px;padding:11px;background:none;border:1px solid var(--border);border-radius:var(--rsm);cursor:pointer;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);-webkit-tap-highlight-color:transparent">
+      <span id="xlbl">Show older transactions</span> <span id="xarrow">▼</span>
     </button>
   </div>
+</div>
 
-  <!-- Monthly History -->
-  <div class="sec" style="margin-top:40px">Monthly History</div>
-  <div class="card in" id="card-hist">
-
+<!-- ══ PAGE: Monthly History ════════════════════════════════════════════ -->
+<div class="page" id="page-history">
+  <div class="sec">Monthly History</div>
+  <div class="card">
     <div class="hist-nav">
       <button class="hist-btn" id="btn-prev">&#8592;</button>
       <div class="hist-month" id="hist-lbl">—</div>
       <button class="hist-btn" id="btn-next">&#8594;</button>
     </div>
-
     <div class="hist-sum">
-      <div class="hbox">
-        <div class="hbox-lbl">Income</div>
-        <div class="hbox-val c-inc" id="h-inc">—</div>
-      </div>
-      <div class="hbox">
-        <div class="hbox-lbl">Expenses</div>
-        <div class="hbox-val c-exp" id="h-exp">—</div>
-      </div>
-      <div class="hbox">
-        <div class="hbox-lbl">Net</div>
-        <div class="hbox-val" id="h-net">—</div>
-      </div>
+      <div class="hbox"><div class="hbox-lbl">Income</div><div class="hbox-val c-inc" id="h-inc">—</div></div>
+      <div class="hbox"><div class="hbox-lbl">Expenses</div><div class="hbox-val c-exp" id="h-exp">—</div></div>
+      <div class="hbox"><div class="hbox-lbl">Net</div><div class="hbox-val" id="h-net">—</div></div>
     </div>
-
     <div class="hist-sub">Spending Breakdown</div>
     <div id="h-cats"><div class="hloading">Loading…</div></div>
-
     <div class="hist-sub" style="margin-top:22px">All Transactions</div>
     <div class="txn-list" id="h-txns"></div>
-
   </div>
-
-  <footer>Mike Finance &middot; Bangkok Time &middot; Built with Claude</footer>
 </div>
 
 <script>
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 function el(id) { return document.getElementById(id); }
 
 function fmt(n) {
@@ -394,24 +489,16 @@ function fmt(n) {
 function countUp(node, target, prefix, ms) {
   var t0 = performance.now();
   (function tick(now) {
-    var p  = Math.min((now - t0) / ms, 1);
+    var p = Math.min((now - t0) / ms, 1);
     var ep = 1 - Math.pow(1 - p, 3);
     node.textContent = prefix + (target * ep).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
     if (p < 1) requestAnimationFrame(tick);
   })(performance.now());
 }
 
-function reveal(nodes, delay) {
-  nodes.forEach(function(n, i) {
-    setTimeout(function() { n.classList.add('in'); }, (delay || 0) + i * 60);
-  });
-}
-
 var MNAMES = ['','January','February','March','April','May','June',
               'July','August','September','October','November','December'];
-
 var PALETTE = ['#f0b429','#1fd6a0','#7b6ffc','#f0645a','#4dc4ff','#ffb347','#b4e4a2','#ffd3b6'];
-
 var CEMOJI = {
   'Food & Drinks':'🍜','Coffee':'☕','Transport':'🚕','Groceries':'🛒',
   'Housing':'🏠','Health':'💊','Shopping':'👗','Entertainment':'🎉',
@@ -424,15 +511,54 @@ var CEMOJI = {
 Chart.defaults.color = '#4a566a';
 Chart.defaults.font.family = "'JetBrains Mono', monospace";
 
-// Date header
+// Date
 (function() {
   var opts = {timeZone:'Asia/Bangkok',weekday:'short',year:'numeric',month:'long',day:'numeric'};
   el('hdr-date').textContent = new Date().toLocaleDateString('en-US', opts).toUpperCase();
 })();
 
+// ─── Navigation ────────────────────────────────────────────────────────────────
+var currentPage = 'page-balances';
+var chartsBuilt = false;
+
+function openDrawer() {
+  el('drawer').classList.add('open');
+  el('drawer-overlay').classList.add('open');
+}
+function closeDrawer() {
+  el('drawer').classList.remove('open');
+  el('drawer-overlay').classList.remove('open');
+}
+
+function goToPage(pageId) {
+  if (currentPage === pageId) { closeDrawer(); return; }
+
+  // Hide old page, show new
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  el(pageId).classList.add('active');
+
+  // Update nav active state
+  document.querySelectorAll('.nav-item').forEach(function(item) {
+    item.classList.toggle('active', item.dataset.page === pageId);
+  });
+
+  currentPage = pageId;
+  closeDrawer();
+
+  // Scroll to top
+  window.scrollTo({top: 0, behavior: 'instant'});
+
+  // Lazy load analytics charts only when that page is first opened
+  if (pageId === 'page-analytics' && !chartsBuilt) {
+    chartsBuilt = true;
+    loadCategories();
+    loadMonthly();
+  }
+}
+
 // ─── Balances ─────────────────────────────────────────────────────────────────
 async function loadBalances() {
-  var data  = await fetch('/api/balances').then(function(r) { return r.json(); });
+  var data = await fetch('/api/balances').then(function(r) { return r.json(); });
   var total = data.reduce(function(s, a) { return s + a.balance; }, 0);
 
   el('bal-grid').innerHTML = data.map(function(a) {
@@ -448,7 +574,6 @@ async function loadBalances() {
     '<div class="bal-num" data-v="' + total + '"><span class="cur">\u0e3f</span><span class="n">—</span></div>' +
   '</div>';
 
-  reveal(Array.from(el('bal-grid').querySelectorAll('.card')));
   setTimeout(function() {
     el('bal-grid').querySelectorAll('.bal-num').forEach(function(node) {
       countUp(node.querySelector('.n'), parseFloat(node.dataset.v), '', 1200);
@@ -456,30 +581,23 @@ async function loadBalances() {
   }, 80);
 }
 
-// ─── Summary ─────────────────────────────────────────────────────────────────
+// ─── Summary ──────────────────────────────────────────────────────────────────
 async function loadSummary() {
   var resp = await fetch('/api/summary').then(function(r) { return r.json(); });
-  var cur  = resp.this_month;
-  var prev = resp.last_month;
+  var cur = resp.this_month, prev = resp.last_month;
 
   function delta(c, p, inv) {
     if (!p) return '';
-    var d   = ((c - p) / Math.abs(p) * 100).toFixed(1);
-    var up  = inv ? d < 0 : d > 0;
-    return '<div class="sum-chg ' + (up ? 'up' : 'down') + '">' +
-      (d > 0 ? '↑' : '↓') + ' ' + Math.abs(d) + '% vs last month</div>';
+    var d = ((c - p) / Math.abs(p) * 100).toFixed(1);
+    var up = inv ? d < 0 : d > 0;
+    return '<div class="sum-chg ' + (up ? 'up' : 'down') + '">' + (d > 0 ? '↑' : '↓') + ' ' + Math.abs(d) + '% vs last month</div>';
   }
 
   el('sum-grid').innerHTML =
-    '<div class="card"><div class="sum-lbl">Income</div>' +
-    '<div class="sum-val c-inc" data-v="' + cur.income + '">\u0e3f—</div>' + delta(cur.income, prev.income) + '</div>' +
-    '<div class="card"><div class="sum-lbl">Expenses</div>' +
-    '<div class="sum-val c-exp" data-v="' + cur.expense + '">\u0e3f—</div>' + delta(cur.expense, prev.expense, true) + '</div>' +
-    '<div class="card"><div class="sum-lbl">Net Savings</div>' +
-    '<div class="sum-val ' + (cur.net >= 0 ? 'c-pos' : 'c-neg') + '" data-v="' + Math.abs(cur.net) + '">' +
-    (cur.net < 0 ? '-' : '') + '\u0e3f—</div>' + delta(cur.net, prev.net) + '</div>';
+    '<div class="card"><div class="sum-lbl">Income</div><div class="sum-val c-inc" data-v="' + cur.income + '">\u0e3f—</div>' + delta(cur.income, prev.income) + '</div>' +
+    '<div class="card"><div class="sum-lbl">Expenses</div><div class="sum-val c-exp" data-v="' + cur.expense + '">\u0e3f—</div>' + delta(cur.expense, prev.expense, true) + '</div>' +
+    '<div class="card"><div class="sum-lbl">Net Savings</div><div class="sum-val ' + (cur.net >= 0 ? 'c-pos' : 'c-neg') + '" data-v="' + Math.abs(cur.net) + '">' + (cur.net < 0 ? '-' : '') + '\u0e3f—</div>' + delta(cur.net, prev.net) + '</div>';
 
-  reveal(Array.from(el('sum-grid').querySelectorAll('.card')), 80);
   setTimeout(function() {
     el('sum-grid').querySelectorAll('.sum-val').forEach(function(node) {
       var neg = node.textContent.startsWith('-');
@@ -488,10 +606,9 @@ async function loadSummary() {
   }, 200);
 }
 
-// ─── Categories donut ─────────────────────────────────────────────────────────
+// ─── Charts ───────────────────────────────────────────────────────────────────
 async function loadCategories() {
   var cats = await fetch('/api/categories').then(function(r) { return r.json(); });
-  el('card-cat').classList.add('in');
   if (!cats.length) {
     el('cat-list').innerHTML = '<div style="color:var(--text-dim);font-size:12px;padding:16px 0;font-family:var(--mono)">No expense data this month</div>';
     return;
@@ -515,17 +632,13 @@ async function loadCategories() {
     }
   });
   el('cat-list').innerHTML = cats.slice(0, 6).map(function(c, i) {
-    return '<div class="cat-row">' +
-      '<div class="cat-left"><span class="cat-dot" style="background:' + PALETTE[i] + '"></span>' +
-      (CEMOJI[c.category] || '🧾') + ' ' + c.category + '</div>' +
-      '<span class="cat-amt">' + fmt(c.total) + '</span></div>';
+    return '<div class="cat-row"><div class="cat-left"><span class="cat-dot" style="background:' + PALETTE[i] + '"></span>' +
+      (CEMOJI[c.category] || '🧾') + ' ' + c.category + '</div><span class="cat-amt">' + fmt(c.total) + '</span></div>';
   }).join('');
 }
 
-// ─── Bar chart ────────────────────────────────────────────────────────────────
 async function loadMonthly() {
   var data = await fetch('/api/monthly').then(function(r) { return r.json(); });
-  el('card-trend').classList.add('in');
   new Chart(el('c-bar').getContext('2d'), {
     type: 'bar',
     data: {
@@ -555,165 +668,136 @@ async function loadMonthly() {
   });
 }
 
-// ─── Transactions ─────────────────────────────────────────────────────────────
+// ─── Transactions ──────────────────────────────────────────────────────────────
 function buildRows(txns) {
   return txns.map(function(t) {
     var isInc = t.type === 'income';
     var emoji = CEMOJI[t.category] || (isInc ? '💵' : '💸');
-    var ts    = (t.timestamp || '').substring(0, 16).replace('T', ' ');
-    var cls   = isInc ? 'inc' : 'exp';
+    var ts = (t.timestamp || '').substring(0, 16).replace('T', ' ');
+    var cls = isInc ? 'inc' : 'exp';
     return '<div class="txn">' +
       '<div class="txn-icon ' + cls + '">' + emoji + '</div>' +
-      '<div class="txn-body">' +
-        '<div class="txn-desc">' + (t.description || '') + '</div>' +
-        '<div class="txn-meta">' + (t.category || '') + ' · ' + (t.account || '') + ' · ' + ts + '</div>' +
-      '</div>' +
-      '<div class="txn-amt ' + cls + '">' + (isInc ? '+' : '−') + fmt(t.amount) + '</div>' +
-    '</div>';
+      '<div class="txn-body"><div class="txn-desc">' + (t.description || '') + '</div>' +
+      '<div class="txn-meta">' + (t.category || '') + ' · ' + (t.account || '') + ' · ' + ts + '</div></div>' +
+      '<div class="txn-amt ' + cls + '">' + (isInc ? '+' : '−') + fmt(t.amount) + '</div></div>';
   }).join('');
 }
 
 async function loadTransactions() {
   var txns = await fetch('/api/transactions').then(function(r) { return r.json(); });
-  el('card-txn').classList.add('in');
   if (!txns.length) {
-    el('txn-latest').innerHTML = '<div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:20px 0;text-align:center">No transactions yet</div>';
+    el('txn-latest').innerHTML = '<div class="loading-ph">No transactions yet</div>';
     return;
   }
   el('txn-latest').innerHTML = buildRows(txns.slice(0, 1));
   if (txns.length > 1) {
     el('txn-older').innerHTML = buildRows(txns.slice(1));
     var btn = el('xbtn');
-    btn.style.display = 'flex';
+    btn.style.display = 'block';
     btn.addEventListener('click', function() {
-      var wrap  = el('txn-older-wrap');
-      var arrow = el('xarrow');
-      var lbl   = el('xlbl');
-      var open  = wrap.style.display === 'none';
+      var wrap = el('txn-older-wrap');
+      var open = wrap.style.display === 'none';
       wrap.style.display = open ? 'block' : 'none';
-      arrow.classList.toggle('open', open);
-      lbl.textContent = open ? 'Hide older transactions' : 'Show older transactions';
+      el('xlbl').textContent = open ? 'Hide older' : 'Show older transactions';
+      el('xarrow').textContent = open ? '▲' : '▼';
     });
   }
 }
 
 // ─── Monthly History ──────────────────────────────────────────────────────────
-//
-// Build 3 months: [0]=current, [1]=last month, [2]=two months ago
-// idx=0 → newest, idx=2 → oldest
-// btn-prev (←) goes to OLDER → increases idx
-// btn-next (→) goes to NEWER → decreases idx
-//
 var HIST = (function() {
-  var list = [];
-  var d    = new Date();
+  var list = [], d = new Date();
   for (var i = 0; i < 3; i++) {
-    var m = d.getMonth() + 1 - i;   // JS months are 0-based
-    var y = d.getFullYear();
+    var m = d.getMonth() + 1 - i, y = d.getFullYear();
     if (m <= 0) { m += 12; y--; }
     list.push({ year: y, month: m });
   }
   return list;
 }());
-
-var hIdx = 0;  // start at current month
+var hIdx = 0;
 
 function hUpdateBtns() {
-  // ← prev = go back in time = higher index
-  el('btn-prev').disabled = (hIdx >= HIST.length - 1);
-  // → next = go forward in time = lower index
-  el('btn-next').disabled = (hIdx <= 0);
+  el('btn-prev').disabled = hIdx >= HIST.length - 1;
+  el('btn-next').disabled = hIdx <= 0;
 }
 
 async function hRender() {
-  var entry = HIST[hIdx];
-  var year  = entry.year;
-  var month = entry.month;
-
-  el('hist-lbl').textContent  = MNAMES[month] + ' ' + year;
-  el('h-inc').textContent     = '…';
-  el('h-exp').textContent     = '…';
-  el('h-net').textContent     = '…';
-  el('h-cats').innerHTML      = '<div class="hloading">Loading…</div>';
-  el('h-txns').innerHTML      = '';
+  var e = HIST[hIdx], year = e.year, month = e.month;
+  el('hist-lbl').textContent = MNAMES[month] + ' ' + year;
+  el('h-inc').textContent = '…';
+  el('h-exp').textContent = '…';
+  el('h-net').textContent = '…';
+  el('h-cats').innerHTML = '<div class="hloading">Loading…</div>';
+  el('h-txns').innerHTML = '';
   hUpdateBtns();
 
   var data;
   try {
     var res = await fetch('/api/month/' + year + '/' + month);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    if (!res.ok) throw new Error();
     data = await res.json();
-  } catch (e) {
-    el('h-inc').textContent  = '\u0e3f0.00';
-    el('h-exp').textContent  = '\u0e3f0.00';
-    el('h-net').textContent  = '\u0e3f0.00';
-    el('h-cats').innerHTML   = '<div class="hempty">No data for this month</div>';
+  } catch(err) {
+    el('h-inc').textContent = '\u0e3f0.00';
+    el('h-exp').textContent = '\u0e3f0.00';
+    el('h-net').textContent = '\u0e3f0.00';
+    el('h-cats').innerHTML = '<div class="hempty">No data for this month</div>';
     return;
   }
 
   el('h-inc').textContent = fmt(data.income);
   el('h-exp').textContent = fmt(data.expense);
-
   var netEl = el('h-net');
   netEl.textContent = (data.net < 0 ? '−' : '') + fmt(Math.abs(data.net));
-  netEl.className   = 'hbox-val ' + (data.net >= 0 ? 'c-pos' : 'c-neg');
+  netEl.className = 'hbox-val ' + (data.net >= 0 ? 'c-pos' : 'c-neg');
 
   if (data.categories && data.categories.length) {
     var mx = data.categories[0].total || 1;
     el('h-cats').innerHTML = data.categories.map(function(cat, i) {
-      var pct = ((cat.total / mx) * 100).toFixed(1);
-      return '<div class="hbar">' +
-        '<div class="hbar-name">' + (CEMOJI[cat.category] || '🧾') + ' ' + cat.category + '</div>' +
-        '<div class="hbar-track"><div class="hbar-fill" style="width:' + pct + '%;background:' + PALETTE[i % PALETTE.length] + '"></div></div>' +
-        '<div class="hbar-amt">' + fmt(cat.total) + '</div>' +
-      '</div>';
+      return '<div class="hbar"><div class="hbar-name">' + (CEMOJI[cat.category] || '🧾') + ' ' + cat.category + '</div>' +
+        '<div class="hbar-track"><div class="hbar-fill" style="width:' + ((cat.total/mx)*100).toFixed(1) + '%;background:' + PALETTE[i % PALETTE.length] + '"></div></div>' +
+        '<div class="hbar-amt">' + fmt(cat.total) + '</div></div>';
     }).join('');
   } else {
     el('h-cats').innerHTML = '<div class="hempty">No expenses this month</div>';
   }
-
   el('h-txns').innerHTML = (data.transactions && data.transactions.length)
     ? buildRows(data.transactions)
     : '<div class="hempty">No transactions this month</div>';
 }
 
-// Wire arrow buttons with addEventListener (most reliable on mobile)
+// ─── Init ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function() {
 
+  // Hamburger
+  el('ham-btn').addEventListener('click', openDrawer);
+  el('drawer-overlay').addEventListener('click', closeDrawer);
+
+  // Nav items
+  document.querySelectorAll('.nav-item').forEach(function(item) {
+    item.addEventListener('click', function() { goToPage(item.dataset.page); });
+  });
+
+  // Monthly history arrows
   el('btn-prev').addEventListener('click', function() {
-    if (hIdx < HIST.length - 1) {
-      hIdx++;
-      hRender();
-    }
+    if (hIdx < HIST.length - 1) { hIdx++; hRender(); }
   });
-
   el('btn-next').addEventListener('click', function() {
-    if (hIdx > 0) {
-      hIdx--;
-      hRender();
-    }
+    if (hIdx > 0) { hIdx--; hRender(); }
   });
 
-  // Render current month immediately
+  // Load data for all pages upfront (except analytics — lazy loaded on open)
   hRender();
-
-  // Load rest of dashboard
   Promise.all([
     loadBalances(),
     loadSummary(),
-    loadCategories(),
-    loadMonthly(),
     loadTransactions()
   ]).catch(function(err) { console.error('Dashboard error:', err); });
-
 });
 
 // ─── PWA Service Worker ───────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {
-    navigator.serviceWorker.register('/sw.js').catch(function(err) {
-      // SW registration failed — app still works fine, just not installable offline
-    });
+    navigator.serviceWorker.register('/sw.js').catch(function() {});
   });
 }
 </script>
