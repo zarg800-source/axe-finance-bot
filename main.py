@@ -1085,7 +1085,7 @@ async def cmd_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     lines = ["📜 *Recent Transactions:*\n"]
     for t in txns:
-        emoji = "💵" if t['type'] == 'income' else "💸"
+        emoji = "💵" if t['type'] == 'income' else ("🔄" if t['type'] == 'transfer' else "💸")
         lines.append(
             f"{emoji} ฿{abs(t['amount']):,.2f} — {t['description']}\n"
             f"   📂 {t['category']} | 🏦 {t['account']} | {t['timestamp'][:16]}"
@@ -2279,7 +2279,7 @@ async def button_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             lines = ["📜 *Recent Transactions:*\n"]
             for t in txns:
-                emoji = "💵" if t['type'] == 'income' else "💸"
+                emoji = "💵" if t['type'] == 'income' else ("🔄" if t['type'] == 'transfer' else "💸")
                 lines.append(
                     f"{emoji} ฿{abs(t['amount']):,.2f} — {t['description']}\n"
                     f"   📂 {t['category']} | 🏦 {t['account']} | {t['timestamp'][:16]}"
@@ -2960,11 +2960,11 @@ async def transfer_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
     c.execute("UPDATE accounts SET balance = balance - ? WHERE user_id = ? AND name = ?", (amount, AUTHORIZED_USER_ID, from_acc))
     c.execute("UPDATE accounts SET balance = balance + ? WHERE user_id = ? AND name = ?", (amount, AUTHORIZED_USER_ID, to_acc))
     c.execute(
-        "INSERT INTO transactions (user_id, amount, description, type, category, account) VALUES (?, ?, ?, 'expense', 'Other', ?)",
+        "INSERT INTO transactions (user_id, amount, description, type, category, account) VALUES (?, ?, ?, 'transfer', 'Transfer', ?)",
         (AUTHORIZED_USER_ID, -amount, f"Transfer to {to_acc}", from_acc)
     )
     c.execute(
-        "INSERT INTO transactions (user_id, amount, description, type, category, account) VALUES (?, ?, ?, 'income', 'Other', ?)",
+        "INSERT INTO transactions (user_id, amount, description, type, category, account) VALUES (?, ?, ?, 'transfer', 'Transfer', ?)",
         (AUTHORIZED_USER_ID, amount, f"Transfer from {from_acc}", to_acc)
     )
     conn.commit()
@@ -3247,14 +3247,16 @@ async def export_input_handler(update: Update, context: ContextTypes.DEFAULT_TYP
 
     for ri, txn in enumerate(txns, header_row + 1):
         ts, typ, amt, desc, cat, acc = txn
-        is_inc = typ == 'income'
-        val    = abs(float(amt))
+        is_inc   = typ == 'income'
+        is_trans = typ == 'transfer'
+        val      = abs(float(amt))
         running += val if is_inc else -val
-        if is_inc: income_total  += val
-        else:      expense_total += val
+        if is_inc:             income_total  += val
+        elif typ == 'expense': expense_total += val
+        # transfers excluded from income/expense totals
 
         row_fill   = fill("131B27") if ri % 2 == 0 else fill(SURFACE)
-        amt_color  = GREEN if is_inc else RED
+        amt_color  = GREEN if is_inc else ("8896a8" if is_trans else RED)
         row_data   = [
             (ts[:16].replace("T", " ") if ts else "", left_al,   cell_font(color=MID),          None),
             (typ.title(),                              center,    cell_font(color=GOLD, bold=True), None),

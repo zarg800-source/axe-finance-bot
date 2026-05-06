@@ -70,6 +70,7 @@ def api_summary():
             """SELECT type, SUM(ABS(amount)) as total
                FROM transactions
                WHERE timestamp >= ? AND timestamp < ?
+               AND type != 'transfer'
                GROUP BY type""",
             (start_str, end_str)
         )
@@ -142,6 +143,7 @@ def api_monthly():
             """SELECT type, SUM(ABS(amount)) as total
                FROM transactions
                WHERE timestamp >= ? AND timestamp < ?
+               AND type != 'transfer'
                GROUP BY type""",
             (month_start, month_end)
         )
@@ -186,6 +188,7 @@ def api_month_detail(year, month):
         """SELECT type, SUM(ABS(amount)) as total
            FROM transactions
            WHERE timestamp >= ? AND timestamp < ?
+           AND type != 'transfer'
            GROUP BY type""",
         (month_start, month_end)
     )
