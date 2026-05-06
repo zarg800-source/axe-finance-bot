@@ -2095,7 +2095,8 @@ def build_main_menu():
          InlineKeyboardButton("📋 Export", callback_data="menu_export")],
         [InlineKeyboardButton("🔄 Subscriptions", callback_data="menu_subs"),
          InlineKeyboardButton("📂 Categories", callback_data="menu_categories")],
-        [InlineKeyboardButton("⚙️ Settings", callback_data="menu_settings")],
+        [InlineKeyboardButton("💾 Backup DB", callback_data="menu_backup"),
+         InlineKeyboardButton("⚙️ Settings", callback_data="menu_settings")],
     ]
     return InlineKeyboardMarkup(keyboard)
 
@@ -2312,6 +2313,30 @@ async def button_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN
         )
         return SUB_MENU
+
+    elif data == "menu_backup":
+        await query.answer("Generating backup…")
+        try:
+            db_path = DATABASE_NAME
+            size_kb = os.path.getsize(db_path) / 1024
+            now_str = datetime.now(BANGKOK_TZ).strftime('%Y%m%d_%H%M')
+            filename = f"finance_backup_{now_str}.db"
+            with open(db_path, 'rb') as f:
+                await query.message.reply_document(
+                    document=f,
+                    filename=filename,
+                    caption=(
+                        f"💾 *Database Backup*\n"
+                        f"📅 {datetime.now(BANGKOK_TZ).strftime('%d %b %Y %H:%M')} (Bangkok)\n"
+                        f"📦 {size_kb:.1f} KB\n\n"
+                        f"Keep this safe — it contains all your transactions."
+                    ),
+                    parse_mode=ParseMode.MARKDOWN
+                )
+        except Exception as e:
+            logger.error(f"Backup error: {e}")
+            await query.message.reply_text(f"❌ Backup failed: {e}")
+        return MENU_STATE
 
     elif data == "menu_settings":
         await query.edit_message_text(

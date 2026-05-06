@@ -390,18 +390,15 @@ body {
       <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg></span>
       <span class="nav-label">Account Balances</span>
     </div>
-    <div class="nav-item" data-page="page-thismonth">
-      <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
-      <span class="nav-label">This Month</span>
+    <div class="nav-item" data-page="page-overview">
+      <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg></span>
+      <span class="nav-label">Overview</span>
     </div>
     <div class="nav-item" data-page="page-analytics">
       <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
       <span class="nav-label">Analytics</span>
     </div>
-    <div class="nav-item" data-page="page-transactions">
-      <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg></span>
-      <span class="nav-label">Transactions</span>
-    </div>
+
     <div class="nav-item" data-page="page-history">
       <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><line x1="12" y1="7" x2="12" y2="12"/><line x1="12" y1="12" x2="15" y2="14"/></svg></span>
       <span class="nav-label">Monthly History</span>
@@ -417,12 +414,27 @@ body {
   </div>
 </div>
 
-<!-- ══ PAGE: This Month ══════════════════════════════════════════════════ -->
-<div class="page" id="page-thismonth">
+<!-- ══ PAGE: Overview (This Month + Transactions combined) ══════════════ -->
+<div class="page" id="page-overview">
+
   <div class="sec">This Month</div>
   <div class="sum-grid" id="sum-grid">
     <div class="loading-ph" style="grid-column:1/-1">Loading…</div>
   </div>
+
+  <div class="sec" style="margin-top:28px">Transactions</div>
+  <div class="card">
+    <div class="txn-list" id="txn-latest">
+      <div class="loading-ph">Loading…</div>
+    </div>
+    <div id="txn-older-wrap" style="display:none">
+      <div class="txn-list" id="txn-older"></div>
+    </div>
+    <button id="xbtn" style="display:none;width:100%;margin-top:12px;padding:11px;background:none;border:1px solid var(--border);border-radius:var(--rsm);cursor:pointer;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);-webkit-tap-highlight-color:transparent">
+      <span id="xlbl">Show older transactions</span> <span id="xarrow">▼</span>
+    </button>
+  </div>
+
 </div>
 
 <!-- ══ PAGE: Analytics ══════════════════════════════════════════════════ -->
@@ -441,21 +453,7 @@ body {
   </div>
 </div>
 
-<!-- ══ PAGE: Transactions ════════════════════════════════════════════════ -->
-<div class="page" id="page-transactions">
-  <div class="sec">Recent Transactions</div>
-  <div class="card">
-    <div class="txn-list" id="txn-latest">
-      <div class="loading-ph">Loading…</div>
-    </div>
-    <div id="txn-older-wrap" style="display:none">
-      <div class="txn-list" id="txn-older"></div>
-    </div>
-    <button id="xbtn" style="display:none;width:100%;margin-top:12px;padding:11px;background:none;border:1px solid var(--border);border-radius:var(--rsm);cursor:pointer;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);-webkit-tap-highlight-color:transparent">
-      <span id="xlbl">Show older transactions</span> <span id="xarrow">▼</span>
-    </button>
-  </div>
-</div>
+
 
 <!-- ══ PAGE: Monthly History ════════════════════════════════════════════ -->
 <div class="page" id="page-history">
