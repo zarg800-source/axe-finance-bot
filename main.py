@@ -2079,7 +2079,8 @@ async def startup_subscription_check(app):
  SETTINGS_MENU, UPD_BAL_ACCOUNT, UPD_BAL_AMOUNT,
  TRANSFER_FROM, TRANSFER_TO, TRANSFER_AMOUNT,
  SUB_MENU, SUB_ADD_NAME, SUB_ADD_AMOUNT, SUB_ADD_ACCOUNT, SUB_ADD_DATE,
- SUB_DEL_PICK, EXPORT_TYPE, EXPORT_INPUT) = range(21)
+ SUB_DEL_PICK, EXPORT_TYPE, EXPORT_INPUT,
+ ACC_MANAGE, ACC_ADD_NAME, ACC_ADD_BALANCE, ACC_DEL_PICK) = range(25)
 
 ACCOUNT_NAMES = ['Bangkok Bank', 'MRT EMV Visa', 'True Money Wallet', 'Cash', 'Rabbit Card', 'Muvmi', 'Solsot Member']
 
@@ -2153,16 +2154,23 @@ def build_income_category_keyboard():
 
 
 def build_account_keyboard(prefix="acc"):
-    """Build account selection keyboard."""
-    accs = [
-        ("🏦 Bangkok Bank",    f"{prefix}_Bangkok Bank"),
-        ("🚇 MRT EMV Visa",    f"{prefix}_MRT EMV Visa"),
-        ("📱 True Money",      f"{prefix}_True Money Wallet"),
-        ("💵 Cash",            f"{prefix}_Cash"),
-        ("🐇 Rabbit Card",     f"{prefix}_Rabbit Card"),
-        ("🛺 Muvmi",           f"{prefix}_Muvmi"),
-        ("🎫 Solsot Member",   f"{prefix}_Solsot Member"),
-    ]
+    """Build account selection keyboard dynamically from database."""
+    EMOJI_MAP = {
+        'Bangkok Bank': '🏦', 'True Money Wallet': '📱',
+        'MRT EMV Visa': '🚇', 'Rabbit Card': '🐇',
+        'Cash': '💵', 'Muvmi': '🛺', 'Solsot Member': '🎫',
+    }
+    # Load from DB so newly added accounts appear automatically
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("SELECT name FROM accounts WHERE user_id = ? ORDER BY id", (AUTHORIZED_USER_ID,))
+        names = [r['name'] for r in cur.fetchall()]
+        conn.close()
+    except Exception:
+        names = ACCOUNT_NAMES  # fallback to static list
+
+    accs = [(f"{EMOJI_MAP.get(n, '💳')} {n}", f"{prefix}_{n}") for n in names]
     keyboard = []
     for i in range(0, len(accs), 2):
         row = [InlineKeyboardButton(accs[i][0], callback_data=accs[i][1])]
@@ -2188,8 +2196,10 @@ def build_settings_menu():
     """Build settings submenu."""
     keyboard = [
         [InlineKeyboardButton("💰 Update Balance", callback_data="set_balance"),
-         InlineKeyboardButton("🔄 Transfer", callback_data="set_transfer")],
-        [InlineKeyboardButton("⬅️ Back", callback_data="back_main")],
+         InlineKeyboardButton("🔄 Transfer",        callback_data="set_transfer")],
+        [InlineKeyboardButton("➕ Add Account",     callback_data="set_acc_add"),
+         InlineKeyboardButton("🗑 Delete Account",  callback_data="set_acc_del")],
+        [InlineKeyboardButton("⬅️ Back",            callback_data="back_main")],
     ]
     return InlineKeyboardMarkup(keyboard)
 
@@ -2781,6 +2791,40 @@ async def settings_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
             parse_mode=ParseMode.MARKDOWN
         )
         return TRANSFER_FROM
+
+    elif query.data == "set_acc_add":
+        await query.edit_message_text(
+            "➕ *Add New Account*\n\n"
+            "Type the name of your new account.\n"
+            "Examples: `AIS Balance`, `SCB Bank`, `GrabPay`, `Line Pay`, `PTT Card`\n\n"
+            "Just type the name:",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return ACC_ADD_NAME
+
+    elif query.data == "set_acc_del":
+        # Load accounts dynamically from DB
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("SELECT name FROM accounts WHERE user_id = ? ORDER BY id", (AUTHORIZED_USER_ID,))
+        accounts = [r['name'] for r in cur.fetchall()]
+        conn.close()
+        keyboard = []
+        for i in range(0, len(accounts), 2):
+            row = [InlineKeyboardButton(f"🗑 {accounts[i]}", callback_data=f"accdel_{accounts[i]}")]
+            if i + 1 < len(accounts):
+                row.append(InlineKeyboardButton(f"🗑 {accounts[i+1]}", callback_data=f"accdel_{accounts[i+1]}"))
+            keyboard.append(row)
+        keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data="back_settings")])
+        await query.edit_message_text(
+            "🗑 *Delete Account*\n\n"
+            "⚠️ Deleting an account removes it from all menus. "
+            "Transactions linked to it are kept.\n\n"
+            "Which account do you want to delete?",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return ACC_DEL_PICK
 
     return SETTINGS_MENU
 
@@ -3415,6 +3459,173 @@ async def cmd_backup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ Backup failed: {e}")
 
 
+# ─── Account Management Handlers ──────────────────────────────────────────────
+
+@restricted
+async def acc_add_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Receive new account name from user."""
+    name = update.message.text.strip()
+    if len(name) < 1 or len(name) > 40:
+        await update.message.reply_text(
+            "❌ Name must be 1–40 characters. Try again:"
+        )
+        return ACC_ADD_NAME
+
+    # Check duplicate
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM accounts WHERE user_id = ? AND LOWER(name) = LOWER(?)",
+                (AUTHORIZED_USER_ID, name))
+    if cur.fetchone():
+        conn.close()
+        await update.message.reply_text(
+            f"❌ An account called *{name}* already exists. Try a different name:",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return ACC_ADD_NAME
+
+    context.user_data['new_acc_name'] = name
+    conn.close()
+    await update.message.reply_text(
+        f"✅ Name: *{name}*\n\n"
+        f"What is the starting balance? (type `0` if empty):",
+        parse_mode=ParseMode.MARKDOWN
+    )
+    return ACC_ADD_BALANCE
+
+
+@restricted
+async def acc_add_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Receive starting balance for new account."""
+    try:
+        balance = float(update.message.text.strip().replace(',', ''))
+    except ValueError:
+        await update.message.reply_text("❌ Invalid amount. Type a number (e.g. `0` or `1500`):")
+        return ACC_ADD_BALANCE
+
+    name = context.user_data.get('new_acc_name', 'New Account')
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO accounts (user_id, name, balance) VALUES (?, ?, ?)",
+        (AUTHORIZED_USER_ID, name, balance)
+    )
+    conn.commit()
+    conn.close()
+
+    # Add to ACCOUNT_NAMES list so it appears in all keyboards immediately
+    if name not in ACCOUNT_NAMES:
+        ACCOUNT_NAMES.append(name)
+
+    await update.message.reply_text(
+        f"🎉 *Account Added!*\n\n"
+        f"🏦 Name: *{name}*\n"
+        f"💰 Balance: ฿{balance:,.2f}\n\n"
+        f"It now appears in all account menus.",
+        reply_markup=build_main_menu(),
+        parse_mode=ParseMode.MARKDOWN
+    )
+    return MENU_STATE
+
+
+@restricted
+async def acc_del_pick(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle account deletion selection."""
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == "back_settings":
+        await query.edit_message_text(
+            "⚙️ *Settings*\n\nChoose an option:",
+            reply_markup=build_settings_menu(),
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return SETTINGS_MENU
+
+    acc_name = query.data.replace("accdel_", "")
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT balance FROM accounts WHERE user_id = ? AND name = ?",
+        (AUTHORIZED_USER_ID, acc_name)
+    )
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        await query.edit_message_text("❌ Account not found.")
+        return SETTINGS_MENU
+
+    # Confirm with balance warning
+    bal = row['balance']
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton(f"✅ Yes, delete {acc_name}", callback_data=f"accdelconfirm_{acc_name}")],
+        [InlineKeyboardButton("❌ Cancel", callback_data="set_acc_del")],
+    ])
+    conn.close()
+    await query.edit_message_text(
+        f"⚠️ *Confirm Delete*\n\n"
+        f"Account: *{acc_name}*\n"
+        f"Current balance: ฿{bal:,.2f}\n\n"
+        f"Transactions linked to this account are *kept* — "
+        f"only the account entry is removed.\n\n"
+        f"Are you sure?",
+        reply_markup=keyboard,
+        parse_mode=ParseMode.MARKDOWN
+    )
+    return ACC_DEL_PICK
+
+
+@restricted
+async def acc_del_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Actually delete the account after confirmation."""
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == "set_acc_del":
+        # User cancelled — go back to delete picker
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("SELECT name FROM accounts WHERE user_id = ? ORDER BY id", (AUTHORIZED_USER_ID,))
+        accounts = [r['name'] for r in cur.fetchall()]
+        conn.close()
+        keyboard = []
+        for i in range(0, len(accounts), 2):
+            row = [InlineKeyboardButton(f"🗑 {accounts[i]}", callback_data=f"accdel_{accounts[i]}")]
+            if i + 1 < len(accounts):
+                row.append(InlineKeyboardButton(f"🗑 {accounts[i+1]}", callback_data=f"accdel_{accounts[i+1]}"))
+            keyboard.append(row)
+        keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data="back_settings")])
+        await query.edit_message_text(
+            "🗑 *Delete Account*\n\nWhich account do you want to delete?",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return ACC_DEL_PICK
+
+    acc_name = query.data.replace("accdelconfirm_", "")
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        "DELETE FROM accounts WHERE user_id = ? AND name = ?",
+        (AUTHORIZED_USER_ID, acc_name)
+    )
+    conn.commit()
+    conn.close()
+
+    # Remove from ACCOUNT_NAMES
+    if acc_name in ACCOUNT_NAMES:
+        ACCOUNT_NAMES.remove(acc_name)
+
+    await query.edit_message_text(
+        f"✅ *{acc_name}* has been deleted.\n\n"
+        f"All transactions linked to it are still in your history.",
+        reply_markup=build_main_menu(),
+        parse_mode=ParseMode.MARKDOWN
+    )
+    return MENU_STATE
+
+
 # ─── Main ─────────────────────────────────────────────────────────────────────
 def main():
     init_db()
@@ -3509,6 +3720,16 @@ def main():
             EXPORT_INPUT: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, export_input_handler),
                 CallbackQueryHandler(export_type_handler, pattern=r'^export_month$|^export_year$|^back_main$'),
+            ],
+            ACC_ADD_NAME: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, acc_add_name),
+            ],
+            ACC_ADD_BALANCE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, acc_add_balance),
+            ],
+            ACC_DEL_PICK: [
+                CallbackQueryHandler(acc_del_pick,    pattern=r'^accdel_|^back_settings$'),
+                CallbackQueryHandler(acc_del_confirm, pattern=r'^accdelconfirm_|^set_acc_del$'),
             ],
         },
         fallbacks=[
