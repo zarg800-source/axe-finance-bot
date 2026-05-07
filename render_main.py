@@ -15,7 +15,40 @@ DATABASE   = '/data/finance.db'
 BANGKOK_TZ = pytz.timezone('Asia/Bangkok')
 DASHBOARD_HTML = '/app/dashboard.html'
 
+import hashlib
+from datetime import timedelta
+import secrets
+from functools import wraps
+from flask import Flask, jsonify, send_file, request, redirect, url_for, make_response, session
+
 app = Flask(__name__)
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', secrets.token_hex(32))
+app.permanent_session_lifetime = timedelta(days=30)
+
+# ── Dashboard password ────────────────────────────────────────────────────────
+# Set DASHBOARD_PASSWORD in Render environment variables.
+# If not set, dashboard is open (only do this if you know what you're doing).
+DASHBOARD_PASSWORD = os.environ.get('DASHBOARD_PASSWORD', '')
+
+def _check_auth(password):
+    """Constant-time password comparison to prevent timing attacks."""
+    if not DASHBOARD_PASSWORD:
+        return True  # No password set — open access
+    return secrets.compare_digest(
+        hashlib.sha256(password.encode()).hexdigest(),
+        hashlib.sha256(DASHBOARD_PASSWORD.encode()).hexdigest()
+    )
+
+def require_auth(f):
+    """Decorator that requires dashboard login."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not DASHBOARD_PASSWORD:
+            return f(*args, **kwargs)  # No password configured
+        if session.get('authenticated'):
+            return f(*args, **kwargs)  # Already logged in
+        return redirect('/login')
+    return decorated
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
 def get_db():
@@ -33,17 +66,80 @@ def health_check():
 
 # Short URL redirect — visit /d instead of /dashboard
 @app.route('/d')
+@require_auth
 def dashboard_redirect():
     from flask import redirect
     return redirect('/dashboard', code=301)
 
+# ── Login / Logout ────────────────────────────────────────────────────────────
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    error = None
+    if request.method == 'POST':
+        password = request.form.get('password', '')
+        if _check_auth(password):
+            session['authenticated'] = True
+            session.permanent = True
+            return redirect('/dashboard')
+        error = 'Wrong password. Try again.'
+
+    # Inline login page — no external files needed
+    html = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Mike Finance — Login</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:#07090f;font-family:'Outfit',sans-serif;-webkit-font-smoothing:antialiased}
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh}
+  .card{background:#0f1320;border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:40px 32px;width:min(340px,90vw);text-align:center}
+  .logo{font-size:40px;margin-bottom:8px}
+  .title{font-family:serif;font-size:26px;color:#dde3ed;letter-spacing:.04em;margin-bottom:4px}
+  .title span{color:#f0b429;font-style:italic}
+  .sub{font-size:12px;color:#4a566a;letter-spacing:.1em;text-transform:uppercase;margin-bottom:32px}
+  input{width:100%;padding:14px 16px;background:#141926;border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#dde3ed;font-size:16px;outline:none;transition:border-color .2s;margin-bottom:16px;-webkit-appearance:none}
+  input:focus{border-color:rgba(240,180,41,0.4)}
+  button{width:100%;padding:14px;background:#f0b429;border:none;border-radius:10px;color:#07090f;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:.04em;transition:opacity .2s}
+  button:active{opacity:.85}
+  .error{color:#f0645a;font-size:13px;margin-bottom:16px;padding:10px;background:rgba(240,100,90,0.1);border-radius:8px}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">💰</div>
+  <div class="title">Mike <span>Finance</span></div>
+  <div class="sub">Personal Dashboard</div>
+  {error_html}
+  <form method="POST" action="/login">
+    <input type="password" name="password" placeholder="Enter password" autofocus autocomplete="current-password">
+    <button type="submit">Unlock</button>
+  </form>
+</div>
+</body>
+</html>"""
+
+    error_html = f'<div class="error">{error}</div>' if error else ''
+    resp = make_response(html.replace('{error_html}', error_html))
+    resp.headers['Cache-Control'] = 'no-store'
+    return resp
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect('/login')
+
+
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 @app.route('/dashboard')
+@require_auth
 def dashboard():
     return send_file(DASHBOARD_HTML)
 
 # ── API: Account Balances ─────────────────────────────────────────────────────
 @app.route('/api/balances')
+@require_auth
 def api_balances():
     conn = get_db()
     c = conn.cursor()
@@ -54,6 +150,7 @@ def api_balances():
 
 # ── API: This-month vs Last-month Summary ────────────────────────────────────
 @app.route('/api/summary')
+@require_auth
 def api_summary():
     conn = get_db()
     c = conn.cursor()
@@ -102,6 +199,7 @@ def api_summary():
 
 # ── API: Expense by Category (this month) ────────────────────────────────────
 @app.route('/api/categories')
+@require_auth
 def api_categories():
     conn = get_db()
     c = conn.cursor()
@@ -120,6 +218,7 @@ def api_categories():
 
 # ── API: 6-Month Income vs Expense Trend ─────────────────────────────────────
 @app.route('/api/monthly')
+@require_auth
 def api_monthly():
     conn = get_db()
     c = conn.cursor()
@@ -159,6 +258,7 @@ def api_monthly():
 
 # ── API: Recent Transactions ──────────────────────────────────────────────────
 @app.route('/api/transactions')
+@require_auth
 def api_transactions():
     conn = get_db()
     c = conn.cursor()
@@ -173,6 +273,7 @@ def api_transactions():
 
 # ── API: Full detail for a specific month ─────────────────────────────────────
 @app.route('/api/month/<int:year>/<int:month>')
+@require_auth
 def api_month_detail(year, month):
     conn = get_db()
     c = conn.cursor()
@@ -230,6 +331,7 @@ def api_month_detail(year, month):
 
 # ── API: List all months that have data ───────────────────────────────────────
 @app.route('/api/months')
+@require_auth
 def api_months():
     conn = get_db()
     c = conn.cursor()
@@ -287,7 +389,7 @@ def serve_icon_512():
 def service_worker():
     from flask import Response
     sw = """
-const CACHE='mike-finance-v5';
+const CACHE='mike-finance-v6';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['/dashboard','/icon-192.png'])));self.skipWaiting();});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim();});
 self.addEventListener('fetch',e=>{
@@ -300,6 +402,17 @@ self.addEventListener('fetch',e=>{
 """
     return Response(sw, mimetype='application/javascript',
                     headers={"Service-Worker-Allowed": "/"})
+
+
+@app.errorhandler(404)
+def not_found(e):
+    from flask import jsonify
+    return jsonify({"error": "Not found"}), 404
+
+@app.errorhandler(500)
+def server_error(e):
+    from flask import jsonify
+    return jsonify({"error": "Internal server error"}), 500
 
 
 def run_flask():
