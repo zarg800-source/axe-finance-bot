@@ -163,6 +163,17 @@ body{
   cursor:pointer;transition:background var(--transition);
 }
 .user-card:hover{background:var(--badge-bg)}
+.sidebar-logout{
+  display:flex;align-items:center;justify-content:center;
+  width:32px;height:32px;border-radius:8px;
+  color:var(--text3);text-decoration:none;
+  transition:all var(--transition);
+  border:1px solid var(--divider);flex-shrink:0;
+}
+.sidebar-logout:hover{
+  background:var(--down-bg);color:var(--down);
+  border-color:var(--down);
+}
 .avatar{
   width:34px;height:34px;border-radius:50%;
   background:var(--topnav-bg);
@@ -414,20 +425,27 @@ body{
 }
 
 /* ── TRANSACTIONS TABLE ───────────────────────────────────────────────────── */
-.txn-table{width:100%;border-collapse:collapse;margin-top:4px}
+.txn-table{width:100%;border-collapse:collapse;margin-top:4px;table-layout:fixed}
 .txn-table th{
   text-align:left;font-size:11px;font-weight:600;
   letter-spacing:.8px;text-transform:uppercase;
-  color:var(--text3);padding:0 12px 12px;
+  color:var(--text3);padding:0 10px 12px;
   border-bottom:1px solid var(--divider);
+  overflow:hidden;
 }
 .txn-table td{
-  padding:12px 12px;font-size:13.5px;color:var(--text);
+  padding:11px 10px;font-size:13px;color:var(--text);
   border-bottom:1px solid var(--divider);
   transition:background var(--transition);
+  overflow:hidden;
 }
 .txn-table tr:last-child td{border-bottom:none}
 .txn-table tbody tr:hover td{background:var(--bg3)}
+/* Column widths */
+.txn-table th:nth-child(1),.txn-table td:nth-child(1){width:45%}
+.txn-table th:nth-child(2),.txn-table td:nth-child(2){width:18%}
+.txn-table th:nth-child(3),.txn-table td:nth-child(3){width:22%}
+.txn-table th:nth-child(4),.txn-table td:nth-child(4){width:15%;text-align:right}
 
 .tx-info{display:flex;align-items:center;gap:10px}
 .tx-icon{
@@ -436,9 +454,9 @@ body{
 }
 .tx-name{font-weight:600;font-size:13.5px;color:var(--text)}
 .tx-meta{font-size:11.5px;color:var(--text3)}
-.tx-amt-pos{color:var(--up);font-weight:600;white-space:nowrap}
-.tx-amt-neg{color:var(--down);font-weight:600;white-space:nowrap}
-.tx-amt-neu{color:var(--text2);font-weight:500;white-space:nowrap}
+.tx-amt-pos{color:var(--up);font-weight:600;white-space:nowrap;text-align:right;display:block}
+.tx-amt-neg{color:var(--down);font-weight:600;white-space:nowrap;text-align:right;display:block}
+.tx-amt-neu{color:var(--text2);font-weight:500;white-space:nowrap;text-align:right;display:block}
 
 /* filter btns */
 .filter-row{display:flex;gap:6px;flex-wrap:wrap}
@@ -540,6 +558,14 @@ body{
 }
 
 /* ── RESPONSIVE ───────────────────────────────────────────────────────────── */
+/* System dark mode — applied when user hasn't overridden manually */
+@media(prefers-color-scheme:dark){
+  html:not([data-theme-manual]) { --forced-dark:1 }
+  html:not([data-theme-manual])[data-theme="light"] {
+    /* will be overridden by JS on load */
+  }
+}
+
 @media(max-width:1024px){
   .two-col{grid-template-columns:1fr}
   .three-col{grid-template-columns:1fr 1fr}
@@ -548,17 +574,34 @@ body{
 @media(max-width:768px){
   .sidebar{transform:translateX(-100%)}
   .sidebar.open{transform:translateX(0)}
-  .main{margin-left:0;padding:14px}
+  .main{margin-left:0;padding:12px;gap:14px}
   .ham-btn{display:flex}
   .topnav-date{display:none}
   .three-col{grid-template-columns:1fr}
   .stats-grid{grid-template-columns:repeat(2,1fr)}
   .hist-sum{grid-template-columns:repeat(3,1fr)}
+  /* Analytics: stack vertically, limit chart heights */
+  .two-col{grid-template-columns:1fr !important}
+  #page-analytics .card{padding:16px}
+  #page-analytics canvas{max-height:200px}
+  .progress-list{gap:9px}
+  /* Topnav compact */
+  .topnav{padding:8px 14px;gap:10px}
+  .topnav-title{font-size:15px}
+  /* Stat cards smaller */
+  .stat-card{padding:16px}
+  .stat-value{font-size:22px}
 }
 @media(max-width:480px){
   .stats-grid{grid-template-columns:1fr 1fr}
   .chart-summary{gap:14px}
   .two-col{grid-template-columns:1fr}
+  /* Hide Date and Account columns on small screens — info shown in tx-meta */
+  .txn-table .col-date,.txn-table .col-account{display:none}
+  .txn-table th:nth-child(1),.txn-table td:nth-child(1){width:70%}
+  .txn-table th:nth-child(4),.txn-table td:nth-child(4){width:30%}
+  .topnav{gap:8px;padding:8px 12px}
+  .live-badge{display:none}
 }
 </style>
 </head>
@@ -612,12 +655,21 @@ body{
   </div>
 
   <div class="sidebar-footer">
-    <div class="user-card">
-      <div class="avatar">M</div>
-      <div>
-        <div class="user-name">Mike</div>
-        <div class="user-role">Personal Finance</div>
+    <div class="user-card" style="justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="avatar">M</div>
+        <div>
+          <div class="user-name">Mike</div>
+          <div class="user-role">Personal Finance</div>
+        </div>
       </div>
+      <a href="/logout" class="sidebar-logout" title="Sign out">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16,17 21,12 16,7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </a>
     </div>
   </div>
 </aside>
@@ -640,13 +692,6 @@ body{
       <button class="theme-toggle" id="theme-btn">
         <div class="toggle-knob" id="knob-icon">☀️</div>
       </button>
-      <a href="/logout" class="logout-btn" title="Logout">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-          <polyline points="16,17 21,12 16,7"/>
-          <line x1="21" y1="12" x2="9" y2="12"/>
-        </svg>
-      </a>
     </div>
   </nav>
 
@@ -683,8 +728,8 @@ body{
         <thead>
           <tr>
             <th>Description</th>
-            <th>Date</th>
-            <th>Account</th>
+            <th class="col-date">Date</th>
+            <th class="col-account">Account</th>
             <th>Amount</th>
           </tr>
         </thead>
@@ -759,7 +804,7 @@ body{
       <table class="txn-table" style="margin-top:0">
         <thead>
           <tr>
-            <th>Description</th><th>Date</th><th>Account</th><th>Amount</th>
+            <th>Description</th><th class="col-date">Date</th><th class="col-account">Account</th><th>Amount</th>
           </tr>
         </thead>
         <tbody id="h-txns"></tbody>
@@ -803,16 +848,30 @@ var CEMOJI={
 Chart.defaults.font.family="'DM Sans',sans-serif";
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
-var theme = localStorage.getItem('theme') || 'light';
-document.documentElement.dataset.theme = theme;
-el('knob-icon').textContent = theme==='dark' ? '🌙' : '☀️';
+// Theme: respect system preference unless user has manually overridden
+var savedTheme = localStorage.getItem('theme');
+var systemDark  = window.matchMedia('(prefers-color-scheme: dark)').matches;
+var theme = savedTheme || (systemDark ? 'dark' : 'light');
+
+function applyTheme(t){
+  document.documentElement.dataset.theme = t;
+  el('knob-icon').textContent = t==='dark' ? '🌙' : '☀️';
+  Chart.defaults.color = t==='dark' ? '#4a5880' : '#8899bb';
+}
+applyTheme(theme);
+
+// Listen for system theme changes (only if no manual override)
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',function(e){
+  if(!localStorage.getItem('theme')){
+    theme = e.matches ? 'dark' : 'light';
+    applyTheme(theme);
+  }
+});
 
 el('theme-btn').addEventListener('click',function(){
   theme = theme==='light' ? 'dark' : 'light';
-  document.documentElement.dataset.theme = theme;
-  el('knob-icon').textContent = theme==='dark' ? '🌙' : '☀️';
-  localStorage.setItem('theme',theme);
-  Chart.defaults.color = theme==='dark' ? '#4a5880' : '#8899bb';
+  applyTheme(theme);
+  localStorage.setItem('theme',theme);  // manual override stored
 });
 
 // ─── Date ─────────────────────────────────────────────────────────────────────
@@ -967,10 +1026,10 @@ function buildTxnRows(txns){
       '<td><div class="tx-info">'+
         '<div class="tx-icon" style="background:'+(isInc?'var(--up-bg)':isTr?'var(--badge-bg)':'var(--down-bg)')+'">'+emoji+'</div>'+
         '<div><div class="tx-name">'+(t.description||'')+'</div>'+
-        '<div class="tx-meta">'+(t.category||'')+'</div></div>'+
+        '<div class="tx-meta">'+(t.category||'')+' · '+(t.account||'')+'</div></div>'+
       '</div></td>'+
-      '<td style="color:var(--text2)">'+ts+'</td>'+
-      '<td style="color:var(--text2)">'+t.account+'</td>'+
+      '<td class="col-date" style="color:var(--text2)">'+ts.replace(/-/g,'‑')+'</td>'+
+      '<td class="col-account" style="color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+t.account+'</td>'+
       '<td class="'+amtCls+'">'+amtPrefix+fmt(t.amount)+'</td>'+
     '</tr>';
   }).join('');
