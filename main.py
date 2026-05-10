@@ -41,7 +41,10 @@ load_dotenv()
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO,
-    handlers=[logging.StreamHandler()]
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bot.log'))
+    ]
 )
 logger = logging.getLogger(__name__)
 
@@ -286,6 +289,19 @@ CATEGORIES = {
     # ─── 🚕 Transport ─────────────────────────────────────────────────────
     'transport': ('Transport', '🚕'),
     'grab': ('Transport', '🚕'),
+    'bolt': ('Transport', '🚕'),
+    'bolt food': ('Food & Drinks', '🍜'),
+    'grabfood': ('Food & Drinks', '🍜'),
+    'grab food': ('Food & Drinks', '🍜'),
+    'indrive': ('Transport', '🚕'),
+    'in drive': ('Transport', '🚕'),
+    'hailo': ('Transport', '🚕'),
+    'maxim': ('Transport', '🚕'),
+    'limousine': ('Transport', '🚕'),
+    'taxi': ('Transport', '🚕'),
+    'grab taxi': ('Transport', '🚕'),
+    'ltc': ('Transport', '🚕'),
+    'taxi meter': ('Transport', '🚕'),
     'grab car': ('Transport', '🚕'),
     'grab bike': ('Transport', '🚕'),
     'grabcar': ('Transport', '🚕'),
@@ -923,15 +939,20 @@ def parse_bangkok_bank_ocr(ocr_text):
 
     # Method 1: Look for explicit "Note" / "Memo" / "Remark" label
     note_patterns = [
-        r'Note\s*[:\s]+(.+)',
-        r'Memo\s*[:\s]+(.+)',
-        r'Remark\s*[:\s]+(.+)',
+        r'(?m)^Note[ \t]+([^\n\r]+)',
+        r'(?m)^Memo[ \t]+([^\n\r]+)',
+        r'(?m)^Remark[ \t]+([^\n\r]+)',
+        r'Note[:\s]+([A-Za-z][A-Za-z0-9 ,\.\-\']+)',
+        r'Memo[:\s]+([A-Za-z][A-Za-z0-9 ,\.\-\']+)',
     ]
     for pattern in note_patterns:
         matches = re.findall(pattern, ocr_text, re.IGNORECASE)
         for note in matches:
             note = note.strip()
-            if note and len(note) > 1 and not any(sw in note.lower() for sw in skip_words):
+            # Must not be a label word itself and must have real content
+            if (note and len(note) > 1
+                    and note.lower() not in ('note', 'memo', 'remark', 'optional', '')
+                    and not any(sw in note.lower() for sw in skip_words)):
                 result['note'] = note
                 break
         if result['note']:
@@ -940,7 +961,7 @@ def parse_bangkok_bank_ocr(ocr_text):
     # Method 2: If no labeled Note found, look for text between Fee line and Bank reference line
     # Bangkok Bank receipt layout: ... Fee 0.00 THB ... [Note text] ... Bank reference no.
     if not result['note']:
-        fee_note_pattern = r'(?:0\.00\s*THB|Fee[^\n]*0\.00)\s*\n\s*(.+?)\s*\n\s*(?:Bank reference|Transaction reference|\d{5,})'
+        fee_note_pattern = r'(?:0\.00[ \t]*THB|Fee[^\n]*0\.00)[ \t]*\n[ \t]*([^\n\r]{2,40})[ \t]*\n[ \t]*(?:Bank reference|Transaction reference|Scan|\d{5,})'
         match = re.search(fee_note_pattern, ocr_text, re.IGNORECASE | re.DOTALL)
         if match:
             note = match.group(1).strip()
@@ -1020,7 +1041,6 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/report — Get financial summary\n"
         "/export — Download Excel spreadsheet\n"
         "/backup — Download the database file\n"
-        "/restore — Restore database from a .db file\n"
         "/categories — List categories\n"
         "/subscriptions — Show recurring subscriptions\n"
         "/addsubscription — Add a subscription\n"
@@ -1049,10 +1069,10 @@ async def cmd_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn.close()
 
     total = sum(a['balance'] for a in accounts)
-    EMOJI = {'Bangkok Bank':'🏦','True Money Wallet':'📱','MRT EMV Visa':'🚇','Rabbit Card':'🐇','Cash':'💵','Muvmi':'🛺','Solsot Member':'🎫'}
+    emojis = {'Bangkok Bank': '🏦', 'True Money Wallet': '📱', 'MRT EMV Visa': '🚇', 'Rabbit Card': '🐇', 'Cash': '💵'}
     lines = ["💰 *Account Balances:*\n"]
     for a in accounts:
-        e = EMOJI.get(a['name'], '💳')
+        e = emojis.get(a['name'], '💰')
         lines.append(f"{e} {a['name']}: ฿{a['balance']:,.2f}")
     lines.append(f"\n🏧 *Total: ฿{total:,.2f}*")
     await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
@@ -1091,6 +1111,7 @@ async def cmd_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
 
 
+@restricted
 @restricted
 async def cmd_delete(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn = get_db()
@@ -1166,7 +1187,7 @@ async def cmd_subscriptions(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for s in subs:
         lines.append(
             f"📱 {s['name']}: ฿{s['amount']:,.2f}/month\n"
-            f"  {s['account']} | Next: {s['next_due_date']} | {s.get('frequency','monthly').capitalize()}"
+            f"  Account: {s['account']} | Next: {s['next_due_date']}"
         )
     await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
 
@@ -1277,11 +1298,11 @@ async def cmd_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     c.execute("UPDATE accounts SET balance = balance - ? WHERE user_id = ? AND name = ?", (amount, AUTHORIZED_USER_ID, from_account))
     c.execute("UPDATE accounts SET balance = balance + ? WHERE user_id = ? AND name = ?", (amount, AUTHORIZED_USER_ID, to_account))
     c.execute(
-        "INSERT INTO transactions (user_id, amount, description, type, category, account) VALUES (?, ?, ?, 'transfer', 'Transfer', ?)",
+        "INSERT INTO transactions (user_id, amount, description, type, category, account) VALUES (?, ?, ?, 'expense', 'Other', ?)",
         (AUTHORIZED_USER_ID, -amount, f"Transfer to {to_account}", from_account)
     )
     c.execute(
-        "INSERT INTO transactions (user_id, amount, description, type, category, account) VALUES (?, ?, ?, 'transfer', 'Transfer', ?)",
+        "INSERT INTO transactions (user_id, amount, description, type, category, account) VALUES (?, ?, ?, 'income', 'Other', ?)",
         (AUTHORIZED_USER_ID, amount, f"Transfer from {from_account}", to_account)
     )
     conn.commit()
@@ -1404,9 +1425,8 @@ async def cmd_export(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if t['type'] == 'income':
             total_income += abs(t['amount'])
-        elif t['type'] == 'expense':
+        else:
             total_expense += abs(t['amount'])
-        # transfers excluded from income/expense totals
 
     # Summary row
     summary_row = len(txns) + 3
@@ -1504,6 +1524,7 @@ async def cmd_export(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ─── Natural language handler ────────────────────────────────────────────────
+@restricted
 @restricted
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
@@ -1680,7 +1701,12 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     # Note has the user's own description (e.g., "Swisse Multivitamin", "Kfc", "Pepsi")
                     # To field is just the recipient company name
                     if parsed["note"]:
-                        transaction_description = parsed["note"]
+                        # Clean up OCR artifacts from note
+                        note_clean = parsed["note"].strip()
+                        # Remove trailing junk: numbers, QR refs, etc.
+                        note_clean = re.sub(r'\s*\d{8,}.*$', '', note_clean).strip()
+                        note_clean = re.sub(r'\s*(Scan|scan|QR|verify).*$', '', note_clean).strip()
+                        transaction_description = note_clean if note_clean else parsed["note"]
                     elif parsed["to"]:
                         transaction_description = parsed["to"]
                     else:
@@ -1734,7 +1760,10 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 cat_name = detected_cat
 
         # If still no category, try from full OCR text
-        if cat_name == 'Other' and ocr_text:
+        # BUT only if description is generic — if we have a real description,
+        # the full OCR text may contain misleading keywords (e.g. recipient address
+        # containing "K Plus Wallet" or utility company names)
+        if cat_name == 'Other' and ocr_text and transaction_description in ('Receipt scan', '', None):
             detected_cat, _ = detect_category(ocr_text)
             if detected_cat != 'Other':
                 cat_name = detected_cat
@@ -1800,11 +1829,11 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 (amount, AUTHORIZED_USER_ID, transfer_to_account)
             )
             c.execute(
-                "INSERT INTO transactions (user_id, amount, description, type, category, account) VALUES (?, ?, ?, 'transfer', 'Transfer', ?)",
+                "INSERT INTO transactions (user_id, amount, description, type, category, account) VALUES (?, ?, ?, 'expense', 'Other', ?)",
                 (AUTHORIZED_USER_ID, -amount, f"Transfer to {transfer_to_account}", 'Bangkok Bank')
             )
             c.execute(
-                "INSERT INTO transactions (user_id, amount, description, type, category, account) VALUES (?, ?, ?, 'transfer', 'Transfer', ?)",
+                "INSERT INTO transactions (user_id, amount, description, type, category, account) VALUES (?, ?, ?, 'income', 'Other', ?)",
                 (AUTHORIZED_USER_ID, amount, f"Transfer from Bangkok Bank", transfer_to_account)
             )
             conn.commit()
@@ -1879,7 +1908,7 @@ def generate_report(user_id):
         c.execute(
             "SELECT COALESCE(SUM(CASE WHEN type='income' THEN amount ELSE 0 END), 0) as income, "
             "COALESCE(SUM(CASE WHEN type='expense' THEN ABS(amount) ELSE 0 END), 0) as expense "
-            "FROM transactions WHERE user_id = ? AND type != 'transfer' AND date(timestamp) >= ? AND date(timestamp) <= ?",
+            "FROM transactions WHERE user_id = ? AND date(timestamp) >= ? AND date(timestamp) <= ?",
             (user_id, start, end)
         )
         return c.fetchone()
@@ -2077,8 +2106,7 @@ async def startup_subscription_check(app):
  TRANSFER_FROM, TRANSFER_TO, TRANSFER_AMOUNT,
  SUB_MENU, SUB_ADD_NAME, SUB_ADD_AMOUNT, SUB_ADD_ACCOUNT, SUB_ADD_DATE,
  SUB_DEL_PICK, EXPORT_TYPE, EXPORT_INPUT,
- ACC_MANAGE, ACC_ADD_NAME, ACC_ADD_BALANCE, ACC_DEL_PICK,
- SUB_ADD_FREQ) = range(26)
+ ACC_MANAGE, ACC_ADD_NAME, ACC_ADD_BALANCE, ACC_DEL_PICK) = range(25)
 
 ACCOUNT_NAMES = ['Bangkok Bank', 'MRT EMV Visa', 'True Money Wallet', 'Cash', 'Rabbit Card', 'Muvmi', 'Solsot Member']
 
@@ -2094,9 +2122,8 @@ def build_main_menu():
          InlineKeyboardButton("📋 Export", callback_data="menu_export")],
         [InlineKeyboardButton("🔄 Subscriptions", callback_data="menu_subs"),
          InlineKeyboardButton("📂 Categories", callback_data="menu_categories")],
-        [InlineKeyboardButton("💾 Backup", callback_data="menu_backup"),
-         InlineKeyboardButton("📂 Restore",  callback_data="menu_restore")],
-        [InlineKeyboardButton("⚙️ Settings", callback_data="menu_settings")],
+        [InlineKeyboardButton("💾 Backup DB", callback_data="menu_backup"),
+         InlineKeyboardButton("⚙️ Settings", callback_data="menu_settings")],
     ]
     return InlineKeyboardMarkup(keyboard)
 
@@ -2250,10 +2277,10 @@ async def button_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         accounts = c.fetchall()
         conn.close()
         total = sum(a['balance'] for a in accounts)
-        EMOJI = {'Bangkok Bank':'🏦','True Money Wallet':'📱','MRT EMV Visa':'🚇','Rabbit Card':'🐇','Cash':'💵','Muvmi':'🛺','Solsot Member':'🎫'}
+        emojis = {'Bangkok Bank': '🏦', 'True Money Wallet': '📱', 'MRT EMV Visa': '🚇', 'Rabbit Card': '🐇', 'Cash': '💵'}
         lines = ["💰 *Account Balances:*\n"]
         for a in accounts:
-            e = EMOJI.get(a['name'], '💳')
+            e = emojis.get(a['name'], '💰')
             lines.append(f"{e} {a['name']}: ฿{a['balance']:,.2f}")
         lines.append(f"\n🏧 *Total: ฿{total:,.2f}*")
         keyboard = [[InlineKeyboardButton("⬅️ Back to Menu", callback_data="back_main")]]
@@ -2322,17 +2349,6 @@ async def button_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN
         )
         return SUB_MENU
-
-    elif data == "menu_restore":
-        await query.edit_message_text(
-            "📂 *Restore Database*\n\n"
-            "Send me your `.db` backup file as a *document* attachment.\n\n"
-            "⚠️ *This will replace your entire live database immediately.*\n"
-            "Make sure you have a backup before restoring.",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back", callback_data="back_main")]]),
-            parse_mode=ParseMode.MARKDOWN
-        )
-        return MENU_STATE
 
     elif data == "menu_backup":
         await query.answer("Generating backup…")
@@ -2588,7 +2604,7 @@ async def sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         conn = get_db()
         c = conn.cursor()
         c.execute(
-            "SELECT name, amount, account, next_due_date, frequency FROM recurring_subscriptions WHERE user_id = ? ORDER BY next_due_date",
+            "SELECT name, amount, account, next_due_date FROM recurring_subscriptions WHERE user_id = ? ORDER BY next_due_date",
             (AUTHORIZED_USER_ID,)
         )
         subs = c.fetchall()
@@ -2600,7 +2616,7 @@ async def sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             for s in subs:
                 lines.append(
                     f"📱 {s['name']}: ฿{s['amount']:,.2f}/month\n"
-                    f"  {s['account']} | Next: {s['next_due_date']} | {s.get('frequency','monthly').capitalize()}"
+                    f"  Account: {s['account']} | Next: {s['next_due_date']}"
                 )
             text = "\n".join(lines)
         keyboard = [[InlineKeyboardButton("⬅️ Back", callback_data="back_subs")]]
@@ -2670,9 +2686,6 @@ async def sub_add_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Get subscription amount."""
     try:
         amount = float(update.message.text.strip().replace(',', ''))
-        if amount <= 0:
-            await update.message.reply_text("Amount must be greater than zero. Try again:")
-            return SUB_ADD_AMOUNT
         context.user_data['sub_amount'] = amount
     except ValueError:
         await update.message.reply_text("Invalid amount. Please type a number like 199 or 30.45")
@@ -2708,7 +2721,7 @@ async def sub_add_account(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"Amount: *฿{context.user_data['sub_amount']:,.2f}*\n"
         f"Account: *{account_name}*\n\n"
         f"Type the next due date (YYYY-MM-DD):\n"
-        f"Example: `2026-06-01`",
+        f"Example: `2026-05-25`",
         parse_mode=ParseMode.MARKDOWN
     )
     return SUB_ADD_DATE
@@ -2721,21 +2734,28 @@ async def sub_add_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Please use format YYYY-MM-DD, like 2026-05-25")
         return SUB_ADD_DATE
 
-    context.user_data['sub_due_date'] = text
+    name = context.user_data['sub_name']
+    amount = context.user_data['sub_amount']
+    account = context.user_data['sub_account']
 
-    keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("📅 Monthly",  callback_data="subfreq_monthly"),
-         InlineKeyboardButton("📆 Yearly",   callback_data="subfreq_yearly")],
-        [InlineKeyboardButton("🗓 Weekly",   callback_data="subfreq_weekly")],
-        [InlineKeyboardButton("⬅️ Back",     callback_data="back_main")],
-    ])
-    await update.message.reply_text(
-        f"📅 Due date: *{text}*\n\n"
-        f"How often does this repeat?",
-        reply_markup=keyboard,
-        parse_mode=ParseMode.MARKDOWN
+    conn = get_db()
+    c = conn.cursor()
+    c.execute(
+        "INSERT INTO recurring_subscriptions (user_id, name, amount, category, account, next_due_date, frequency) "
+        "VALUES (?, ?, ?, 'Subscriptions', ?, ?, 'monthly')",
+        (AUTHORIZED_USER_ID, name, amount, account, text)
     )
-    return SUB_ADD_FREQ
+    conn.commit()
+    conn.close()
+
+    await update.message.reply_text(
+        f"✅ Subscription added!\n\n"
+        f"📱 {name}: ฿{amount:,.2f}/month\n"
+        f"🏦 {account}\n"
+        f"📅 Next due: {text}",
+        reply_markup=build_main_menu()
+    )
+    return MENU_STATE
 
 
 async def sub_del_pick(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2958,10 +2978,6 @@ async def transfer_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Invalid amount. Please type a number.")
         return TRANSFER_AMOUNT
 
-    if amount <= 0:
-        await update.message.reply_text("Amount must be greater than zero. Try again:")
-        return TRANSFER_AMOUNT
-
     from_acc = context.user_data.get('transfer_from', 'Cash')
     to_acc = context.user_data.get('transfer_to', 'Cash')
 
@@ -2990,55 +3006,6 @@ async def transfer_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"💸 {from_acc}: -฿{amount:,.2f} → ฿{new_from:,.2f}\n"
         f"💵 {to_acc}: +฿{amount:,.2f} → ฿{new_to:,.2f}",
         reply_markup=build_main_menu()
-    )
-    return MENU_STATE
-
-
-async def sub_add_freq(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle subscription frequency selection and save."""
-    query = update.callback_query
-    await query.answer()
-
-    if query.data == "back_main":
-        await query.edit_message_text(
-            "📱 *Axe Finance — Main Menu*\n\nTap a button below:",
-            reply_markup=build_main_menu(),
-            parse_mode=ParseMode.MARKDOWN
-        )
-        return MENU_STATE
-
-    freq_map = {
-        "subfreq_monthly": ("monthly", "month"),
-        "subfreq_yearly":  ("yearly",  "year"),
-        "subfreq_weekly":  ("weekly",  "week"),
-    }
-    if query.data not in freq_map:
-        return SUB_ADD_FREQ
-
-    frequency, freq_label = freq_map[query.data]
-    name    = context.user_data['sub_name']
-    amount  = context.user_data['sub_amount']
-    account = context.user_data['sub_account']
-    due     = context.user_data['sub_due_date']
-
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO recurring_subscriptions (user_id, name, amount, category, account, next_due_date, frequency) "
-        "VALUES (?, ?, ?, 'Subscriptions', ?, ?, ?)",
-        (AUTHORIZED_USER_ID, name, amount, account, due, frequency)
-    )
-    conn.commit()
-    conn.close()
-
-    await query.edit_message_text(
-        f"✅ *Subscription Added!*\n\n"
-        f"📱 {name}: ฿{amount:,.2f}/{freq_label}\n"
-        f"🏦 {account}\n"
-        f"📅 Next due: {due}\n"
-        f"🔄 Frequency: {frequency.capitalize()}",
-        reply_markup=build_main_menu(),
-        parse_mode=ParseMode.MARKDOWN
     )
     return MENU_STATE
 
@@ -3520,109 +3487,6 @@ async def cmd_backup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ Backup failed: {e}")
 
 
-# ─── Restore command ──────────────────────────────────────────────────────────
-@restricted
-async def cmd_restore(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Restore database from an uploaded .db file."""
-    if not update.message.document:
-        await update.message.reply_text(
-            "📂 *Restore Database*\n\n"
-            "Send me a `.db` backup file as a document (not a photo).\n\n"
-            "⚠️ *This will replace your entire live database.*\n"
-            "Your current data will be overwritten immediately.\n\n"
-            "To create a backup first, use the 💾 *Backup DB* button in the menu.",
-            parse_mode=ParseMode.MARKDOWN
-        )
-        return
-
-    doc = update.message.document
-    if not doc.file_name or not doc.file_name.endswith('.db'):
-        await update.message.reply_text(
-            "❌ Please send a `.db` file.\n"
-            "The file must end in `.db` (like `finance_backup_20260505_2228.db`)."
-        )
-        return
-
-    if doc.file_size > 50 * 1024 * 1024:  # 50MB guard
-        await update.message.reply_text("❌ File too large. Maximum size is 50MB.")
-        return
-
-    thinking = await update.message.reply_text("⏳ Restoring database…")
-
-    try:
-        import shutil, tempfile
-
-        # Download the file
-        file = await doc.get_file()
-        file_bytes = await file.download_as_bytearray()
-
-        # Validate it's a real SQLite file
-        if not bytes(file_bytes[:16]).startswith(b'SQLite format 3'):
-            await thinking.edit_text(
-                "❌ This doesn't look like a valid SQLite database.\n"
-                "Make sure you're sending the original `.db` backup file."
-            )
-            return
-
-        # Quick validation: open it and check for required tables
-        import sqlite3, io
-        tmp_path = '/tmp/restore_validate.db'
-        with open(tmp_path, 'wb') as f:
-            f.write(bytes(file_bytes))
-
-        try:
-            vconn = sqlite3.connect(tmp_path)
-            vc = vconn.cursor()
-            vc.execute("SELECT name FROM sqlite_master WHERE type='table'")
-            tables = {r[0] for r in vc.fetchall()}
-            vconn.close()
-            required = {'transactions', 'accounts', 'recurring_subscriptions'}
-            if not required.issubset(tables):
-                missing = required - tables
-                await thinking.edit_text(
-                    f"❌ Database is missing required tables: {', '.join(missing)}\n"
-                    "This doesn't look like a Mike Finance backup."
-                )
-                return
-        except Exception as ve:
-            await thinking.edit_text(f"❌ Could not open the database: {ve}")
-            return
-
-        # Backup current DB first (safety net)
-        db_path = DATABASE_NAME
-        backup_path = db_path + '.pre_restore_backup'
-        if os.path.exists(db_path):
-            shutil.copy2(db_path, backup_path)
-            logger.info(f"Pre-restore backup saved to {backup_path}")
-
-        # Replace live DB
-        shutil.copy2(tmp_path, db_path)
-        logger.info(f"Database restored from {doc.file_name}")
-
-        # Count transactions in restored DB
-        rconn = sqlite3.connect(db_path)
-        rconn.row_factory = sqlite3.Row
-        rc = rconn.cursor()
-        txn_count = rc.execute("SELECT COUNT(*) FROM transactions").fetchone()[0]
-        acc_count = rc.execute("SELECT COUNT(*) FROM accounts").fetchone()[0]
-        sub_count = rc.execute("SELECT COUNT(*) FROM recurring_subscriptions").fetchone()[0]
-        rconn.close()
-
-        await thinking.edit_text(
-            f"✅ *Database Restored Successfully!*\n\n"
-            f"📊 Transactions: {txn_count}\n"
-            f"🏦 Accounts: {acc_count}\n"
-            f"🔄 Subscriptions: {sub_count}\n\n"
-            f"A safety backup of your previous database was saved on the server.\n"
-            f"Send /start to refresh the bot.",
-            parse_mode=ParseMode.MARKDOWN
-        )
-
-    except Exception as e:
-        logger.error(f"Restore error: {e}")
-        await thinking.edit_text(f"❌ Restore failed: {e}\nYour original database was not modified.")
-
-
 # ─── Account Management Handlers ──────────────────────────────────────────────
 
 @restricted
@@ -3878,9 +3742,6 @@ def main():
             SUB_DEL_PICK: [
                 CallbackQueryHandler(sub_del_pick, pattern=r'^subdel_|^back_subs$'),
             ],
-            SUB_ADD_FREQ: [
-                CallbackQueryHandler(sub_add_freq, pattern=r'^subfreq_|^back_main$'),
-            ],
             EXPORT_TYPE: [
                 CallbackQueryHandler(export_type_handler, pattern=r'^export_month$|^export_year$|^back_main$'),
             ],
@@ -3922,9 +3783,6 @@ def main():
     app.add_handler(CommandHandler("deletesubscription", cmd_delete_subscription))
     app.add_handler(CommandHandler("transfer", cmd_transfer))
     app.add_handler(CommandHandler("backup", cmd_backup))
-    app.add_handler(CommandHandler("restore", cmd_restore))
-    # Also handle documents sent directly (for /restore flow)
-    app.add_handler(MessageHandler(filters.Document.ALL & ~filters.COMMAND, cmd_restore))
 
     # Photo handler
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
