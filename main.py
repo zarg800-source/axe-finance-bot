@@ -2122,8 +2122,9 @@ def build_main_menu():
          InlineKeyboardButton("📋 Export", callback_data="menu_export")],
         [InlineKeyboardButton("🔄 Subscriptions", callback_data="menu_subs"),
          InlineKeyboardButton("📂 Categories", callback_data="menu_categories")],
-        [InlineKeyboardButton("💾 Backup DB", callback_data="menu_backup"),
-         InlineKeyboardButton("⚙️ Settings", callback_data="menu_settings")],
+        [InlineKeyboardButton("💾 Backup", callback_data="menu_backup"),
+         InlineKeyboardButton("📂 Restore", callback_data="menu_restore")],
+        [InlineKeyboardButton("⚙️ Settings", callback_data="menu_settings")],
     ]
     return InlineKeyboardMarkup(keyboard)
 
@@ -2349,6 +2350,16 @@ async def button_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN
         )
         return SUB_MENU
+
+    elif data == "menu_restore":
+        await query.edit_message_text(
+            "📂 *Restore Database*\n\n"
+            "Send me your `.db` backup file as a *document* attachment.\n\n"
+            "⚠️ *This will replace your entire live database immediately.*",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back", callback_data="back_main")]]),
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return MENU_STATE
 
     elif data == "menu_backup":
         await query.answer("Generating backup…")
