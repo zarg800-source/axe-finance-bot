@@ -3489,13 +3489,120 @@ async def cmd_backup(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"📅 {datetime.now(BANGKOK_TZ).strftime('%d %b %Y %H:%M')} (Bangkok)\n"
                     f"📦 Size: {size_kb:.1f} KB\n\n"
                     f"Keep this safe — it contains all your transactions.\n"
-                    f"Upload it to GitHub to replace finance.db if needed."
+                    f"To restore: tap 📂 *Restore* in the menu and send this file."
                 ),
                 parse_mode=ParseMode.MARKDOWN
             )
     except Exception as e:
         logger.error(f"Backup error: {e}")
         await update.message.reply_text(f"❌ Backup failed: {e}")
+
+
+# ─── Restore command ───────────────────────────────────────────────────────────
+@restricted
+async def cmd_restore(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Restore the live database from a .db file sent as a document."""
+    # If called via /restore command (no document), give instructions
+    if not update.message or not update.message.document:
+        await update.message.reply_text(
+            "📂 *Restore Database*\n\n"
+            "Send me your `.db` backup file as a document attachment.\n\n"
+            "⚠️ *This will replace your entire live database immediately.*\n"
+            "Your current data will be overwritten.\n\n"
+            "To back up first, tap 💾 *Backup* in the menu.",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+
+    doc = update.message.document
+
+    # Validate file extension
+    if not doc.file_name or not doc.file_name.endswith('.db'):
+        await update.message.reply_text(
+            "❌ Please send a `.db` file.\n"
+            "The filename must end in `.db` (e.g. `finance_backup_20260511_1230.db`)."
+        )
+        return
+
+    # Size guard — 50MB max
+    if doc.file_size and doc.file_size > 50 * 1024 * 1024:
+        await update.message.reply_text("❌ File too large. Maximum 50 MB.")
+        return
+
+    thinking = await update.message.reply_text("⏳ Restoring database…")
+
+    try:
+        import shutil
+
+        # Download file bytes from Telegram
+        tg_file   = await doc.get_file()
+        file_data = await tg_file.download_as_bytearray()
+
+        # Validate: must be a real SQLite file
+        if not bytes(file_data[:16]).startswith(b'SQLite format 3'):
+            await thinking.edit_text(
+                "❌ This doesn't look like a valid SQLite database.\n"
+                "Make sure you're sending the original `.db` backup file."
+            )
+            return
+
+        # Write to temp path first, validate required tables
+        tmp_path = '/tmp/restore_check.db'
+        with open(tmp_path, 'wb') as f:
+            f.write(bytes(file_data))
+
+        import sqlite3 as _sq3
+        try:
+            vconn = _sq3.connect(tmp_path)
+            vc    = vconn.cursor()
+            vc.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tables = {r[0] for r in vc.fetchall()}
+            vconn.close()
+            required = {'transactions', 'accounts', 'recurring_subscriptions'}
+            if not required.issubset(tables):
+                missing = required - tables
+                await thinking.edit_text(
+                    f"❌ Database missing required tables: {', '.join(missing)}\n"
+                    "This doesn't look like a Mike Finance backup."
+                )
+                return
+            # Count rows for the confirmation message
+            vconn2   = _sq3.connect(tmp_path)
+            vc2      = vconn2.cursor()
+            txn_cnt  = vc2.execute("SELECT COUNT(*) FROM transactions").fetchone()[0]
+            acc_cnt  = vc2.execute("SELECT COUNT(*) FROM accounts").fetchone()[0]
+            sub_cnt  = vc2.execute("SELECT COUNT(*) FROM recurring_subscriptions").fetchone()[0]
+            vconn2.close()
+        except Exception as ve:
+            await thinking.edit_text(f"❌ Could not open the database: {ve}")
+            return
+
+        # Safety copy of current DB before overwriting
+        db_path = DATABASE_NAME
+        if os.path.exists(db_path):
+            shutil.copy2(db_path, db_path + '.before_restore')
+            logger.info("Pre-restore safety copy saved.")
+
+        # Replace live database
+        shutil.copy2(tmp_path, db_path)
+        logger.info(f"Database restored from {doc.file_name}")
+
+        await thinking.edit_text(
+            f"✅ *Database Restored!*\n\n"
+            f"📊 {txn_cnt} transactions\n"
+            f"🏦 {acc_cnt} accounts\n"
+            f"🔄 {sub_cnt} subscriptions\n\n"
+            f"Source: `{doc.file_name}`\n\n"
+            f"Send /start to refresh.",
+            parse_mode=ParseMode.MARKDOWN
+        )
+
+    except Exception as e:
+        logger.error(f"Restore error: {e}")
+        await thinking.edit_text(
+            f"❌ Restore failed: {e}\n"
+            "Your original database was not modified."
+        )
 
 
 # ─── Account Management Handlers ──────────────────────────────────────────────
@@ -3794,6 +3901,9 @@ def main():
     app.add_handler(CommandHandler("deletesubscription", cmd_delete_subscription))
     app.add_handler(CommandHandler("transfer", cmd_transfer))
     app.add_handler(CommandHandler("backup", cmd_backup))
+    app.add_handler(CommandHandler("restore", cmd_restore))
+    # Document handler — receives .db files for restore
+    app.add_handler(MessageHandler(filters.Document.ALL & ~filters.COMMAND, cmd_restore))
 
     # Photo handler
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
