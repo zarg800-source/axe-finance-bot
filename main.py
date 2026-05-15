@@ -48,6 +48,15 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# ─── Receipt Parser Module ────────────────────────────────────────────────────
+try:
+    from receipt_parser import ReceiptParser, create_parser
+    RECEIPT_PARSER_AVAILABLE = True
+    logger.info("receipt_parser module loaded successfully")
+except ImportError as _e:
+    RECEIPT_PARSER_AVAILABLE = False
+    logger.warning(f"receipt_parser not available, using built-in OCR: {_e}")
+
 # Config
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 AUTHORIZED_USER_ID = int(os.getenv('AUTHORIZED_USER_ID'))
@@ -1603,382 +1612,94 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ─── Photo receipt handling (OCR-based, free) ────────────────────────────────
 @restricted
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    caption = update.message.caption or ""
-    caption_lower = caption.lower().strip()
+    """Handle receipt photo — uses ReceiptParser module if available, else built-in OCR."""
+    if update.effective_user.id != AUTHORIZED_USER_ID:
+        return
 
-    await update.message.reply_text("📸 Processing your receipt... give me a moment.")
+    photo       = update.message.photo[-1]
+    tg_file     = await photo.get_file()
+    photo_bytes = await tg_file.download_as_bytearray()
+    caption     = (update.message.caption or '').strip()
 
-    try:
-        photo_file = await update.message.photo[-1].get_file()
-        photo_bytes = await photo_file.download_as_bytearray()
+    thinking = await update.message.reply_text("📸 Processing your receipt... give me a moment.")
 
-        amount = None
-        transaction_description = None
-        account_name = 'Cash'
-        cat_name = 'Other'
-        is_income = False
+    # ── ReceiptParser module ──────────────────────────────────────────────────
+    if RECEIPT_PARSER_AVAILABLE:
+        try:
+            api_key = os.environ.get('OPENAI_API_KEY', '')
+            parser  = create_parser(openai_api_key=api_key)
+            result  = await parser.parse(bytes(photo_bytes), caption=caption or None)
 
-        # Try AI first if available
-        ai_success = False
-        if ai_client:
-            try:
-                b64_image = base64.b64encode(photo_bytes).decode('utf-8')
-                response = ai_client.chat.completions.create(
-                    model="gpt-4.1-mini",
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": (
-                                "You are a receipt/bank transfer slip parser. Extract information from the image.\n"
-                                "Look for:\n"
-                                "- The total amount or transfer amount\n"
-                                "- The 'Note' or 'Memo' field if present\n"
-                                "- The bank or source (e.g., Bangkok Bank, KBank, SCB, True Money)\n"
-                                "- Whether this is money going OUT (payment/transfer/expense) or money coming IN\n\n"
-                                "Respond in this exact format:\n"
-                                "AMOUNT: <number only>\n"
-                                "NOTE: <the Note/Memo field, or short description>\n"
-                                "BANK: <bank name if visible, otherwise UNKNOWN>\n"
-                                "DIRECTION: <OUT or IN>\n"
-                                "CATEGORY: <one of: Food & Drinks, Coffee, Transport, Groceries, Housing, Health, Shopping, Entertainment, Subscriptions, Travel, School, Other>\n"
-                                "If you cannot read the receipt, respond with AMOUNT: 0"
-                            )
-                        },
-                        {
-                            "role": "user",
-                            "content": [
-                                {"type": "text", "text": f"Extract amount, note, bank, direction from this receipt.{' Caption: ' + caption if caption else ''}"},
-                                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64_image}"}}
-                            ]
-                        }
-                    ],
-                    max_tokens=300
+            if result.amount and result.amount > 0:
+                amount           = result.amount
+                description      = result.description or 'Receipt scan'
+                cat_name         = result.category or 'Other'
+                account_name     = result.account or 'Bangkok Bank'
+                txn_type         = result.transaction_type or 'expense'
+
+                cat_emoji = '🧾'
+                for e, n in CATEGORY_LIST + INCOME_CATEGORY_LIST:
+                    if n == cat_name:
+                        cat_emoji = e
+                        break
+
+                conn = get_db()
+                db_c = conn.cursor()
+
+                if txn_type == 'transfer':
+                    to_acc = getattr(result, 'transfer_to', None) or 'Cash'
+                    db_c.execute(
+                        "INSERT INTO transactions (user_id,amount,description,type,category,account) VALUES (?,?,?,'transfer','Transfer',?)",
+                        (AUTHORIZED_USER_ID, -amount, f"Transfer to {to_acc}", account_name)
+                    )
+                    db_c.execute(
+                        "INSERT INTO transactions (user_id,amount,description,type,category,account) VALUES (?,?,?,'transfer','Transfer',?)",
+                        (AUTHORIZED_USER_ID, amount, f"Transfer from {account_name}", to_acc)
+                    )
+                    db_c.execute("UPDATE accounts SET balance=balance-? WHERE user_id=? AND name=?", (amount, AUTHORIZED_USER_ID, account_name))
+                    db_c.execute("UPDATE accounts SET balance=balance+? WHERE user_id=? AND name=?", (amount, AUTHORIZED_USER_ID, to_acc))
+                    conn.commit(); conn.close()
+                    await thinking.edit_text(
+                        f"🔄 *Transfer logged!*\n💸 ฿{amount:,.2f}\n{account_name} → {to_acc}\n\nWrong? Use /delete to remove it.",
+                        parse_mode=ParseMode.MARKDOWN
+                    )
+                    return
+
+                signed = amount if txn_type == 'income' else -amount
+                db_c.execute(
+                    "INSERT INTO transactions (user_id,amount,description,type,category,account) VALUES (?,?,?,?,?,?)",
+                    (AUTHORIZED_USER_ID, signed, description, txn_type, cat_name, account_name)
                 )
-                result = response.choices[0].message.content
-                logger.info(f"AI receipt result: {result}")
+                db_c.execute(
+                    "UPDATE accounts SET balance=balance+? WHERE user_id=? AND name=?",
+                    (signed, AUTHORIZED_USER_ID, account_name)
+                )
+                conn.commit(); conn.close()
 
-                amount_match = re.search(r'AMOUNT:\s*([\d,]+(?:\.\d{1,2})?)', result)
-                note_match = re.search(r'NOTE:\s*(.+)', result)
-                bank_match = re.search(r'BANK:\s*(.+)', result)
-                direction_match = re.search(r'DIRECTION:\s*(OUT|IN)', result, re.IGNORECASE)
-                cat_match_ai = re.search(r'CATEGORY:\s*(.+)', result)
+                prefix = '+' if txn_type == 'income' else '-'
+                await thinking.edit_text(
+                    f"📸 *Receipt logged!*\n"
+                    f"{'💵' if txn_type=='income' else '💸'} {prefix}฿{amount:,.2f}\n"
+                    f"📝 {description}\n"
+                    f"{cat_emoji} {cat_name}\n"
+                    f"🏦 {account_name}\n\n"
+                    f"Wrong? Use /delete to remove it.",
+                    parse_mode=ParseMode.MARKDOWN
+                )
+                return
+            else:
+                await thinking.edit_text(
+                    "❌ Could not read an amount from this receipt.\n"
+                    "Try sending a clearer photo, or type it manually:\n`150 food bank`",
+                    parse_mode=ParseMode.MARKDOWN
+                )
+                return
 
-                if amount_match and float(amount_match.group(1).replace(',', '')) > 0:
-                    amount = float(amount_match.group(1).replace(',', ''))
-                    # If caption is present, it will override this later
-                    transaction_description = note_match.group(1).strip() if note_match else "Receipt scan"
-                    cat_name = cat_match_ai.group(1).strip() if cat_match_ai else "Other"
-                    is_income = direction_match.group(1).upper() == "IN" if direction_match else False
+        except Exception as _err:
+            logger.error(f"ReceiptParser failed: {_err} — using built-in fallback")
+            await thinking.edit_text("📸 Processing your receipt... give me a moment.")
 
-                    if bank_match:
-                        bank_text = bank_match.group(1).strip().lower()
-                        if bank_text != 'unknown':
-                            if 'bangkok' in bank_text or 'bbl' in bank_text:
-                                account_name = 'Bangkok Bank'
-                            elif 'true' in bank_text:
-                                account_name = 'True Money Wallet'
-                            elif 'rabbit' in bank_text:
-                                account_name = 'Rabbit Card'
-                            elif 'mrt' in bank_text or 'emv' in bank_text:
-                                account_name = 'MRT EMV Visa'
-                    ai_success = True
-            except Exception as e:
-                logger.warning(f"AI receipt processing failed, falling back to OCR: {e}")
-
-        # Fallback: OCR-based parsing
-        ocr_text = ''
-        if not ai_success:
-            try:
-                image = Image.open(io.BytesIO(bytes(photo_bytes)))
-                ocr_text = pytesseract.image_to_string(image, lang='eng')
-                logger.info(f"OCR text: {ocr_text[:500]}")
-
-                parsed = parse_bangkok_bank_ocr(ocr_text)
-
-                if parsed['amount'] and parsed['amount'] > 0:
-                    amount = parsed['amount']
-                    # PRIORITY: Note field always wins over To field
-                    # Note has the user's own description (e.g., "Swisse Multivitamin", "Kfc", "Pepsi")
-                    # To field is just the recipient company name
-                    if parsed["note"]:
-                        # Clean up OCR artifacts from note
-                        note_clean = parsed["note"].strip()
-                        # Remove trailing junk: numbers, QR refs, etc.
-                        note_clean = re.sub(r'\s*\d{8,}.*$', '', note_clean).strip()
-                        note_clean = re.sub(r'\s*(Scan|scan|QR|verify).*$', '', note_clean).strip()
-                        transaction_description = note_clean if note_clean else parsed["note"]
-                    elif parsed["to"]:
-                        transaction_description = parsed["to"]
-                    else:
-                        transaction_description = "Receipt scan"
-                    is_income = parsed['direction'] == 'IN'
-
-                    if parsed['bank']:
-                        if 'bangkok' in parsed['bank'].lower():
-                            account_name = 'Bangkok Bank'
-                else:
-                    # Try harder with different amounts
-                    all_amounts = re.findall(r'([0-9,]+\.\d{2})', ocr_text)
-                    valid_amounts = [float(a.replace(',', '')) for a in all_amounts if float(a.replace(',', '')) > 0]
-                    if valid_amounts:
-                        amount = max(valid_amounts)
-                        # Try to get note first
-                        note_match = re.search(r'Note\s*[:\s]+([A-Za-z][A-Za-z0-9\s,\.\-\']+)', ocr_text, re.IGNORECASE)
-                        if note_match:
-                            note = note_match.group(1).strip()
-                            skip_words = ["scan", "verify", "reference", "transaction", "bank ref"]
-                            if note and not any(sw in note.lower() for sw in skip_words):
-                                transaction_description = note
-                            else:
-                                transaction_description = "Receipt scan"
-                        else:
-                            transaction_description = "Receipt scan"
-                        if 'bangkok bank' in ocr_text.lower():
-                            account_name = 'Bangkok Bank'
-            except Exception as e:
-                logger.error(f"OCR processing failed: {e}")
-
-        # If we still don't have an amount, give up
-        if not amount or amount <= 0:
-            await update.message.reply_text(
-                "😅 I couldn't read the receipt clearly. Please log it manually:\n"
-                "Example: \"spent ฿150 food bank\""
-            )
-            return
-
-        # Override description and categorize based on caption if present
-        if caption:
-            transaction_description = caption
-            detected_cat, _ = detect_category(caption)
-            if detected_cat != 'Other':
-                cat_name = detected_cat
-
-        # If no caption, or caption didn't yield a category, try from OCR/AI description
-        if cat_name == 'Other' and transaction_description and transaction_description != "Receipt scan":
-            detected_cat, _ = detect_category(transaction_description)
-            if detected_cat != 'Other':
-                cat_name = detected_cat
-
-        # If still no category, try from full OCR text
-        # BUT only if description is generic — if we have a real description,
-        # the full OCR text may contain misleading keywords (e.g. recipient address
-        # containing "K Plus Wallet" or utility company names)
-        if cat_name == 'Other' and ocr_text and transaction_description in ('Receipt scan', '', None):
-            detected_cat, _ = detect_category(ocr_text)
-            if detected_cat != 'Other':
-                cat_name = detected_cat
-
-        # Caption can also override account and direction
-        if caption_lower:
-            detected_acc = detect_account(caption_lower)
-            if detected_acc != 'Cash':
-                account_name = detected_acc
-            for w in ['received', 'got', 'earned', 'income', 'money in', 'salary']:
-                if w in caption_lower:
-                    is_income = True
-                    break
-            for w in ['spent', 'paid', 'money out', 'buy', 'bought']:
-                if w in caption_lower:
-                    is_income = False
-                    break
-
-        valid_cats = [name for _, name in CATEGORY_LIST]
-        if cat_name not in valid_cats:
-            cat_name = "Other"
-
-        cat_emoji = "🧾"
-        for e, n in CATEGORY_LIST:
-            if n == cat_name:
-                cat_emoji = e
-                break
-
-        # ─── Auto-detect internal transfers (top-ups) ─────────────────────────
-        # If the receipt is FROM Bangkok Bank TO TrueMoney/Rabbit/MRT,
-        # treat it as a transfer between accounts, not an expense.
-        is_transfer = False
-        transfer_to_account = None
-
-        # Build a combined text to check for transfer destination
-        check_text = (transaction_description or '').lower() + ' ' + ocr_text.lower()
-
-        # Detect transfers from Bangkok Bank to other accounts
-        if account_name == 'Bangkok Bank' and not is_income:
-            # TrueMoney top-up detection
-            if any(kw in check_text for kw in ['truemoney', 'true money', 'tmninapp', 'transfer to true money']):
-                is_transfer = True
-                transfer_to_account = 'True Money Wallet'
-            # Rabbit Card top-up detection
-            elif any(kw in check_text for kw in ['rabbit', 'rabbit card', 'rabbit line pay', 'bts top up', 'bts topup']):
-                is_transfer = True
-                transfer_to_account = 'Rabbit Card'
-            # MRT EMV Visa top-up detection
-            elif any(kw in check_text for kw in ['mrt', 'mrt card', 'mrt emv', 'mangmoom']):
-                is_transfer = True
-                transfer_to_account = 'MRT EMV Visa'
-
-        if is_transfer and transfer_to_account:
-            # Log as internal transfer: deduct from Bangkok Bank, add to destination
-            conn = get_db()
-            c = conn.cursor()
-            c.execute(
-                "UPDATE accounts SET balance = balance - ? WHERE user_id = ? AND name = ?",
-                (amount, AUTHORIZED_USER_ID, 'Bangkok Bank')
-            )
-            c.execute(
-                "UPDATE accounts SET balance = balance + ? WHERE user_id = ? AND name = ?",
-                (amount, AUTHORIZED_USER_ID, transfer_to_account)
-            )
-            c.execute(
-                "INSERT INTO transactions (user_id, amount, description, type, category, account) VALUES (?, ?, ?, 'expense', 'Other', ?)",
-                (AUTHORIZED_USER_ID, -amount, f"Transfer to {transfer_to_account}", 'Bangkok Bank')
-            )
-            c.execute(
-                "INSERT INTO transactions (user_id, amount, description, type, category, account) VALUES (?, ?, ?, 'income', 'Other', ?)",
-                (AUTHORIZED_USER_ID, amount, f"Transfer from Bangkok Bank", transfer_to_account)
-            )
-            conn.commit()
-
-            # Get updated balances
-            c.execute("SELECT balance FROM accounts WHERE user_id = ? AND name = ?", (AUTHORIZED_USER_ID, 'Bangkok Bank'))
-            new_bank = c.fetchone()['balance']
-            c.execute("SELECT balance FROM accounts WHERE user_id = ? AND name = ?", (AUTHORIZED_USER_ID, transfer_to_account))
-            new_dest = c.fetchone()['balance']
-            conn.close()
-
-            await update.message.reply_text(
-                f"🔄 Top-up detected! Logged as transfer:\n\n"
-                f"💸 Bangkok Bank: -฿{amount:,.2f} → ฿{new_bank:,.2f}\n"
-                f"💵 {transfer_to_account}: +฿{amount:,.2f} → ฿{new_dest:,.2f}\n\n"
-                f"Wrong? Use /delete to remove it."
-            )
-        else:
-            # Normal expense/income logging
-            db_amount = amount if is_income else -amount
-            txn_type = 'income' if is_income else 'expense'
-
-            conn = get_db()
-            c = conn.cursor()
-            c.execute(
-                "INSERT INTO transactions (user_id, amount, description, type, category, account) VALUES (?, ?, ?, ?, ?, ?)",
-                (AUTHORIZED_USER_ID, db_amount, transaction_description, txn_type, cat_name, account_name)
-            )
-            c.execute(
-                "UPDATE accounts SET balance = balance + ? WHERE user_id = ? AND name = ?",
-                (db_amount, AUTHORIZED_USER_ID, account_name)
-            )
-            conn.commit()
-            conn.close()
-
-            sign = "💵 +" if is_income else "💸 -"
-            await update.message.reply_text(
-                f"📸 Receipt logged!\n"
-                f"{sign}฿{amount:,.2f}\n"
-                f"📝 {transaction_description}\n"
-                f"📂 {cat_emoji} {cat_name}\n"
-                f"🏦 {account_name}\n\n"
-                f"Wrong? Use /delete to remove it."
-            )
-
-    except Exception as e:
-        logger.error(f"Error processing receipt: {e}")
-        await update.message.reply_text(
-            "😅 Something went wrong processing the receipt. Please log it manually:\n"
-            "Example: \"spent ฿150 food bank\""
-        )
-
-
-# ─── Reports ──────────────────────────────────────────────────────────────────
-def generate_report(user_id):
-    conn = get_db()
-    c = conn.cursor()
-    now = datetime.now(BANGKOK_TZ)
-    today = now.date()
-
-    c.execute("SELECT name, balance FROM accounts WHERE user_id = ? ORDER BY id", (user_id,))
-    accounts = c.fetchall()
-    total_balance = sum(a['balance'] for a in accounts)
-
-    this_week_start = today - timedelta(days=today.weekday())
-    last_week_start = this_week_start - timedelta(days=7)
-    this_month_start = today.replace(day=1)
-    last_month_end = this_month_start - timedelta(days=1)
-    last_month_start = last_month_end.replace(day=1)
-
-    def get_period_stats(start, end):
-        c.execute(
-            "SELECT COALESCE(SUM(CASE WHEN type='income' THEN amount ELSE 0 END), 0) as income, "
-            "COALESCE(SUM(CASE WHEN type='expense' THEN ABS(amount) ELSE 0 END), 0) as expense "
-            "FROM transactions WHERE user_id = ? AND date(timestamp) >= ? AND date(timestamp) <= ?",
-            (user_id, start, end)
-        )
-        return c.fetchone()
-
-    def get_category_breakdown(start, end):
-        c.execute(
-            "SELECT category, SUM(ABS(amount)) as total "
-            "FROM transactions WHERE user_id = ? AND type = 'expense' "
-            "AND date(timestamp) >= ? AND date(timestamp) <= ? "
-            "GROUP BY category ORDER BY total DESC",
-            (user_id, start, end)
-        )
-        return c.fetchall()
-
-    this_week = get_period_stats(this_week_start, today)
-    last_week = get_period_stats(last_week_start, this_week_start - timedelta(days=1))
-    this_month = get_period_stats(this_month_start, today)
-    last_month = get_period_stats(last_month_start, last_month_end)
-    this_week_cats = get_category_breakdown(this_week_start, today)
-    conn.close()
-
-    report = f"📊 *Weekly Financial Report*\n"
-    report += f"📅 {now.strftime('%A, %B %d, %Y')}\n\n"
-    report += "💰 *Account Balances:*\n"
-    for acc in accounts:
-        emoji = {'Bangkok Bank': '🏦', 'True Money Wallet': '📱', 'MRT EMV Visa': '🚇', 'Rabbit Card': '🐇', 'Cash': '💵', 'Muvmi': '🛺', 'Solsot Member': '🎫'}.get(acc['name'], '💰')
-        report += f"  {emoji} {acc['name']}: ฿{acc['balance']:,.2f}\n"
-    report += f"  *Total: ฿{total_balance:,.2f}*\n\n"
-
-    report += "📅 *This Week:*\n"
-    report += f"  💵 Income: ฿{this_week['income']:,.2f}\n"
-    report += f"  💸 Expenses: ฿{this_week['expense']:,.2f}\n"
-    net_week = this_week['income'] - this_week['expense']
-    report += f"  📊 Net: ฿{net_week:,.2f}\n\n"
-
-    report += "🔄 *vs Last Week:*\n"
-    report += f"  💵 Income: ฿{last_week['income']:,.2f}\n"
-    report += f"  💸 Expenses: ฿{last_week['expense']:,.2f}\n"
-    if last_week['expense'] > 0:
-        pct = ((this_week['expense'] - last_week['expense']) / last_week['expense']) * 100
-        d = "📈" if pct > 0 else "📉"
-        report += f"  {d} Spending {abs(pct):.0f}% {'more' if pct > 0 else 'less'} than last week\n"
-    report += "\n"
-
-    report += "📅 *This Month:*\n"
-    report += f"  💵 Income: ฿{this_month['income']:,.2f}\n"
-    report += f"  💸 Expenses: ฿{this_month['expense']:,.2f}\n"
-    net_month = this_month['income'] - this_month['expense']
-    report += f"  📊 Net: ฿{net_month:,.2f}\n\n"
-
-    report += "🔄 *vs Last Month:*\n"
-    report += f"  💵 Income: ฿{last_month['income']:,.2f}\n"
-    report += f"  💸 Expenses: ฿{last_month['expense']:,.2f}\n"
-    if last_month['expense'] > 0:
-        pct = ((this_month['expense'] - last_month['expense']) / last_month['expense']) * 100
-        d = "📈" if pct > 0 else "📉"
-        report += f"  {d} Spending {abs(pct):.0f}% {'more' if pct > 0 else 'less'} than last month\n"
-    report += "\n"
-
-    if this_week_cats:
-        report += "📂 *This Week by Category:*\n"
-        for cat in this_week_cats:
-            cat_emoji = "🧾"
-            for e, n in CATEGORY_LIST:
-                if n == cat['category']:
-                    cat_emoji = e
-                    break
-            report += f"  {cat_emoji} {cat['category']}: ฿{cat['total']:,.2f}\n"
-
-    return report
+    # ── Built-in OCR fallback ─────────────────────────────────────────────────
 
 
 @restricted
