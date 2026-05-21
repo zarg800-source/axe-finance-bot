@@ -1626,9 +1626,27 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ── ReceiptParser module ──────────────────────────────────────────────────
     if RECEIPT_PARSER_AVAILABLE:
         try:
-            api_key = os.environ.get('OPENAI_API_KEY', '')
-            parser  = create_parser(openai_api_key=api_key)
-            result  = await parser.parse(bytes(photo_bytes), caption=caption or None)
+            import asyncio
+            _client = globals().get('ai_client', None)
+            parser  = create_parser(openai_client=_client)
+            # parse() is blocking — run in thread executor so bot doesn't freeze
+            _loop = asyncio.get_event_loop()
+            try:
+                result = await asyncio.wait_for(
+                    _loop.run_in_executor(
+                        None,
+                        lambda: parser.parse(bytes(photo_bytes), caption=caption or None)
+                    ),
+                    timeout=25.0
+                )
+            except asyncio.TimeoutError:
+                logger.error('ReceiptParser timed out after 25s')
+                await thinking.edit_text(
+                    '⏱ Receipt scanning timed out.\n'
+                    'Try a clearer photo, or type manually: `150 food bank`',
+                    parse_mode=ParseMode.MARKDOWN
+                )
+                return
 
             if result.amount and result.amount > 0:
                 amount           = result.amount
@@ -1695,9 +1713,17 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
                 return
 
+        except asyncio.TimeoutError:
+            pass  # already handled above
         except Exception as _err:
-            logger.error(f"ReceiptParser failed: {_err} — using built-in fallback")
-            await thinking.edit_text("📸 Processing your receipt... give me a moment.")
+            logger.error(f"ReceiptParser failed: {_err}")
+            # Don't silently hang — tell the user
+            await thinking.edit_text(
+                "❌ Could not process this receipt.\n"
+                "Try a clearer photo, or type it manually:\n`150 food bank`",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            return
 
     # ── Built-in OCR fallback ─────────────────────────────────────────────────
 
