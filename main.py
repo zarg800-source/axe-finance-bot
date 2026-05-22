@@ -1637,7 +1637,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         None,
                         lambda: parser.parse(bytes(photo_bytes), caption=caption or None)
                     ),
-                    timeout=25.0
+                    timeout=60.0
                 )
             except asyncio.TimeoutError:
                 logger.error('ReceiptParser timed out after 25s')
@@ -1653,7 +1653,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 description      = result.description or 'Receipt scan'
                 cat_name         = result.category or 'Other'
                 account_name     = result.account or 'Bangkok Bank'
-                txn_type         = result.transaction_type or 'expense'
+                txn_type         = 'transfer' if result.is_transfer else ('income' if result.direction == 'IN' else 'expense')
 
                 cat_emoji = '🧾'
                 for e, n in CATEGORY_LIST + INCOME_CATEGORY_LIST:
