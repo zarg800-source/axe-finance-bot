@@ -946,8 +946,8 @@ IMPORTANT RULES:
 3. If there is no Note field, use the recipient name or merchant name
 4. For the CATEGORY, consider the Note field content AND the recipient name together
 5. Common Thai bank slip layout: Amount → From → To → Fee → Note → Bank reference
-6. NEVER use "verify", "scan", "scan to verify", or any reference/transaction numbers as the NOTE value — these are UI labels, not the user's note
-7. The Note field appears just above "Bank reference no." — look for it there specifically
+6. NEVER use "verify", "scan", "scan to verify", reference numbers, or transaction IDs as the NOTE — these are UI labels printed near the QR code
+7. The actual Note field is a short user-typed text like "Bolt", "lunch", "Grab", "electric bill" — find it between the Fee line and Bank reference line
 
 Available categories for expenses:
 Food & Drinks, Coffee, Transport, Groceries, Housing, Health, Shopping, Entertainment, Subscriptions, Travel, School, Cigarettes, Other
@@ -969,6 +969,7 @@ Examples:
 - If Note says "Coconut water" and To says "CS 7-Eleven" → NOTE should be "Coconut water", CATEGORY should be "Food & Drinks"
 - If Note says "Bolt" → NOTE should be "Bolt", CATEGORY should be "Transport"
 - If Note says "Grab" → NOTE should be "Grab", CATEGORY should be "Transport"
+- If you see "Scan to verify" near the QR code, that is NOT the Note field — ignore it
 - If To says "TRUEMONEY" with no note → this is a transfer/top-up, TRANSFER_TO: True Money Wallet
 - If Note says "Transfer to True Money" → TRANSFER_TO: True Money Wallet"""
 
@@ -1033,13 +1034,21 @@ Examples:
             except ValueError:
                 pass
 
-        # Description: caption > AI note > "Receipt scan"
+        # Bad values the AI sometimes picks up from QR/reference areas
+        _BAD_NOTES = ['verify', 'scan', 'scan to verify', 'reference', 'bank reference',
+                      'transaction reference', 'none', 'n/a', '-', 'unknown', 'optional']
+
+        # Description: caption > AI note > To field > "Receipt scan"
         if caption:
             result.description = caption
         elif note_match:
             note = note_match.group(1).strip()
-            if note and note.lower() not in ['none', 'n/a', '-', 'unknown', 'verify', 'scan', 'scan to verify']:
+            # Reject if note IS a bad word or CONTAINS a bad word
+            _is_bad = not note or any(bad in note.lower() for bad in _BAD_NOTES)
+            if not _is_bad:
                 result.description = note
+            elif to_match:
+                result.description = to_match.group(1).strip()
             else:
                 result.description = "Receipt scan"
         else:
