@@ -1189,6 +1189,42 @@ class ReceiptParser:
             result = self.ai_parser.parse(photo_bytes, caption)
             if result.is_valid:
                 logger.info(f"AI parse success: {result.amount} | {result.description} | {result.category}")
+                # ── Step 1b: OCR override for Note field ──────────────────────
+                # The AI sometimes misreads "Scan to verify" as the Note.
+                # Run a quick OCR pass and extract the Note field directly.
+                # If found and valid, override the AI's description + category.
+                if not caption and _OCR_AVAILABLE:
+                    try:
+                        _img = Image.open(io.BytesIO(photo_bytes))
+                        try:
+                            _ocr = pytesseract.image_to_string(_img, lang='eng+tha')
+                        except Exception:
+                            _ocr = pytesseract.image_to_string(_img, lang='eng')
+                        _BAD = ['verify', 'scan', 'reference', 'bank', 'transaction',
+                                'fee', 'thb', 'baht', 'promptpay', 'service code']
+                        # Look for "Note" label followed by text on same or next line
+                        _note_match = re.search(
+                            r'(?:^|\n)\s*Note\s*[:\t ]+([^\n]{2,40})',
+                            _ocr, re.IGNORECASE | re.MULTILINE
+                        )
+                        if not _note_match:
+                            # Try: "Note" on its own line, value on next line
+                            _note_match = re.search(
+                                r'(?:^|\n)\s*Note\s*\n\s*([^\n]{2,40})',
+                                _ocr, re.IGNORECASE | re.MULTILINE
+                            )
+                        if _note_match:
+                            _note_val = _note_match.group(1).strip()
+                            _is_bad = any(b in _note_val.lower() for b in _BAD)
+                            if not _is_bad and len(_note_val) >= 2:
+                                logger.info(f"OCR Note override: '{result.description}' → '{_note_val}'")
+                                result.description = _note_val
+                                _cat, _emoji = detect_category(_note_val)
+                                if _cat != 'Other':
+                                    result.category = _cat
+                                    result.category_emoji = _emoji
+                    except Exception as _e:
+                        logger.warning(f"OCR Note override failed: {_e}")
                 # Apply caption override
                 result = self._apply_caption(result, caption)
                 return result
