@@ -946,6 +946,8 @@ IMPORTANT RULES:
 3. If there is no Note field, use the recipient name or merchant name
 4. For the CATEGORY, consider the Note field content AND the recipient name together
 5. Common Thai bank slip layout: Amount → From → To → Fee → Note → Bank reference
+6. NEVER use "verify", "scan", "scan to verify", or any reference/transaction numbers as the NOTE value — these are UI labels, not the user's note
+7. The Note field appears just above "Bank reference no." — look for it there specifically
 
 Available categories for expenses:
 Food & Drinks, Coffee, Transport, Groceries, Housing, Health, Shopping, Entertainment, Subscriptions, Travel, School, Cigarettes, Other
@@ -965,6 +967,8 @@ TRANSFER_TO: <if this is a top-up to TrueMoney/Rabbit/MRT, write the destination
 Examples:
 - If Note says "Gin Tonic" and To says "MS. SAI TAUNG" → NOTE should be "Gin Tonic", CATEGORY should be "Entertainment"
 - If Note says "Coconut water" and To says "CS 7-Eleven" → NOTE should be "Coconut water", CATEGORY should be "Food & Drinks"
+- If Note says "Bolt" → NOTE should be "Bolt", CATEGORY should be "Transport"
+- If Note says "Grab" → NOTE should be "Grab", CATEGORY should be "Transport"
 - If To says "TRUEMONEY" with no note → this is a transfer/top-up, TRANSFER_TO: True Money Wallet
 - If Note says "Transfer to True Money" → TRANSFER_TO: True Money Wallet"""
 
@@ -1034,7 +1038,7 @@ Examples:
             result.description = caption
         elif note_match:
             note = note_match.group(1).strip()
-            if note and note.lower() not in ['none', 'n/a', '-', 'unknown']:
+            if note and note.lower() not in ['none', 'n/a', '-', 'unknown', 'verify', 'scan', 'scan to verify', 'n/a']:
                 result.description = note
             else:
                 result.description = "Receipt scan"
