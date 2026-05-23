@@ -1038,7 +1038,7 @@ Examples:
             result.description = caption
         elif note_match:
             note = note_match.group(1).strip()
-            if note and note.lower() not in ['none', 'n/a', '-', 'unknown', 'verify', 'scan', 'scan to verify', 'n/a']:
+            if note and note.lower() not in ['none', 'n/a', '-', 'unknown', 'verify', 'scan', 'scan to verify']:
                 result.description = note
             else:
                 result.description = "Receipt scan"
