@@ -1237,7 +1237,7 @@ class ReceiptParser:
                         result.category = cat
                         result.category_emoji = emoji
                 logger.info(f"AI parse success: {result.amount} | {result.description} | {result.category}")
-                result = self._apply_caption(result, caption)
+                result = self._apply_caption(result, caption or ocr_note)
                 return result
             else:
                 logger.info("AI parse returned no valid amount, falling back to OCR")
@@ -1262,7 +1262,7 @@ class ReceiptParser:
             logger.error(f"OCR processing failed: {e}")
 
         # ── Step 3: Apply caption override ────────────────────────────────────
-        result = self._apply_caption(result, caption)
+        result = self._apply_caption(result, caption or ocr_note)
 
         return result
 
