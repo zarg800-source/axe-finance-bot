@@ -1166,78 +1166,31 @@ class ReceiptParser:
         self.ai_parser = AIParser(openai_client) if openai_client else None
         self.ocr_parser = OCRParser()
 
-    def _ocr_extract_note(self, photo_bytes: bytes) -> str:
-        """Run OCR and extract the Note field. Returns empty string if not found."""
-        if not _OCR_AVAILABLE:
-            return ""
-        try:
-            img = Image.open(io.BytesIO(photo_bytes))
-            try:
-                txt = pytesseract.image_to_string(img, lang='eng+tha')
-            except Exception:
-                txt = pytesseract.image_to_string(img, lang='eng')
-
-            logger.info("OCR for Note extraction: %s", repr(txt[:300]))
-
-            bad = ['verify', 'scan', 'reference', 'bank', 'transaction',
-                   'fee', 'thb', 'baht', 'promptpay', 'service', '0.00']
-
-            lines = txt.splitlines()
-            for i, line in enumerate(lines):
-                stripped = line.strip()
-                # Look for a line that IS or STARTS WITH "Note"
-                if re.match(r'^Note\b', stripped, re.IGNORECASE):
-                    # Value may be on same line after "Note"
-                    same = re.match(r'^Note\s+(.+)', stripped, re.IGNORECASE)
-                    if same:
-                        val = same.group(1).strip()
-                    elif i + 1 < len(lines):
-                        val = lines[i + 1].strip()
-                    else:
-                        continue
-                    if val and len(val) >= 2 and not any(b in val.lower() for b in bad):
-                        logger.info("OCR Note found: %s", repr(val))
-                        return val
-        except Exception as e:
-            logger.warning("OCR Note extraction error: %s", e)
-        return ""
-
     def parse(self, photo_bytes: bytes, caption: str = "") -> ParseResult:
         """
         Parse a receipt/bank slip photo.
-
+        
         Priority:
-        1. OCR Note extraction (runs first — catches AI mistakes)
-        2. AI vision (amount, direction, category)
-        3. OCR fallback (if AI unavailable)
-        4. Caption override (always wins)
+        1. AI vision (most accurate for Thai slips)
+        2. OCR fallback (if AI fails or unavailable)
+        3. Caption override (always applied on top)
+        
+        Args:
+            photo_bytes: Raw image bytes
+            caption: Optional user caption (e.g., "Gin Tonic")
+            
+        Returns:
+            ParseResult with all extracted information
         """
         result = ParseResult()
 
-        # ── Step 0: Extract Note via OCR before calling AI ────────────────────
-        # Bangkok Bank slips have a clear "Note" label. OCR reads it reliably.
-        # We pass the OCR note to the AI as context so it stops misreading
-        # "Scan to verify" from the QR area.
-        ocr_note = ""
-        if not caption:
-            ocr_note = self._ocr_extract_note(photo_bytes)
-
         # ── Step 1: Try AI vision parsing ─────────────────────────────────────
         if self.ai_parser:
-            # Pass OCR note as caption so AI uses it directly
-            ai_caption = caption if caption else ocr_note
-            result = self.ai_parser.parse(photo_bytes, ai_caption)
+            result = self.ai_parser.parse(photo_bytes, caption)
             if result.is_valid:
-                # Force-override if AI still got the description wrong
-                if ocr_note and ocr_note.lower() not in result.description.lower():
-                    logger.info(f"OCR Note override: {result.description!r} -> {ocr_note!r}")
-                    result.description = ocr_note
-                    cat, emoji = detect_category(ocr_note)
-                    if cat != 'Other':
-                        result.category = cat
-                        result.category_emoji = emoji
                 logger.info(f"AI parse success: {result.amount} | {result.description} | {result.category}")
-                result = self._apply_caption(result, caption or ocr_note)
+                # Apply caption override
+                result = self._apply_caption(result, caption)
                 return result
             else:
                 logger.info("AI parse returned no valid amount, falling back to OCR")
@@ -1262,7 +1215,7 @@ class ReceiptParser:
             logger.error(f"OCR processing failed: {e}")
 
         # ── Step 3: Apply caption override ────────────────────────────────────
-        result = self._apply_caption(result, caption or ocr_note)
+        result = self._apply_caption(result, caption)
 
         return result
 

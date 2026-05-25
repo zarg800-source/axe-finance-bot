@@ -1650,18 +1650,12 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             if result.amount and result.amount > 0:
                 amount           = result.amount
-                # Hard filter — reject bad descriptions the AI picks up from QR/reference areas
-                _raw_desc = result.description or ''
-                _bad_desc = ['verify', 'scan to verify', 'scan', 'bank reference',
-                             'transaction reference', 'reference', 'none', 'n/a']
-                if not _raw_desc or any(b in _raw_desc.lower() for b in _bad_desc):
-                    _raw_desc = getattr(result, 'raw_to', '') or 'Receipt scan'
-                description      = _raw_desc
-                # Re-detect category from cleaned description
-                if description != 'Receipt scan':
-                    _c, _e = detect_category(description)
-                    if _c != 'Other':
-                        result.category = _c
+                # Reject bad descriptions from QR label area
+                _bad = ['verify', 'scan to verify', 'scan', 'bank reference', 'transaction reference']
+                _desc = result.description or ''
+                if not _desc or any(b in _desc.lower() for b in _bad):
+                    _desc = (result.raw_to or '').strip() or 'Receipt scan'
+                description      = _desc
                 cat_name         = result.category or 'Other'
                 account_name     = result.account or 'Bangkok Bank'
                 txn_type         = 'transfer' if result.is_transfer else ('income' if result.direction == 'IN' else 'expense')
