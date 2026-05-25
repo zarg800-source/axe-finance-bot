@@ -1650,12 +1650,14 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             if result.amount and result.amount > 0:
                 amount           = result.amount
-                # Reject bad descriptions from QR label area
-                _bad = ['verify', 'scan to verify', 'scan', 'bank reference', 'transaction reference']
-                _desc = result.description or ''
-                if not _desc or any(b in _desc.lower() for b in _bad):
-                    _desc = (result.raw_to or '').strip() or 'Receipt scan'
-                description      = _desc
+                _desc_raw = result.description or ''
+                _bad_words = ['verify', 'scan to verify', 'scan']
+                if not _desc_raw or any(b in _desc_raw.lower() for b in _bad_words):
+                    _desc_raw = (getattr(result, 'raw_to', '') or '').strip() or 'Receipt scan'
+                    _cat2, _emoji2 = detect_category(_desc_raw)
+                    if _cat2 != 'Other':
+                        result.category = _cat2
+                description      = _desc_raw
                 cat_name         = result.category or 'Other'
                 account_name     = result.account or 'Bangkok Bank'
                 txn_type         = 'transfer' if result.is_transfer else ('income' if result.direction == 'IN' else 'expense')
