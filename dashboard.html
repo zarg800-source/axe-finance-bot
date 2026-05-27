@@ -289,8 +289,8 @@ body{
 .scard.primary .sub{color:rgba(255,255,255,.55)}
 
 /* ── TXN TABLE ────────────────────────────────────────────────────── */
-.txn-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
-.tt{width:100%;border-collapse:collapse;min-width:320px}
+.txn-wrap{overflow-x:hidden}.txn-wrap::-webkit-scrollbar{display:none}
+.tt{width:100%;border-collapse:collapse}
 .tt th{
   font-size:10px;font-weight:600;letter-spacing:.9px;
   text-transform:uppercase;color:var(--text3);
@@ -305,13 +305,13 @@ body{
 .tt tbody tr:hover td{background:var(--bg3)}
 /* col sizing */
 .tt .c-desc{width:42%}
-.tt .c-date{width:14%;white-space:nowrap;color:var(--text2)!important}
-.tt .c-acc{width:24%;color:var(--text2)!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:0}
+.tt .c-date{width:14%;color:var(--text2)!important}
+.tt .c-acc{width:24%;color:var(--text2)!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tt .c-amt{width:20%;text-align:right!important;white-space:nowrap;font-weight:600}
 
 .txi{display:flex;align-items:center;gap:9px}
 .txi-ic{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;flex-shrink:0;font-size:15px}
-.txi-name{font-weight:600;font-size:13px;color:var(--text)}
+.txi-name{font-weight:600;font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px}
 .txi-meta{font-size:11px;color:var(--text3);margin-top:1px}
 
 .amt-pos{color:var(--up)}
@@ -591,13 +591,13 @@ async function loadBalances(){
 
   $('bal-grid').innerHTML=data.map(function(a){
     return '<div class="bcard" onclick="selBal(this)">'+
-      '<div class="bicon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div>'+
+      
       '<div class="blbl">'+a.name+'</div>'+
       '<div class="bval" data-v="'+a.balance+'">฿—</div>'+
     '</div>';
   }).join('')+
   '<div class="bcard networth">'+
-    '<div class="bicon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>'+
+    
     '<div class="blbl">Net Worth</div>'+
     '<div class="bval" data-v="'+total+'">฿—</div>'+
   '</div>';
