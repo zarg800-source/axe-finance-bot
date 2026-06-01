@@ -1998,7 +1998,7 @@ ACCOUNT_NAMES = ['Bangkok Bank', 'MRT EMV Visa', 'True Money Wallet', 'Cash', 'R
 def build_persistent_keyboard():
     """Build the persistent reply keyboard with a single /start button."""
     return ReplyKeyboardMarkup(
-        [[KeyboardButton("/start")]],
+        [[KeyboardButton("START")]],
         resize_keyboard=True,
         is_persistent=True,
     )
@@ -3678,7 +3678,16 @@ def main():
         # Show only /start in the Telegram command menu
         from telegram import BotCommand
         await application.bot.set_my_commands([
-            BotCommand("start", "Open Axe Finance menu"),
+            BotCommand("start",         "Open Axe Finance menu"),
+            BotCommand("balance",       "Show all account balances"),
+            BotCommand("history",       "Last 10 transactions"),
+            BotCommand("report",        "Monthly income/expense summary"),
+            BotCommand("export",        "Download Excel report"),
+            BotCommand("transfer",      "Transfer between accounts"),
+            BotCommand("subscriptions", "List recurring subscriptions"),
+            BotCommand("backup",        "Download database backup"),
+            BotCommand("delete",        "Delete last transaction"),
+            BotCommand("help",          "Full command list"),
         ])
 
     app = (
@@ -3700,6 +3709,7 @@ def main():
         entry_points=[
             CommandHandler("start", cmd_start),
             CommandHandler("menu", cmd_menu),
+            MessageHandler(filters.Regex('^START$'), cmd_start),
             CallbackQueryHandler(button_main_menu, pattern=r'^menu_|^back_main$'),
         ],
         states={
@@ -3782,6 +3792,7 @@ def main():
             CommandHandler("cancel", cancel_conversation),
             CommandHandler("menu", cmd_menu),
             CommandHandler("start", cmd_start),
+            MessageHandler(filters.Regex('^START$'), cmd_start),
         ],
         per_message=False,
     )
@@ -3807,6 +3818,9 @@ def main():
 
     # Photo handler
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
+
+    # "START" keyboard button — must be before generic text handler
+    app.add_handler(MessageHandler(filters.Regex('^START$'), cmd_start))
 
     # Text handler (must be last — catches natural language when NOT in a conversation)
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
