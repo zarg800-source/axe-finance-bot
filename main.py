@@ -15,7 +15,7 @@ import base64
 from datetime import datetime, timedelta, date
 from functools import wraps
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.constants import ParseMode
 from telegram.ext import (
     Application, CommandHandler, MessageHandler, ContextTypes,
@@ -1151,6 +1151,12 @@ def parse_bangkok_bank_ocr(ocr_text):
 # ─── Commands ─────────────────────────────────────────────────────────────────
 @restricted
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Attach the persistent /start button to the chat input bar
+    await update.message.reply_text(
+        "📱",
+        reply_markup=build_persistent_keyboard(),
+    )
+    # Send the main inline menu
     await update.message.reply_text(
         "📱 *Axe Finance*\n\n"
         "Hey Mike! 👋 I'm your personal finance tracker.\n\n"
@@ -1989,6 +1995,15 @@ async def startup_subscription_check(app):
 ACCOUNT_NAMES = ['Bangkok Bank', 'MRT EMV Visa', 'True Money Wallet', 'Cash', 'Rabbit Card', 'Muvmi', 'Solsot Member']
 
 
+def build_persistent_keyboard():
+    """Build the persistent reply keyboard with a single /start button."""
+    return ReplyKeyboardMarkup(
+        [[KeyboardButton("/start")]],
+        resize_keyboard=True,
+        is_persistent=True,
+    )
+
+
 def build_main_menu():
     """Build the main menu inline keyboard."""
     keyboard = [
@@ -2114,6 +2129,11 @@ async def cmd_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "📱 *Axe Finance — Main Menu*\n\nTap a button below:",
         reply_markup=build_main_menu(),
         parse_mode=ParseMode.MARKDOWN
+    )
+    # Ensure the persistent keyboard is always visible
+    await update.message.reply_text(
+        "📱",
+        reply_markup=build_persistent_keyboard(),
     )
     return MENU_STATE
 
