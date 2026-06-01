@@ -1994,15 +1994,12 @@ def build_main_menu():
     keyboard = [
         [InlineKeyboardButton("💸 Log Expense", callback_data="menu_expense"),
          InlineKeyboardButton("💵 Log Income", callback_data="menu_income")],
-        [InlineKeyboardButton("💰 Balance", callback_data="menu_balance"),
-         InlineKeyboardButton("📜 History", callback_data="menu_history")],
-        [InlineKeyboardButton("📊 Report", callback_data="menu_report"),
-         InlineKeyboardButton("📋 Export", callback_data="menu_export")],
-        [InlineKeyboardButton("🔄 Subscriptions", callback_data="menu_subs"),
-         InlineKeyboardButton("📂 Categories", callback_data="menu_categories")],
-        [InlineKeyboardButton("💾 Backup", callback_data="menu_backup"),
-         InlineKeyboardButton("📂 Restore", callback_data="menu_restore")],
-        [InlineKeyboardButton("⚙️ Settings", callback_data="menu_settings")],
+        [InlineKeyboardButton("📋 Export", callback_data="menu_export"),
+         InlineKeyboardButton("🔄 Subscriptions", callback_data="menu_subs")],
+        [InlineKeyboardButton("📂 Categories", callback_data="menu_categories"),
+         InlineKeyboardButton("💾 Backup", callback_data="menu_backup")],
+        [InlineKeyboardButton("📂 Restore", callback_data="menu_restore"),
+         InlineKeyboardButton("⚙️ Settings", callback_data="menu_settings")],
     ]
     return InlineKeyboardMarkup(keyboard)
 
@@ -3658,6 +3655,11 @@ def main():
     async def post_init(application):
         """Called after the application is initialized but before polling starts."""
         await startup_subscription_check(application)
+        # Show only /start in the Telegram command menu
+        from telegram import BotCommand
+        await application.bot.set_my_commands([
+            BotCommand("start", "Open Axe Finance menu"),
+        ])
 
     app = (
         Application.builder()

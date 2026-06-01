@@ -254,7 +254,7 @@ CATEGORIES = {
     'juice': ('Food & Drinks', '🍜'),
     'coconut water': ('Food & Drinks', '🍜'),
     'coconut': ('Food & Drinks', '🍜'),
-    'water': ('Food & Drinks', '🍜'),
+    'water': ('Housing', '🏠'),
     'mineral water': ('Food & Drinks', '🍜'),
     'energy drink': ('Food & Drinks', '🍜'),
     'red bull': ('Food & Drinks', '🍜'),
