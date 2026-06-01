@@ -3676,10 +3676,9 @@ def main():
         """Called after the application is initialized but before polling starts."""
         await startup_subscription_check(application)
         # Show only /start in the Telegram command menu
-        from telegram import BotCommand
-        await application.bot.set_my_commands([
-            BotCommand("start", "Open Axe Finance menu"),
-        ])
+        # Clear all bot commands so Telegram hides the "Menu" button
+        # The persistent ReplyKeyboard /start button replaces it
+        await application.bot.delete_my_commands()
 
     app = (
         Application.builder()
