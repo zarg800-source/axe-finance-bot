@@ -327,21 +327,21 @@ CFO_HTML       = '/app/cfo-finance-bot.html'
 
 def build_axe_system_prompt():
     conn = get_db()
-    c    = conn.cursor()
+    cur  = conn.cursor()
     now  = now_bkk()
 
-    c.execute("SELECT name, balance FROM accounts ORDER BY balance DESC")
-    accounts      = [dict(r) for r in c.fetchall()]
+    cur.execute("SELECT name, balance FROM accounts ORDER BY balance DESC")
+    accounts      = [dict(r) for r in cur.fetchall()]
     total_balance = sum(a['balance'] for a in accounts)
 
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     ms = month_start.strftime('%Y-%m-%d %H:%M:%S')
     ns = now.strftime('%Y-%m-%d %H:%M:%S')
 
-    c.execute("""SELECT type, SUM(ABS(amount)) as total FROM transactions
+    cur.execute("""SELECT type, SUM(ABS(amount)) as total FROM transactions
                  WHERE timestamp >= ? AND timestamp < ? AND type != 'transfer'
                  GROUP BY type""", (ms, ns))
-    month_totals = {row['type']: float(row['total'] or 0) for row in c.fetchall()}
+    month_totals = {row['type']: float(row['total'] or 0) for row in cur.fetchall()}
     this_income  = month_totals.get('income', 0)
     this_expense = month_totals.get('expense', 0)
 
@@ -351,27 +351,27 @@ def build_axe_system_prompt():
         last_start = month_start.replace(month=month_start.month - 1)
     ls = last_start.strftime('%Y-%m-%d %H:%M:%S')
 
-    c.execute("""SELECT type, SUM(ABS(amount)) as total FROM transactions
+    cur.execute("""SELECT type, SUM(ABS(amount)) as total FROM transactions
                  WHERE timestamp >= ? AND timestamp < ? AND type != 'transfer'
                  GROUP BY type""", (ls, ms))
-    last_totals  = {row['type']: float(row['total'] or 0) for row in c.fetchall()}
+    last_totals  = {row['type']: float(row['total'] or 0) for row in cur.fetchall()}
     last_income  = last_totals.get('income', 0)
     last_expense = last_totals.get('expense', 0)
 
-    c.execute("""SELECT category, SUM(ABS(amount)) as total, COUNT(*) as count
+    cur.execute("""SELECT category, SUM(ABS(amount)) as total, COUNT(*) as count
                  FROM transactions
                  WHERE type='expense' AND timestamp >= ?
                  GROUP BY category ORDER BY total DESC""", (ms,))
-    categories = [dict(r) for r in c.fetchall()]
+    categories = [dict(r) for r in cur.fetchall()]
 
-    c.execute("""SELECT name, amount, account, next_due_date
+    cur.execute("""SELECT name, amount, account, next_due_date
                  FROM recurring_subscriptions ORDER BY next_due_date""")
-    subscriptions = [dict(r) for r in c.fetchall()]
+    subscriptions = [dict(r) for r in cur.fetchall()]
     total_subs    = sum(s['amount'] for s in subscriptions)
 
-    c.execute("""SELECT amount, description, type, category, account, timestamp
+    cur.execute("""SELECT amount, description, type, category, account, timestamp
                  FROM transactions ORDER BY timestamp DESC LIMIT 20""")
-    recent = [dict(r) for r in c.fetchall()]
+    recent = [dict(r) for r in cur.fetchall()]
     conn.close()
 
     days_elapsed      = max(now.day, 1)
@@ -380,7 +380,7 @@ def build_axe_system_prompt():
     savings_rate      = (((this_income - this_expense) / this_income) * 100) if this_income > 0 else 0
 
     accounts_str   = ' | '.join([f"{a['name']}: ฿{a['balance']:,.2f}" for a in accounts])
-    categories_str = '\n'.join([f"- {c['category']}: ฿{c['total']:,.2f} ({c['count']} transactions)" for c in categories]) or 'No expenses yet'
+    categories_str = '\n'.join([f"- {cat['category']}: ฿{cat['total']:,.2f} ({cat['count']} transactions)" for cat in categories]) or 'No expenses yet'
     subs_str       = '\n'.join([f"- {s['name']}: ฿{s['amount']}/month from {s['account']}, next due {s['next_due_date']}" for s in subscriptions]) or 'None'
     recent_str     = '\n'.join([f"- {t['timestamp'][:10]}: {t['description']} ฿{abs(t['amount']):,.2f} [{t['category']}] {'IN' if t['amount'] > 0 else 'OUT'} ({t['account']})" for t in recent])
 
@@ -484,7 +484,7 @@ def api_cfo_chat():
 
     except Exception as e:
         logging.error(f"Axe chat error: {e}")
-        return jsonify({'reply': 'Something went wrong. Please try again.'}), 200
+        return jsonify({'reply': f'Error: {str(e)}'}), 200
 
 
 # ── Error handlers ────────────────────────────────────────────────────────────
