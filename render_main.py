@@ -318,6 +318,215 @@ self.addEventListener('fetch',e=>{
     return Response(sw, mimetype='application/javascript',
                     headers={"Service-Worker-Allowed": "/"})
 
+# ── Axe CFO Chatbot ───────────────────────────────────────────────────────────
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+GEMINI_MODEL   = 'gemini-2.5-flash'
+GEMINI_URL     = f'https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}'
+CFO_HTML       = '/app/cfo-finance-bot.html'
+
+
+def build_axe_system_prompt():
+    """Build Axe system prompt with real-time data from finance.db."""
+    conn = get_db()
+    c    = conn.cursor()
+    now  = now_bkk()
+
+    # Accounts
+    c.execute("SELECT name, balance FROM accounts ORDER BY balance DESC")
+    accounts      = [dict(r) for r in c.fetchall()]
+    total_balance = sum(a['balance'] for a in accounts)
+
+    # This month totals
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    ms = month_start.strftime('%Y-%m-%d %H:%M:%S')
+    ns = now.strftime('%Y-%m-%d %H:%M:%S')
+    c.execute("""SELECT type, SUM(ABS(amount)) as total FROM transactions
+                 WHERE timestamp >= ? AND timestamp < ? AND type != 'transfer'
+                 GROUP BY type""", (ms, ns))
+    month_totals = {row['type']: float(row['total'] or 0) for row in c.fetchall()}
+    this_income  = month_totals.get('income', 0)
+    this_expense = month_totals.get('expense', 0)
+
+    # Last month totals
+    if month_start.month == 1:
+        last_start = month_start.replace(year=month_start.year - 1, month=12)
+    else:
+        last_start = month_start.replace(month=month_start.month - 1)
+    ls = last_start.strftime('%Y-%m-%d %H:%M:%S')
+    c.execute("""SELECT type, SUM(ABS(amount)) as total FROM transactions
+                 WHERE timestamp >= ? AND timestamp < ? AND type != 'transfer'
+                 GROUP BY type""", (ls, ms))
+    last_totals  = {row['type']: float(row['total'] or 0) for row in c.fetchall()}
+    last_income  = last_totals.get('income', 0)
+    last_expense = last_totals.get('expense', 0)
+
+    # Category breakdown this month
+    c.execute("""SELECT category, SUM(ABS(amount)) as total, COUNT(*) as count
+                 FROM transactions
+                 WHERE type='expense' AND timestamp >= ?
+                 GROUP BY category ORDER BY total DESC""", (ms,))
+    categories = [dict(r) for r in c.fetchall()]
+
+    # Subscriptions
+    c.execute("""SELECT name, amount, account, next_due_date
+                 FROM recurring_subscriptions WHERE user_id = 1""")
+    subscriptions = [dict(r) for r in c.fetchall()]
+    total_subs    = sum(s['amount'] for s in subscriptions)
+
+    # Recent transactions (last 20)
+    c.execute("""SELECT amount, description, type, category, account, timestamp
+                 FROM transactions ORDER BY timestamp DESC LIMIT 20""")
+    recent = [dict(r) for r in c.fetchall()]
+    conn.close()
+
+    # Derived metrics
+    days_elapsed       = max(now.day, 1)
+    daily_avg          = this_expense / days_elapsed if days_elapsed > 0 else 0
+    projected_monthly  = daily_avg * 30
+    savings_rate       = (((this_income - this_expense) / this_income) * 100) if this_income > 0 else 0
+
+    accounts_str   = ' | '.join([f"{a['name']}: ฿{a['balance']:,.2f}" for a in accounts])
+    categories_str = '\n'.join([f"- {c['category']}: ฿{c['total']:,.2f} ({c['count']} transactions)" for c in categories])
+    subs_str       = '\n'.join([f"- {s['name']}: ฿{s['amount']}/month from {s['account']}, next due {s['next_due_date']}" for s in subscriptions]) or 'None'
+    recent_str     = '\n'.join([f"- {t['timestamp'][:10]}: {t['description']} ฿{abs(t['amount']):,.2f} [{t['category']}] {'IN' if t['amount'] > 0 else 'OUT'} ({t['account']})" for t in recent])
+
+    return f"""You are Axe, Mike's personal finance advisor based in Bangkok, Thailand. You are backed by a team of 10 specialist finance managers who silently brief you before every response. You synthesize their insights and speak directly to Mike — one voice, one answer.
+
+YOUR 10 SPECIALIST MANAGERS (they brief you internally, Mike never sees them):
+
+1. SPENDING ANALYST — Tracks daily/weekly/monthly patterns, flags spikes >2x daily average, identifies latte factor
+2. BUDGET COACH — Applies 50/30/20 rule, Bangkok benchmarks: Food ฿3,000-8,000/month, Transport ฿1,500-4,000/month
+3. SUBSCRIPTION AUDITOR — Monthly cost vs value, flags >5% of income, checks for duplicates
+4. CASH FLOW MANAGER — Income vs expense timing, liquidity health, pay-yourself-first principle
+5. CATEGORY SPECIALIST — Healthy ratios: Food 10-15%, Transport 10-15%, Housing 25-35%, Entertainment 5-10%, Subs <5%
+6. SAVINGS ADVISOR — Emergency fund 3-6 months (฿30,000-60,000 min Bangkok), target >20% savings rate
+7. TRANSPORT TRACKER — BTS/MRT ฿16-59/trip, Grab/Bolt ฿80-500, monthly pass ~฿1,200-1,400
+8. FOOD & LIFESTYLE MONITOR — Street food ฿40-80, food court ฿50-100, restaurant ฿150-500, daily coffee ฿1,800-4,500/month
+9. INVESTMENT TRACKER — Tracks investment income, suggests when surplus could be invested, Thai SSF/RMF options
+10. MONTHLY HISTORIAN — Month-over-month trends, seasonal awareness, celebrates wins
+
+PERSONAL FINANCE KNOWLEDGE:
+- 50/30/20 Rule: 50% needs, 30% wants, 20% savings
+- Emergency Fund: 3-6 months expenses minimum
+- Savings Rate: (Income - Expenses) / Income × 100 → Target >20%
+- Latte Factor: ฿50-100/day = ฿1,500-3,000/month
+- Cigarettes: ฿70-150/pack = ฿2,100-4,500/month if daily
+
+YOUR PERSONALITY AS AXE:
+- Direct, confident, no fluff
+- Bangkok lifestyle aware (BTS, Grab, street food, malls, nightlife)
+- Always speaks in Thai Baht (฿)
+- Blunt when something needs attention, positive when deserved
+- Specific actions: "Skip Grab tomorrow, take BTS" not "reduce transport costs"
+- Use **bold** for key numbers
+- Max 200 words unless doing a full review
+- Never make up numbers — only use data below
+
+MIKE'S REAL-TIME FINANCIAL DATA:
+
+NET WORTH: ฿{total_balance:,.2f}
+Accounts: {accounts_str}
+
+THIS MONTH ({now.strftime('%B %Y')}):
+- Income: ฿{this_income:,.2f}
+- Expenses: ฿{this_expense:,.2f}
+- Net: ฿{this_income - this_expense:,.2f}
+- Savings Rate: {savings_rate:.1f}%
+- Days elapsed: {days_elapsed} | Daily avg: ฿{daily_avg:,.0f} | Projected: ฿{projected_monthly:,.0f}
+
+LAST MONTH:
+- Income: ฿{last_income:,.2f} | Expenses: ฿{last_expense:,.2f} | Net: ฿{last_income - last_expense:,.2f}
+
+SPENDING BY CATEGORY THIS MONTH:
+{categories_str}
+
+SUBSCRIPTIONS (Total: ฿{total_subs:,.2f}/month):
+{subs_str}
+
+RECENT TRANSACTIONS (last 20):
+{recent_str}
+
+Respond as Axe. Be Mike's trusted financial advisor who knows his Bangkok lifestyle inside out."""
+
+
+@app.route('/cfo')
+@require_auth
+def cfo_page():
+    return send_file(CFO_HTML)
+
+
+@app.route('/api/cfo-chat', methods=['POST'])
+@require_auth
+def api_cfo_chat():
+    try:
+        if not GEMINI_API_KEY:
+            return jsonify({'reply': '⚠️ Axe is not configured yet. Add GEMINI_API_KEY to your Render environment variables. Get a free key at aistudio.google.com'}), 200
+
+        data     = request.get_json()
+        messages = data.get('messages', [])
+        if not messages:
+            return jsonify({'reply': 'Hey Mike, ask me something about your finances!'}), 200
+
+        system_prompt    = build_axe_system_prompt()
+        gemini_contents  = []
+        for msg in messages:
+            role = 'user' if msg['role'] == 'user' else 'model'
+            gemini_contents.append({'role': role, 'parts': [{'text': msg['content']}]})
+
+        payload = {
+            'system_instruction': {'parts': [{'text': system_prompt}]},
+            'contents': gemini_contents,
+            'generationConfig': {'maxOutputTokens': 1200, 'temperature': 0.7}
+        }
+
+        resp = requests.post(
+            GEMINI_URL,
+            json=payload,
+            headers={'Content-Type': 'application/json'},
+            timeout=30
+        )
+
+        if resp.status_code != 200:
+            logging.error(f"Gemini API error: {resp.status_code} {resp.text}")
+            return jsonify({'reply': 'Sorry, I had trouble thinking. Please try again in a moment.'}), 200
+
+        result     = resp.json()
+        reply_text = result.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+
+        if not reply_text:
+            return jsonify({'reply': "I couldn't generate a response. Please try rephrasing."}), 200
+
+        return jsonify({'reply': reply_text})
+
+    except Exception as e:
+        logging.error(f"Axe chat error: {e}")
+        return jsonify({'reply': 'Something went wrong on my end. Please try again.'}), 200
+
+
+@app.route('/api/cfo-data')
+@require_auth
+def api_cfo_data():
+    conn = get_db()
+    c    = conn.cursor()
+    now  = now_bkk()
+    c.execute("SELECT name, balance FROM accounts ORDER BY balance DESC")
+    accounts = [dict(r) for r in c.fetchall()]
+    ms = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).strftime('%Y-%m-%d')
+    c.execute("""SELECT type, SUM(ABS(amount)) as total FROM transactions
+                 WHERE timestamp >= ? AND type != 'transfer' GROUP BY type""", (ms,))
+    totals = {r['type']: float(r['total'] or 0) for r in c.fetchall()}
+    conn.close()
+    return jsonify({
+        'accounts':      accounts,
+        'total_balance': sum(a['balance'] for a in accounts),
+        'this_month': {
+            'income':  totals.get('income', 0),
+            'expense': totals.get('expense', 0),
+            'net':     totals.get('income', 0) - totals.get('expense', 0)
+        }
+    })
+
+
 # ── Error handlers ────────────────────────────────────────────────────────────
 @app.errorhandler(404)
 def not_found(e):
