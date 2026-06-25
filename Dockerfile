@@ -14,6 +14,7 @@ COPY render_main.py .
 COPY finance.db .
 COPY entrypoint.sh .
 COPY dashboard.html .
+COPY cfo-finance-bot.html .
 RUN chmod +x /app/entrypoint.sh
 
 # Create a directory for the database and ensure it's writable
