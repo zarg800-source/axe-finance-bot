@@ -9,3 +9,5 @@ requests
 pytesseract
 Pillow
 openpyxl
+google-api-python-client
+google-auth

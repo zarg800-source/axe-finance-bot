@@ -34,6 +34,17 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
+# Google Drive backup
+import json
+try:
+    from googleapiclient.discovery import build
+    from googleapiclient.http import MediaIoBaseUpload
+    from google.oauth2 import service_account
+    GDRIVE_AVAILABLE = True
+except ImportError:
+    GDRIVE_AVAILABLE = False
+    logger.warning("Google API packages not installed. Drive backup disabled.")
+
 # Load environment variables
 load_dotenv()
 
@@ -3667,6 +3678,174 @@ async def acc_del_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return MENU_STATE
 
 
+# ─── Google Drive Monthly Backup ─────────────────────────────────────────────
+
+GDRIVE_FOLDER_ID = '1_APGayoUno9u-7-nKHZ-Fxk0ntt-WRqg'
+
+def get_gdrive_service():
+    """Build Google Drive service from service account JSON in env var."""
+    creds_json = os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON', '')
+    if not creds_json:
+        logger.error("GOOGLE_SERVICE_ACCOUNT_JSON not set in environment.")
+        return None
+    try:
+        creds_dict = json.loads(creds_json)
+        creds = service_account.Credentials.from_service_account_info(
+            creds_dict,
+            scopes=['https://www.googleapis.com/auth/drive.file']
+        )
+        return build('drive', 'v3', credentials=creds)
+    except Exception as e:
+        logger.error(f"Failed to build Drive service: {e}")
+        return None
+
+
+def upload_to_gdrive(file_bytes: bytes, filename: str) -> str:
+    """Upload a file to Google Drive. Returns the file URL or empty string."""
+    if not GDRIVE_AVAILABLE:
+        logger.error("Google API packages not available.")
+        return ''
+    service = get_gdrive_service()
+    if not service:
+        return ''
+    try:
+        file_metadata = {
+            'name': filename,
+            'parents': [GDRIVE_FOLDER_ID]
+        }
+        media = MediaIoBaseUpload(
+            io.BytesIO(file_bytes),
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            resumable=False
+        )
+        uploaded = service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields='id, webViewLink'
+        ).execute()
+        link = uploaded.get('webViewLink', '')
+        logger.info(f"Uploaded {filename} to Google Drive: {link}")
+        return link
+    except Exception as e:
+        logger.error(f"Google Drive upload failed: {e}")
+        return ''
+
+
+def generate_monthly_excel(year: int, month: int) -> bytes:
+    """Generate Excel export for a given month. Returns bytes."""
+    import calendar as cal_mod
+    month_start = f"{year}-{month:02d}-01"
+    month_end   = f"{year+1}-01-01" if month == 12 else f"{year}-{month+1:02d}-01"
+
+    conn = get_db()
+    c    = conn.cursor()
+    c.execute(
+        "SELECT timestamp, type, amount, description, category, account "
+        "FROM transactions WHERE user_id = ? AND timestamp >= ? AND timestamp < ? "
+        "ORDER BY timestamp",
+        (AUTHORIZED_USER_ID, month_start, month_end)
+    )
+    txns = c.fetchall()
+    c.execute("SELECT name, balance FROM accounts WHERE user_id = ? ORDER BY id", (AUTHORIZED_USER_ID,))
+    accounts = c.fetchall()
+    conn.close()
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = f"{cal_mod.month_name[month]} {year}"
+
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="0052FF", end_color="0052FF", fill_type="solid")
+    money_fmt   = '#,##0.00'
+
+    headers = ['Date', 'Type', 'Amount (฿)', 'Description', 'Category', 'Account']
+    for ci, h in enumerate(headers, 1):
+        cell            = ws.cell(1, ci, h)
+        cell.font       = header_font
+        cell.fill       = header_fill
+        cell.alignment  = Alignment(horizontal='center')
+
+    income_total = 0; expense_total = 0
+    for ri, txn in enumerate(txns, 2):
+        ts, typ, amt, desc, cat, acc = txn
+        val = abs(float(amt))
+        ws.cell(ri, 1, (ts or '')[:16])
+        ws.cell(ri, 2, typ.title())
+        amount_cell = ws.cell(ri, 3, val if typ == 'income' else -val)
+        amount_cell.number_format = money_fmt
+        ws.cell(ri, 4, desc or '')
+        ws.cell(ri, 5, cat or '')
+        ws.cell(ri, 6, acc or '')
+        if typ == 'income':   income_total  += val
+        elif typ == 'expense': expense_total += val
+
+    # Summary rows
+    sr = len(txns) + 3
+    ws.cell(sr,   2, "Income:").font   = Font(bold=True)
+    ws.cell(sr,   3, income_total).number_format  = money_fmt
+    ws.cell(sr+1, 2, "Expenses:").font = Font(bold=True)
+    ws.cell(sr+1, 3, expense_total).number_format = money_fmt
+    ws.cell(sr+2, 2, "Net:").font      = Font(bold=True)
+    ws.cell(sr+2, 3, income_total - expense_total).number_format = money_fmt
+
+    ws.column_dimensions['A'].width = 18
+    ws.column_dimensions['B'].width = 10
+    ws.column_dimensions['C'].width = 14
+    ws.column_dimensions['D'].width = 30
+    ws.column_dimensions['E'].width = 16
+    ws.column_dimensions['F'].width = 20
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+async def monthly_gdrive_backup(context: ContextTypes.DEFAULT_TYPE):
+    """Scheduled job: runs daily, uploads on 1st of month for previous month."""
+    import calendar as cal_mod
+    try:
+        now = datetime.now(BANGKOK_TZ)
+        # Only run on the 1st of the month
+        if now.day != 1:
+            return
+
+        # Back up the previous month
+        month = now.month - 1 if now.month > 1 else 12
+        year  = now.year if now.month > 1 else now.year - 1
+
+        logger.info(f"Starting Google Drive backup for {cal_mod.month_name[month]} {year}...")
+
+        excel_bytes = generate_monthly_excel(year, month)
+        filename    = f"Axe_Finance_{cal_mod.month_name[month]}_{year}.xlsx"
+        link        = upload_to_gdrive(excel_bytes, filename)
+
+        if link:
+            await context.bot.send_message(
+                chat_id=AUTHORIZED_USER_ID,
+                text=(
+                    f"☁️ *Monthly Backup Complete*\n\n"
+                    f"📅 {cal_mod.month_name[month]} {year} uploaded to Google Drive\n"
+                    f"📊 File: `{filename}`\n"
+                    f"🔗 [Open in Drive]({link})"
+                ),
+                parse_mode=ParseMode.MARKDOWN
+            )
+        else:
+            await context.bot.send_message(
+                chat_id=AUTHORIZED_USER_ID,
+                text=f"⚠️ Google Drive backup failed for {cal_mod.month_name[month]} {year}. Check logs."
+            )
+    except Exception as e:
+        logger.error(f"Monthly Drive backup error: {e}")
+        try:
+            await context.bot.send_message(
+                chat_id=AUTHORIZED_USER_ID,
+                text=f"⚠️ Monthly backup error: {e}"
+            )
+        except Exception:
+            pass
+
+
 # ─── Main ─────────────────────────────────────────────────────────────────────
 def main():
     init_db()
@@ -3838,6 +4017,10 @@ def main():
     # Weekly report every Monday at 9 AM Bangkok time
     target_time_report = datetime.now(BANGKOK_TZ).replace(hour=9, minute=0, second=0, microsecond=0).timetz()
     job_queue.run_daily(send_weekly_report, time=target_time_report, days=(1,), name='weekly_report')  # 1 = Monday (0=Sunday in PTB v20)
+
+    # Monthly Google Drive backup — runs daily at 9:05 AM, uploads only on 1st of month
+    target_time_backup = datetime.now(BANGKOK_TZ).replace(hour=9, minute=5, second=0, microsecond=0).timetz()
+    job_queue.run_daily(monthly_gdrive_backup, time=target_time_backup, name='monthly_gdrive_backup')
 
     logger.info("Scheduler configured. Weekly reports: Monday 9AM, Sub checks: daily 8AM (Bangkok time)")
 
