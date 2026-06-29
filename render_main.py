@@ -78,28 +78,29 @@ LOGIN_HTML = '''<!DOCTYPE html>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;-webkit-font-smoothing:antialiased}
-body{font-family:'DM Sans',sans-serif;background:#eef2ff;display:flex;align-items:center;justify-content:center;min-height:100vh}
+body{font-family:'DM Sans',sans-serif;background:#f5f5f7;display:flex;align-items:center;justify-content:center;min-height:100vh}
 @media(prefers-color-scheme:dark){
-  body{background:#080d1a}
-  .w{background:#131e30;border-color:rgba(0,102,255,.12)}
-  .t{background:linear-gradient(135deg,#3b82f6,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-  .s{color:#7a8fad}
-  input{background:#1a2640;border-color:rgba(255,255,255,.1);color:#e4ecf7}
-  input::placeholder{color:#3d5070}
-  input:focus{border-color:rgba(0,130,255,.5);box-shadow:0 0 0 3px rgba(0,82,255,.15)}
-  .er{background:rgba(248,113,113,.12);color:#f87171}
+  body{background:#000000}
+  .w{background:#1c1c1e;border-color:rgba(255,255,255,.08)}
+  .t{color:#f5f5f7;-webkit-text-fill-color:#f5f5f7}
+  .s{color:#aeaeb2}
+  input{background:#2c2c2e;border-color:rgba(255,255,255,.1);color:#f5f5f7}
+  input::placeholder{color:#636366}
+  input:focus{border-color:rgba(255,255,255,.35);box-shadow:0 0 0 3px rgba(255,255,255,.08)}
+  .er{background:rgba(255,69,58,.12);color:#ff453a}
+  .btn{background:#f5f5f7;color:#1d1d1f;box-shadow:0 6px 20px rgba(0,0,0,.3)}
 }
-.w{background:#fff;border:1px solid rgba(0,82,255,.08);border-radius:24px;padding:44px 36px;width:min(360px,92vw);box-shadow:0 20px 60px rgba(0,82,255,.1);display:flex;flex-direction:column;align-items:center}
-.lr{width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,#0052FF,#1A80FF);display:grid;place-items:center;margin-bottom:20px;box-shadow:0 8px 24px rgba(0,82,255,.35)}
-.t{font-family:'Anton',sans-serif;font-size:24px;letter-spacing:1px;background:linear-gradient(135deg,#0052FF,#1A80FF);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px}
+.w{background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:24px;padding:44px 36px;width:min(360px,92vw);box-shadow:0 20px 60px rgba(0,0,0,.08);display:flex;flex-direction:column;align-items:center}
+.lr{width:64px;height:64px;border-radius:18px;background:#1d1d1f;display:grid;place-items:center;margin-bottom:20px;box-shadow:0 8px 24px rgba(0,0,0,.2)}
+.t{font-family:'Anton',sans-serif;font-size:24px;letter-spacing:1px;color:#1d1d1f;margin-bottom:4px}
 .s{font-size:13px;color:#8899bb;margin-bottom:32px}
 .f{width:100%}
 .iw{position:relative;margin-bottom:14px}
 .li{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#99aac8;pointer-events:none}
-input{width:100%;padding:13px 16px 13px 42px;border:1.5px solid rgba(0,82,255,.14);border-radius:12px;background:#f5f7ff;color:#0d1b3e;font-size:15px;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .18s,box-shadow .18s}
-input:focus{border-color:rgba(0,82,255,.45);box-shadow:0 0 0 3px rgba(0,82,255,.1)}
-input::placeholder{color:#b0bdd4}
-.btn{width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,#0052FF,#1A80FF);color:#fff;font-size:15px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;box-shadow:0 6px 20px rgba(0,82,255,.35);transition:opacity .18s}
+input{width:100%;padding:13px 16px 13px 42px;border:1.5px solid rgba(0,0,0,.12);border-radius:12px;background:#f5f5f7;color:#1d1d1f;font-size:15px;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .18s,box-shadow .18s}
+input:focus{border-color:rgba(0,0,0,.35);box-shadow:0 0 0 3px rgba(0,0,0,.06)}
+input::placeholder{color:#aeaeb2}
+.btn{width:100%;padding:14px;border:none;border-radius:12px;background:#1d1d1f;color:#fff;font-size:15px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.15);transition:opacity .18s}
 .btn:active{opacity:.85}
 .er{width:100%;margin-bottom:14px;padding:11px 14px;background:#fee2e2;color:#ef4444;border-radius:10px;font-size:13px;font-weight:500}
 </style>
@@ -285,8 +286,8 @@ _ICON_512 = "iVBORw0KGgoAAAANSUhEUgAAAgAAAAIACAYAAAD0eNT6AAATh0lEQVR42u3deZAmdWH
 @app.route('/manifest.json')
 def pwa_manifest():
     m = {"name":"Mike Finance","short_name":"Finance","description":"Personal finance tracker",
-         "start_url":"/dashboard","display":"standalone","background_color":"#080d1a",
-         "theme_color":"#0052FF","orientation":"portrait",
+         "start_url":"/dashboard","display":"standalone","background_color":"#000000",
+         "theme_color":"#1d1d1f","orientation":"portrait",
          "icons":[{"src":"/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
                   {"src":"/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}]}
     return Response(json.dumps(m), mimetype='application/json')
