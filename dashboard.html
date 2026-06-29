@@ -46,7 +46,7 @@
   --bg3:       #fafafa;
   --nav-bg:    #1d1d1f;
   --nav-text:  #fff;
-  --nav-sub:   rgba(255,255,255,.65);
+  --nav-sub:   rgba(255,255,255,.55);
   --card-bg:   #ffffff;
   --card-border: rgba(0,0,0,.06);
   --text:      #1d1d1f;
@@ -262,7 +262,7 @@ body {
   top: -40%; right: -5%;
   width: 200px; height: 200px;
   border-radius: 50%;
-  background: rgba(255,255,255,.08);
+  background: rgba(128,128,128,.1);
   pointer-events: none;
 }
 .topnav-title {
@@ -279,23 +279,24 @@ body {
 }
 .topnav-search input {
   width: 100%;
-  background: rgba(255,255,255,.18);
-  border: 1px solid rgba(255,255,255,.25);
+  background: rgba(128,128,128,.15);
+  border: 1px solid rgba(128,128,128,.25);
   border-radius: var(--radius-pill);
   padding: 8px 16px 8px 36px;
-  color: #fff;
+  color: var(--nav-text);
   font-size: 13px;
   font-family: 'DM Sans', sans-serif;
   outline: none;
   transition: background var(--transition);
 }
-.topnav-search input::placeholder { color: rgba(255,255,255,.6); }
-.topnav-search input:focus { background: rgba(255,255,255,.25); }
+.topnav-search input::placeholder { color: rgba(128,128,128,.7); }
+.topnav-search input:focus { background: rgba(128,128,128,.25); }
 .topnav-search .search-ico {
   position: absolute;
   left: 12px; top: 50%;
   transform: translateY(-50%);
-  color: rgba(255,255,255,.7);
+  color: var(--nav-text);
+  opacity: .6;
   width: 15px; height: 15px;
 }
 
@@ -304,45 +305,38 @@ body {
   width: 34px; height: 34px;
   border-radius: 50%;
   border: none;
-  background: rgba(255,255,255,.18);
-  color: #fff;
+  background: rgba(128,128,128,.15);
+  color: var(--nav-text);
   display: grid; place-items: center;
   cursor: pointer;
   transition: background var(--transition);
   position: relative;
   flex-shrink: 0;
 }
-.icon-btn:hover { background: rgba(255,255,255,.3); }
+.icon-btn:hover { background: rgba(128,128,128,.25); }
 .icon-btn svg { width: 16px; height: 16px; }
 .icon-btn { -webkit-tap-highlight-color: transparent; }
 .ham-btn { display: none; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
-.ham-btn div { width: 15px; height: 2px; border-radius: 2px; background: #fff; }
-.notif-dot {
-  position: absolute;
-  top: 5px; right: 5px;
-  width: 7px; height: 7px;
-  background: #ff4757;
-  border-radius: 50%;
-  border: 1.5px solid var(--card-bg);
-}
+.ham-btn div { width: 15px; height: 2px; border-radius: 2px; background: var(--nav-text); }
+
 
 .theme-toggle {
   width: 48px; height: 26px;
   border-radius: var(--radius-pill);
-  background: rgba(255,255,255,.22);
+  background: rgba(128,128,128,.2);
   border: none;
   cursor: pointer;
   position: relative;
   transition: background var(--transition);
   flex-shrink: 0;
 }
-.theme-toggle:hover { background: rgba(255,255,255,.32); }
+.theme-toggle:hover { background: rgba(128,128,128,.3); }
 .toggle-knob {
   position: absolute;
   top: 3px; left: 3px;
   width: 20px; height: 20px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--nav-text);
   transition: transform var(--transition);
   display: grid; place-items: center;
   font-size: 11px;
@@ -352,31 +346,75 @@ body {
 .nav-avatar {
   width: 34px; height: 34px;
   border-radius: 50%;
-  border: 2px solid rgba(255,255,255,.5);
+  border: 2px solid rgba(128,128,128,.4);
   overflow: hidden;
   cursor: pointer;
 }
 .nav-avatar-inner {
   width: 100%; height: 100%;
-  background: var(--nav-bg);
+  background: rgba(128,128,128,.2);
   display: grid; place-items: center;
   font-family: 'Anton', sans-serif;
   font-size: 13px;
-  color: #fff;
+  color: var(--nav-text);
 }
 
-/* ── STATS ROW ──────────────────────────────────────── */
+/* ── BALANCE CARDS (compact) ─────────────────────────── */
+.bal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+.bcard {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.bcard:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+.bcard.active {
+  background: var(--nav-bg);
+  border-color: transparent;
+  box-shadow: 0 6px 20px rgba(0,0,0,.2);
+}
+.bcard.primary {
+  background: var(--nav-bg);
+  border-color: transparent;
+  box-shadow: 0 6px 20px rgba(0,0,0,.2);
+}
+.blbl {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .7px;
+  text-transform: uppercase;
+  color: var(--text2);
+  margin-bottom: 6px;
+}
+.bcard.active .blbl, .bcard.primary .blbl { color: var(--nav-text); opacity: .7; }
+.bval {
+  font-family: 'Anton', sans-serif;
+  font-size: 20px;
+  letter-spacing: .3px;
+  color: var(--text);
+  line-height: 1;
+}
+.bcard.active .bval, .bcard.primary .bval { color: var(--nav-text); }
+
+/* ── STATS ROW (Overview/History summary boxes) ─────── */
 .stats-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 18px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
 }
 
 .stat-card {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
-  border-radius: var(--radius-card);
-  padding: 22px;
+  border-radius: 14px;
+  padding: 16px;
   box-shadow: var(--shadow-card);
   position: relative;
   overflow: hidden;
@@ -384,61 +422,47 @@ body {
   cursor: default;
 }
 .stat-card:hover {
-  transform: translateY(-3px);
+  transform: translateY(-2px);
   box-shadow: var(--shadow-hover);
 }
 .stat-card.primary {
   background: var(--nav-bg);
   border-color: transparent;
+  box-shadow: 0 6px 20px rgba(0,0,0,.2);
 }
-.stat-card.primary::after {
-  content: '';
-  position: absolute;
-  top: -30%; right: -10%;
-  width: 160px; height: 160px;
-  border-radius: 50%;
-  background: rgba(255,255,255,.09);
-}
-.stat-card::before {
-  content: '';
-  position: absolute;
-  bottom: -18px; right: -18px;
-  width: 80px; height: 80px;
-  border-radius: 50%;
-  background: var(--neutral-glow);
-}
-.stat-card.primary::before { background: rgba(255,255,255,.08); }
+.stat-card::before { display: none; }
+.stat-card.primary::after { display: none; }
 
 .stat-icon-wrap {
-  width: 42px; height: 42px;
-  border-radius: 12px;
+  width: 34px; height: 34px;
+  border-radius: 10px;
   background: var(--badge-bg);
   display: grid; place-items: center;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
-.stat-card.primary .stat-icon-wrap { background: rgba(255,255,255,.2); }
-.stat-icon-wrap svg { width: 20px; height: 20px; color: var(--text2); }
-.stat-card.primary .stat-icon-wrap svg { color: #fff; }
+.stat-card.primary .stat-icon-wrap { background: rgba(128,128,128,.2); }
+.stat-icon-wrap svg { width: 17px; height: 17px; color: var(--text2); }
+.stat-card.primary .stat-icon-wrap svg { color: var(--nav-text); }
 
 .stat-label {
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 10px;
+  font-weight: 600;
   color: var(--text2);
-  margin-bottom: 6px;
+  margin-bottom: 5px;
   text-transform: uppercase;
   letter-spacing: .8px;
 }
-.stat-card.primary .stat-label { color: rgba(255,255,255,.75); }
+.stat-card.primary .stat-label { color: var(--nav-text); opacity: .7; }
 
 .stat-value {
   font-family: 'Anton', sans-serif;
-  font-size: 30px;
-  letter-spacing: 1px;
+  font-size: 22px;
+  letter-spacing: .5px;
   color: var(--text);
   line-height: 1;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
-.stat-card.primary .stat-value { color: #fff; }
+.stat-card.primary .stat-value { color: var(--nav-text); }
 
 .stat-badge {
   display: inline-flex;
@@ -446,19 +470,19 @@ body {
   gap: 4px;
   padding: 3px 9px;
   border-radius: var(--radius-pill);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
 }
 .stat-badge.up { background: var(--up-bg); color: var(--up); }
 .stat-badge.down { background: var(--down-bg); color: var(--down); }
-.stat-card.primary .stat-badge { background: rgba(255,255,255,.22); color: #fff; }
+.stat-card.primary .stat-badge { background: rgba(128,128,128,.2); color: var(--nav-text); }
 
 .stat-sub {
-  font-size: 11.5px;
+  font-size: 11px;
   color: var(--text3);
-  margin-top: 6px;
+  margin-top: 4px;
 }
-.stat-card.primary .stat-sub { color: rgba(255,255,255,.65); }
+.stat-card.primary .stat-sub { color: var(--nav-text); opacity: .6; }
 
 /* ── MIDDLE ROW ─────────────────────────────────────── */
 .mid-row {
@@ -802,28 +826,33 @@ body {
 @media(max-width:900px) {
   .sidebar { transform: translateX(-100%); z-index: 200; }
   .sidebar.open { transform: translateX(0); }
-  .main { margin-left: 0; padding: 12px; gap: 14px; }
+  .main { margin-left: 0; padding: 10px; gap: 12px; }
   .ham-btn { display: flex; }
-  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .stats-row { grid-template-columns: repeat(3, 1fr); gap: 10px; }
   .actions-row { grid-template-columns: repeat(2, 1fr); }
   .topnav-search { display: none; }
+  .topnav { padding: 10px 14px; gap: 10px; }
+  .chart-card, .donut-card, .table-card { padding: 16px; }
 }
 @media(max-width:600px) {
-  .stats-row { grid-template-columns: 1fr; }
+  .main { padding: 8px; gap: 10px; }
+  .stats-row { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .bal-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
   .actions-row { grid-template-columns: 1fr; }
-  .topnav { gap: 8px; padding: 10px 14px; }
-  .topnav-title { font-size: 16px; }
+  .topnav { gap: 8px; padding: 9px 12px; }
+  .topnav-title { font-size: 15px; }
   .topnav-actions { gap: 5px; }
-  .icon-btn { width: 30px; height: 30px; }
-  .icon-btn svg { width: 14px; height: 14px; }
   .theme-toggle { width: 42px; height: 24px; }
   .theme-toggle .toggle-knob { width: 18px; height: 18px; top: 3px; left: 3px; }
   [data-theme="dark"] .theme-toggle .toggle-knob { transform: translateX(18px); }
   .nav-avatar { width: 30px; height: 30px; }
   .nav-avatar-inner { font-size: 12px; }
-  .data-table { font-size: 12px; }
+  .data-table td { padding: 9px 8px; font-size: 12.5px; }
   .data-table th { font-size: 10px; }
-  .data-table td { padding: 10px 8px; }
+  .stat-value { font-size: 18px; }
+  .bval { font-size: 17px; }
+  .chart-card, .donut-card, .table-card { padding: 14px; }
+  .mid-row { gap: 10px; }
 }
 
 </style>
@@ -833,7 +862,7 @@ body {
 <aside class="sidebar" id="sb">
   <div class="logo">
     <div class="logo-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--nav-text)" stroke-width="2.2">
         <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
       </svg>
     </div>
@@ -896,12 +925,6 @@ body {
       <input type="text" placeholder="Search transactions, categories…"/>
     </div>
     <div class="topnav-actions">
-      <button class="icon-btn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/>
-        </svg>
-        <span class="notif-dot"></span>
-      </button>
       <button class="theme-toggle" id="themeBtn" onclick="toggleTheme()">
         <div class="toggle-knob" id="knobIcon">☀️</div>
       </button>
@@ -913,7 +936,7 @@ body {
 
   <!-- BALANCES PAGE -->
   <div class="page active" id="page-bal">
-    <div class="stats-row" id="bal-grid"></div>
+    <div class="bal-grid" id="bal-grid"></div>
   </div>
 
   <!-- OVERVIEW PAGE -->
@@ -974,10 +997,10 @@ body {
         <div class="card-title" id="hmonth" style="flex:1; text-align:center;">—</div>
         <button class="filter-btn" id="hnext">&#8594;</button>
       </div>
-      <div class="stats-row" style="grid-template-columns:repeat(3,1fr); margin-bottom:20px;">
-        <div class="stat-card" style="padding:15px;"><div class="stat-label">Income</div><div class="stat-value" id="hi" style="font-size:22px;">—</div></div>
-        <div class="stat-card" style="padding:15px;"><div class="stat-label">Expenses</div><div class="stat-value" id="he" style="font-size:22px;">—</div></div>
-        <div class="stat-card" style="padding:15px;"><div class="stat-label">Net</div><div class="stat-value" id="hn" style="font-size:22px;">—</div></div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;">
+        <div class="bcard"><div class="blbl">Income</div><div class="bval" id="hi" style="color:var(--up)">—</div></div>
+        <div class="bcard"><div class="blbl">Expenses</div><div class="bval" id="he" style="color:var(--down)">—</div></div>
+        <div class="bcard primary"><div class="blbl">Net</div><div class="bval" id="hn">—</div></div>
       </div>
       <div class="card-sub" style="margin-bottom:15px; text-transform:uppercase; letter-spacing:1px;">Spending Breakdown</div>
       <div class="progress-list" id="hcats"></div>
@@ -1085,30 +1108,27 @@ async function loadBalances(){
   var total=data.reduce((s,a)=>s+a.balance,0);
 
   $('bal-grid').innerHTML=data.map(function(a){
-    return '<div class="stat-card" onclick="selBal(this)">'+
-      '<div class="stat-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div>'+
-      '<div class="stat-label">'+a.name+'</div>'+
-      '<div class="stat-value" data-v="'+a.balance+'">฿—</div>'+
+    return '<div class="bcard" onclick="selBal(this)">'+
+      '<div class="blbl">'+a.name+'</div>'+
+      '<div class="bval" data-v="'+a.balance+'">฿—</div>'+
     '</div>';
   }).join('')+
-  '<div class="stat-card primary">'+
-    '<div class="stat-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>'+
-    '<div class="stat-label">Net Worth</div>'+
-    '<div class="stat-value" data-v="'+total+'">฿—</div>'+
+  '<div class="bcard primary">'+
+    '<div class="blbl">Net Worth</div>'+
+    '<div class="bval" data-v="'+total+'">฿—</div>'+
   '</div>';
 
   setTimeout(function(){
-    $('bal-grid').querySelectorAll('.stat-value').forEach(function(n){
+    $('bal-grid').querySelectorAll('.bval').forEach(function(n){
       countUp(n,parseFloat(n.dataset.v),'฿',900);
     });
   },60);
 }
 
 function selBal(card){
-  // Only toggle non-networth cards
   if(card.classList.contains('primary'))return;
   var wasOn=card.classList.contains('active');
-  $('bal-grid').querySelectorAll('.stat-card:not(.primary)').forEach(function(c){c.classList.remove('active')});
+  $('bal-grid').querySelectorAll('.bcard:not(.primary)').forEach(function(c){c.classList.remove('active')});
   if(!wasOn)card.classList.add('active');
 }
 
@@ -1135,10 +1155,10 @@ async function loadSummary(){
       '<div>'+chg(cur.expense,prev.expense,true)+'<div class="stat-sub">vs last month</div></div>'+
     '</div>'+
     '<div class="stat-card primary">'+
-      '<div class="stat-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>'+
+      '<div class="stat-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="var(--nav-text)" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>'+
       '<div class="stat-label">Net Savings</div>'+
       '<div class="stat-value" data-v="'+Math.abs(cur.net)+'" data-neg="'+(cur.net<0?1:0)+'">฿—</div>'+
-      '<div>'+chg(cur.net,prev.net)+'<div class="stat-sub" style="color:rgba(255,255,255,.65)">vs last month</div></div>'+
+      '<div>'+chg(cur.net,prev.net)+'<div class="stat-sub">vs last month</div></div>'+
     '</div>';
   setTimeout(function(){
     $('sum-grid').querySelectorAll('.stat-value').forEach(function(n){
@@ -1281,7 +1301,7 @@ async function hRender(){
   $('hi').textContent=fmt(d.income);
   $('he').textContent=fmt(d.expense);
   var nEl=$('hn');nEl.textContent=(d.net<0?'−':'')+fmt(Math.abs(d.net));
-  nEl.className='stat-value '+(d.net>=0?'amount-pos':'amount-neg');
+  nEl.style.color=d.net>=0?'var(--nav-text)':'var(--down)';
   if(d.categories&&d.categories.length){
     var mx=d.categories[0].total||1;
     $('hcats').innerHTML=d.categories.map((c,i)=>'<div class="progress-item"><div class="progress-header"><span class="progress-label">'+(EMJ[c.category]||'🧾')+' '+c.category+'</span><span class="progress-val">'+fmt(c.total)+'</span></div><div class="progress-track"><div class="progress-fill" style="width:'+((c.total/mx)*100).toFixed(1)+'%;background:'+PAL[i%PAL.length]+'"></div></div></div>').join('');
