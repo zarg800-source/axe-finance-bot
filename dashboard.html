@@ -242,6 +242,8 @@ body {
   min-height: 100vh;
   padding: 24px 28px;
   gap: 24px;
+  min-width: 0;
+  max-width: 100vw;
 }
 
 /* ── TOP NAV (pill) ──────────────────────────────────── */
@@ -504,6 +506,8 @@ body {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
   margin-bottom: 20px;
 }
 .card-title {
@@ -623,11 +627,15 @@ body {
   padding: 24px;
   box-shadow: var(--shadow-card);
   transition: background var(--transition);
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .table-filter {
   display: flex;
-  gap: 8px;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 .filter-btn {
   padding: 5px 13px;
@@ -676,6 +684,7 @@ body {
   display: grid; place-items: center;
   flex-shrink: 0;
 }
+.tx-icon svg { width: 16px; height: 16px; }
 .tx-name { font-weight: 600; font-size: 13.5px; }
 .tx-id { font-size: 11.5px; color: var(--text3); }
 .status-badge {
@@ -812,7 +821,7 @@ body {
   animation: fadeUp .4s ease both;
 }
 .lph { font-size: 13px; color: var(--text3); padding: 20px 0; text-align: center; }
-.txn-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.txn-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
 .stats-row .stat-card:nth-child(1) { animation-delay:.05s }
 .stats-row .stat-card:nth-child(2) { animation-delay:.10s }
 .stats-row .stat-card:nth-child(3) { animation-delay:.15s }
@@ -847,12 +856,21 @@ body {
   [data-theme="dark"] .theme-toggle .toggle-knob { transform: translateX(18px); }
   .nav-avatar { width: 30px; height: 30px; }
   .nav-avatar-inner { font-size: 12px; }
-  .data-table td { padding: 9px 8px; font-size: 12.5px; }
-  .data-table th { font-size: 10px; }
+  .data-table th, .data-table td { padding: 8px 6px; font-size: 12px; }
+  .data-table th { font-size: 9.5px; }
   .stat-value { font-size: 18px; }
   .bval { font-size: 17px; }
-  .chart-card, .donut-card, .table-card { padding: 14px; }
+  .chart-card, .donut-card, .table-card { padding: 14px 12px; }
   .mid-row { gap: 10px; }
+  .card-title { font-size: 15px; }
+  .card-sub { font-size: 11px; }
+  .filter-btn { padding: 4px 10px; font-size: 11px; }
+  .table-filter { gap: 5px; }
+  .tx-icon { width: 30px; height: 30px; }
+  .tx-name { font-size: 12.5px; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tx-id { font-size: 10.5px; }
+  .chart-summary { gap: 12px; }
+  .chart-sum-val { font-size: 15px; }
 }
 
 </style>
@@ -862,7 +880,7 @@ body {
 <aside class="sidebar" id="sb">
   <div class="logo">
     <div class="logo-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="var(--nav-text)" stroke-width="2.2">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--nav-text)" stroke-width="1.75">
         <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
       </svg>
     </div>
@@ -872,19 +890,19 @@ body {
   <div class="nav-section">
     <div class="nav-label">Dashboard</div>
     <a class="nav-item active" href="#" data-page="page-bal">
-      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="1.75"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
       Balances
     </a>
     <a class="nav-item" href="#" data-page="page-ov">
-      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="1.75"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
       Overview
     </a>
     <a class="nav-item" href="#" data-page="page-an">
-      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2"><line x1="18" y1="20" x2="18" y2="4"/><line x1="12" y1="20" x2="12" y2="10"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="1.75"><line x1="18" y1="20" x2="18" y2="4"/><line x1="12" y1="20" x2="12" y2="10"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
       Analytics
     </a>
     <a class="nav-item" href="#" data-page="page-hi">
-      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><line x1="12" y1="7" x2="12" y2="12"/><line x1="12" y1="12" x2="15" y2="14"/></svg>
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="1.75"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><line x1="12" y1="7" x2="12" y2="12"/><line x1="12" y1="12" x2="15" y2="14"/></svg>
       Monthly History
     </a>
   </div>
@@ -892,7 +910,7 @@ body {
   <div class="nav-section" style="margin-top:10px">
     <div class="nav-label">Advisor</div>
     <a class="nav-item" href="/cfo" style="text-decoration:none">
-      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="1.75"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
       Axe
     </a>
   </div>
@@ -905,7 +923,7 @@ body {
         <div class="role">Personal Finance</div>
       </div>
       <a href="/logout" class="logout-btn" title="Sign out">
-        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.75"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       </a>
     </div>
   </div>
@@ -919,7 +937,7 @@ body {
     </button>
     <span class="topnav-title" id="pgtitle">BALANCES</span>
     <div class="topnav-search">
-      <svg class="search-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <svg class="search-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
         <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
       </svg>
       <input type="text" placeholder="Search transactions, categories…"/>
@@ -1024,7 +1042,6 @@ body {
 var $ = function(id){return document.getElementById(id)};
 var MNAMES=['','January','February','March','April','May','June','July','August','September','October','November','December'];
 var PAL=['#1d1d1f','#6e6e73','#aeaeb2','#48484a','#3a3a3c','#8e8e93','#636366','#d1d1d6'];
-var EMJ={'Food & Drinks':'🍜','Coffee':'☕','Transport':'🚕','Groceries':'🛒','Housing':'🏠','Health':'💊','Shopping':'👗','Entertainment':'🎉','Subscriptions':'📱','Travel':'✈️','School':'🎓','Cigarettes':'🚬','Other':'🧾','Salary':'💵','Freelance':'💼','Gallery Sales':'🖼️','Artwork / Commission':'🎨','Bonus':'🏆','Gift Money':'🎁','Cashback / Refund':'💳','Investment':'💹','Business':'🤝','Other Income':'🧾','Transfer':'🔄'};
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 function fmt(n){return '฿'+Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}
@@ -1143,19 +1160,19 @@ async function loadSummary(){
   }
   $('sum-grid').innerHTML=
     '<div class="stat-card">'+
-      '<div class="stat-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="var(--up)" stroke-width="2"><polyline points="23,6 13.5,15.5 8.5,10.5 1,18"/><polyline points="17,6 23,6 23,12"/></svg></div>'+
+      '<div class="stat-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="var(--up)" stroke-width="1.75"><polyline points="23,6 13.5,15.5 8.5,10.5 1,18"/><polyline points="17,6 23,6 23,12"/></svg></div>'+
       '<div class="stat-label">Income</div>'+
       '<div class="stat-value" style="color:var(--up)" data-v="'+cur.income+'">฿—</div>'+
       '<div>'+chg(cur.income,prev.income)+'<div class="stat-sub">vs last month</div></div>'+
     '</div>'+
     '<div class="stat-card">'+
-      '<div class="stat-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="var(--down)" stroke-width="2"><polyline points="23,18 13.5,8.5 8.5,13.5 1,6"/><polyline points="17,18 23,18 23,12"/></svg></div>'+
+      '<div class="stat-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="var(--down)" stroke-width="1.75"><polyline points="23,18 13.5,8.5 8.5,13.5 1,6"/><polyline points="17,18 23,18 23,12"/></svg></div>'+
       '<div class="stat-label">Expenses</div>'+
       '<div class="stat-value" style="color:var(--down)" data-v="'+cur.expense+'">฿—</div>'+
       '<div>'+chg(cur.expense,prev.expense,true)+'<div class="stat-sub">vs last month</div></div>'+
     '</div>'+
     '<div class="stat-card primary">'+
-      '<div class="stat-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="var(--nav-text)" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>'+
+      '<div class="stat-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="var(--nav-text)" stroke-width="1.75"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>'+
       '<div class="stat-label">Net Savings</div>'+
       '<div class="stat-value" data-v="'+Math.abs(cur.net)+'" data-neg="'+(cur.net<0?1:0)+'">฿—</div>'+
       '<div>'+chg(cur.net,prev.net)+'<div class="stat-sub">vs last month</div></div>'+
@@ -1169,11 +1186,14 @@ async function loadSummary(){
 
 // ── TRANSACTIONS ──────────────────────────────────────────────────────────────
 var allTx=[],txExp=false;
+var ICN_IN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5,12 12,5 19,12"/></svg>';
+var ICN_OUT='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19,12 12,19 5,12"/></svg>';
+var ICN_TR='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="17,1 21,5 17,9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7,23 3,19 7,15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>';
 function buildRows(txns){
   if(!txns.length)return'<tr><td colspan="4" class="lph" style="text-align:center; padding:20px 0; color:var(--text3);">No transactions</td></tr>';
   return txns.map(function(t){
     var isI=t.type==='income',isT=t.type==='transfer';
-    var em=EMJ[t.category]||(isI?'💵':isT?'🔄':'💸');
+    var icn=isI?ICN_IN:(isT?ICN_TR:ICN_OUT);
     var ts=(t.timestamp||'').substring(0,10);
     var ac=isI?'amount-pos':isT?'amount-neu':'amount-neg';
     var ap=isI?'+':isT?'⇄':'-';
@@ -1181,7 +1201,7 @@ function buildRows(txns){
     var textColor = isI ? 'var(--up)' : isT ? 'var(--badge-text)' : 'var(--down)';
 
     return'<tr>'+
-      '<td><div class="tx-info"><div class="tx-icon" style="background:'+bgColor+'; color:'+textColor+'">'+em+'</div><div><div class="tx-name">'+(t.description||'')+'</div><div class="tx-id">'+(t.category||'')+' · '+(t.account||'')+'</div></div></div></td>'+
+      '<td><div class="tx-info"><div class="tx-icon" style="background:'+bgColor+'; color:'+textColor+'">'+icn+'</div><div><div class="tx-name">'+(t.description||'')+'</div><div class="tx-id">'+(t.category||'')+' · '+(t.account||'')+'</div></div></div></td>'+
       '<td>'+ts+'</td>'+
       '<td>'+t.account+'</td>'+
       '<td class="'+ac+'" style="text-align:right">'+ap+fmt(t.amount)+'</td>'+
@@ -1274,7 +1294,7 @@ async function loadAnalytics(){
       }
     });
     var mx=cats[0].total||1;
-    $('pbars').innerHTML=cats.slice(0,6).map((c,i)=>'<div class="progress-item"><div class="progress-header"><span class="progress-label">'+(EMJ[c.category]||'🧾')+' '+c.category+'</span><span class="progress-val">'+fmt(c.total)+'</span></div><div class="progress-track"><div class="progress-fill" style="width:'+((c.total/mx)*100).toFixed(1)+'%;background:'+PAL[i%PAL.length]+'"></div></div></div>').join('');
+    $('pbars').innerHTML=cats.slice(0,6).map((c,i)=>'<div class="progress-item"><div class="progress-header"><span class="progress-label">'+c.category+'</span><span class="progress-val">'+fmt(c.total)+'</span></div><div class="progress-track"><div class="progress-fill" style="width:'+((c.total/mx)*100).toFixed(1)+'%;background:'+PAL[i%PAL.length]+'"></div></div></div>').join('');
   } else {
     $('pbars').innerHTML='<div class="lph">No expense data this month</div>';
   }
@@ -1304,7 +1324,7 @@ async function hRender(){
   nEl.style.color=d.net>=0?'var(--nav-text)':'var(--down)';
   if(d.categories&&d.categories.length){
     var mx=d.categories[0].total||1;
-    $('hcats').innerHTML=d.categories.map((c,i)=>'<div class="progress-item"><div class="progress-header"><span class="progress-label">'+(EMJ[c.category]||'🧾')+' '+c.category+'</span><span class="progress-val">'+fmt(c.total)+'</span></div><div class="progress-track"><div class="progress-fill" style="width:'+((c.total/mx)*100).toFixed(1)+'%;background:'+PAL[i%PAL.length]+'"></div></div></div>').join('');
+    $('hcats').innerHTML=d.categories.map((c,i)=>'<div class="progress-item"><div class="progress-header"><span class="progress-label">'+c.category+'</span><span class="progress-val">'+fmt(c.total)+'</span></div><div class="progress-track"><div class="progress-fill" style="width:'+((c.total/mx)*100).toFixed(1)+'%;background:'+PAL[i%PAL.length]+'"></div></div></div>').join('');
   } else {
     $('hcats').innerHTML='<div class="lph">No spending data this month</div>';
   }
