@@ -3846,6 +3846,51 @@ async def monthly_gdrive_backup(context: ContextTypes.DEFAULT_TYPE):
             pass
 
 
+@restricted
+async def cmd_test_backup(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Manually trigger Google Drive backup for testing. Usage: /testbackup [month] [year]"""
+    import calendar as cal_mod
+    args = context.args
+    now  = datetime.now(BANGKOK_TZ)
+
+    if args and len(args) >= 2:
+        try:
+            month = int(args[0])
+            year  = int(args[1])
+        except ValueError:
+            month = now.month - 1 if now.month > 1 else 12
+            year  = now.year if now.month > 1 else now.year - 1
+    else:
+        month = now.month - 1 if now.month > 1 else 12
+        year  = now.year if now.month > 1 else now.year - 1
+
+    thinking = await update.message.reply_text(
+        f"☁️ Testing Drive backup for {cal_mod.month_name[month]} {year}..."
+    )
+
+    try:
+        excel_bytes = generate_monthly_excel(year, month)
+        filename    = f"Axe_Finance_{cal_mod.month_name[month]}_{year}.xlsx"
+        link        = upload_to_gdrive(excel_bytes, filename)
+
+        if link:
+            await thinking.edit_text(
+                f"✅ *Backup Successful!*\n\n"
+                f"📅 {cal_mod.month_name[month]} {year}\n"
+                f"📊 File: `{filename}`\n"
+                f"🔗 [Open in Google Drive]({link})",
+                parse_mode=ParseMode.MARKDOWN
+            )
+        else:
+            await thinking.edit_text(
+                "❌ Upload failed. Check that:\n"
+                "1. `GOOGLE_SERVICE_ACCOUNT_JSON` is set in Render env vars\n"
+                "2. The service account has Editor access to the Drive folder"
+            )
+    except Exception as e:
+        await thinking.edit_text(f"❌ Error: {str(e)}")
+
+
 # ─── Main ─────────────────────────────────────────────────────────────────────
 def main():
     init_db()
@@ -3992,6 +4037,7 @@ def main():
     app.add_handler(CommandHandler("transfer", cmd_transfer))
     app.add_handler(CommandHandler("backup", cmd_backup))
     app.add_handler(CommandHandler("restore", cmd_restore))
+    app.add_handler(CommandHandler("testbackup", cmd_test_backup))
     # Document handler — receives .db files for restore
     app.add_handler(MessageHandler(filters.Document.ALL & ~filters.COMMAND, cmd_restore))
 
