@@ -14,9 +14,9 @@
 <!-- Inline theme script — runs BEFORE body renders to prevent flash -->
 <script>
 (function(){
-  var s=localStorage.getItem('mf-theme');
-  var sys=window.matchMedia('(prefers-color-scheme:dark)').matches;
-  document.documentElement.setAttribute('data-theme', s||(sys?'dark':'light'));
+  var s=localStorage.getItem("mf-theme");
+  var sys=window.matchMedia("(prefers-color-scheme:dark)").matches;
+  document.documentElement.setAttribute("data-theme", s||(sys?"dark":"light"));
 })();
 </script>
 <meta name="theme-color" content="#1d1d1f">
@@ -46,7 +46,7 @@
   --bg3:       #fafafa;
   --nav-bg:    #1d1d1f;
   --nav-text:  #fff;
-  --nav-sub:   rgba(255,255,255,.55);
+  --nav-sub:   rgba(255,255,255,.65);
   --card-bg:   #ffffff;
   --card-border: rgba(0,0,0,.06);
   --text:      #1d1d1f;
@@ -242,8 +242,6 @@ body {
   min-height: 100vh;
   padding: 24px 28px;
   gap: 24px;
-  min-width: 0;
-  max-width: 100vw;
 }
 
 /* ── TOP NAV (pill) ──────────────────────────────────── */
@@ -264,7 +262,7 @@ body {
   top: -40%; right: -5%;
   width: 200px; height: 200px;
   border-radius: 50%;
-  background: rgba(128,128,128,.1);
+  background: rgba(255,255,255,.08);
   pointer-events: none;
 }
 .topnav-title {
@@ -281,24 +279,23 @@ body {
 }
 .topnav-search input {
   width: 100%;
-  background: rgba(128,128,128,.15);
-  border: 1px solid rgba(128,128,128,.25);
+  background: rgba(255,255,255,.18);
+  border: 1px solid rgba(255,255,255,.25);
   border-radius: var(--radius-pill);
   padding: 8px 16px 8px 36px;
-  color: var(--nav-text);
+  color: #fff;
   font-size: 13px;
   font-family: 'DM Sans', sans-serif;
   outline: none;
   transition: background var(--transition);
 }
-.topnav-search input::placeholder { color: rgba(128,128,128,.7); }
-.topnav-search input:focus { background: rgba(128,128,128,.25); }
+.topnav-search input::placeholder { color: rgba(255,255,255,.6); }
+.topnav-search input:focus { background: rgba(255,255,255,.25); }
 .topnav-search .search-ico {
   position: absolute;
   left: 12px; top: 50%;
   transform: translateY(-50%);
-  color: var(--nav-text);
-  opacity: .6;
+  color: rgba(255,255,255,.7);
   width: 15px; height: 15px;
 }
 
@@ -307,38 +304,45 @@ body {
   width: 34px; height: 34px;
   border-radius: 50%;
   border: none;
-  background: rgba(128,128,128,.15);
-  color: var(--nav-text);
+  background: rgba(255,255,255,.18);
+  color: #fff;
   display: grid; place-items: center;
   cursor: pointer;
   transition: background var(--transition);
   position: relative;
   flex-shrink: 0;
 }
-.icon-btn:hover { background: rgba(128,128,128,.25); }
+.icon-btn:hover { background: rgba(255,255,255,.3); }
 .icon-btn svg { width: 16px; height: 16px; }
 .icon-btn { -webkit-tap-highlight-color: transparent; }
 .ham-btn { display: none; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
-.ham-btn div { width: 15px; height: 2px; border-radius: 2px; background: var(--nav-text); }
-
+.ham-btn div { width: 15px; height: 2px; border-radius: 2px; background: #fff; }
+.notif-dot {
+  position: absolute;
+  top: 5px; right: 5px;
+  width: 7px; height: 7px;
+  background: #ff4757;
+  border-radius: 50%;
+  border: 1.5px solid var(--card-bg);
+}
 
 .theme-toggle {
   width: 48px; height: 26px;
   border-radius: var(--radius-pill);
-  background: rgba(128,128,128,.2);
+  background: rgba(255,255,255,.22);
   border: none;
   cursor: pointer;
   position: relative;
   transition: background var(--transition);
   flex-shrink: 0;
 }
-.theme-toggle:hover { background: rgba(128,128,128,.3); }
+.theme-toggle:hover { background: rgba(255,255,255,.32); }
 .toggle-knob {
   position: absolute;
   top: 3px; left: 3px;
   width: 20px; height: 20px;
   border-radius: 50%;
-  background: var(--nav-text);
+  background: #fff;
   transition: transform var(--transition);
   display: grid; place-items: center;
   font-size: 11px;
@@ -348,75 +352,31 @@ body {
 .nav-avatar {
   width: 34px; height: 34px;
   border-radius: 50%;
-  border: 2px solid rgba(128,128,128,.4);
+  border: 2px solid rgba(255,255,255,.5);
   overflow: hidden;
   cursor: pointer;
 }
 .nav-avatar-inner {
   width: 100%; height: 100%;
-  background: rgba(128,128,128,.2);
+  background: var(--nav-bg);
   display: grid; place-items: center;
   font-family: 'Anton', sans-serif;
   font-size: 13px;
-  color: var(--nav-text);
+  color: #fff;
 }
 
-/* ── BALANCE CARDS (compact) ─────────────────────────── */
-.bal-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 12px;
-}
-.bcard {
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: 14px;
-  padding: 14px 16px;
-  box-shadow: var(--shadow-card);
-  cursor: pointer;
-  transition: all var(--transition);
-}
-.bcard:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
-.bcard.active {
-  background: var(--nav-bg);
-  border-color: transparent;
-  box-shadow: 0 6px 20px rgba(0,0,0,.2);
-}
-.bcard.primary {
-  background: var(--nav-bg);
-  border-color: transparent;
-  box-shadow: 0 6px 20px rgba(0,0,0,.2);
-}
-.blbl {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: .7px;
-  text-transform: uppercase;
-  color: var(--text2);
-  margin-bottom: 6px;
-}
-.bcard.active .blbl, .bcard.primary .blbl { color: var(--nav-text); opacity: .7; }
-.bval {
-  font-family: 'Anton', sans-serif;
-  font-size: 20px;
-  letter-spacing: .3px;
-  color: var(--text);
-  line-height: 1;
-}
-.bcard.active .bval, .bcard.primary .bval { color: var(--nav-text); }
-
-/* ── STATS ROW (Overview/History summary boxes) ─────── */
+/* ── STATS ROW ──────────────────────────────────────── */
 .stats-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
 }
 
 .stat-card {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
-  border-radius: 14px;
-  padding: 16px;
+  border-radius: var(--radius-card);
+  padding: 22px;
   box-shadow: var(--shadow-card);
   position: relative;
   overflow: hidden;
@@ -424,47 +384,61 @@ body {
   cursor: default;
 }
 .stat-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
   box-shadow: var(--shadow-hover);
 }
 .stat-card.primary {
   background: var(--nav-bg);
   border-color: transparent;
-  box-shadow: 0 6px 20px rgba(0,0,0,.2);
 }
-.stat-card::before { display: none; }
-.stat-card.primary::after { display: none; }
+.stat-card.primary::after {
+  content: '';
+  position: absolute;
+  top: -30%; right: -10%;
+  width: 160px; height: 160px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.09);
+}
+.stat-card::before {
+  content: '';
+  position: absolute;
+  bottom: -18px; right: -18px;
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  background: var(--neutral-glow);
+}
+.stat-card.primary::before { background: rgba(255,255,255,.08); }
 
 .stat-icon-wrap {
-  width: 34px; height: 34px;
-  border-radius: 10px;
+  width: 42px; height: 42px;
+  border-radius: 12px;
   background: var(--badge-bg);
   display: grid; place-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 14px;
 }
-.stat-card.primary .stat-icon-wrap { background: rgba(128,128,128,.2); }
-.stat-icon-wrap svg { width: 17px; height: 17px; color: var(--text2); }
-.stat-card.primary .stat-icon-wrap svg { color: var(--nav-text); }
+.stat-card.primary .stat-icon-wrap { background: rgba(255,255,255,.2); }
+.stat-icon-wrap svg { width: 20px; height: 20px; color: var(--text2); }
+.stat-card.primary .stat-icon-wrap svg { color: #fff; }
 
 .stat-label {
-  font-size: 10px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--text2);
-  margin-bottom: 5px;
+  margin-bottom: 6px;
   text-transform: uppercase;
   letter-spacing: .8px;
 }
-.stat-card.primary .stat-label { color: var(--nav-text); opacity: .7; }
+.stat-card.primary .stat-label { color: rgba(255,255,255,.75); }
 
 .stat-value {
   font-family: 'Anton', sans-serif;
-  font-size: 22px;
-  letter-spacing: .5px;
+  font-size: 30px;
+  letter-spacing: 1px;
   color: var(--text);
   line-height: 1;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
-.stat-card.primary .stat-value { color: var(--nav-text); }
+.stat-card.primary .stat-value { color: #fff; }
 
 .stat-badge {
   display: inline-flex;
@@ -472,19 +446,19 @@ body {
   gap: 4px;
   padding: 3px 9px;
   border-radius: var(--radius-pill);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
 }
 .stat-badge.up { background: var(--up-bg); color: var(--up); }
 .stat-badge.down { background: var(--down-bg); color: var(--down); }
-.stat-card.primary .stat-badge { background: rgba(128,128,128,.2); color: var(--nav-text); }
+.stat-card.primary .stat-badge { background: rgba(255,255,255,.22); color: #fff; }
 
 .stat-sub {
-  font-size: 11px;
+  font-size: 11.5px;
   color: var(--text3);
-  margin-top: 4px;
+  margin-top: 6px;
 }
-.stat-card.primary .stat-sub { color: var(--nav-text); opacity: .6; }
+.stat-card.primary .stat-sub { color: rgba(255,255,255,.65); }
 
 /* ── MIDDLE ROW ─────────────────────────────────────── */
 .mid-row {
@@ -506,8 +480,6 @@ body {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 10px;
   margin-bottom: 20px;
 }
 .card-title {
@@ -526,7 +498,6 @@ body {
   padding: 4px;
 }
 .chart-tab {
-  padding: 5px 14px;
   border-radius: var(--radius-pill);
   font-size: 12px;
   font-weight: 600;
@@ -627,15 +598,11 @@ body {
   padding: 24px;
   box-shadow: var(--shadow-card);
   transition: background var(--transition);
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
 }
 
 .table-filter {
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+  gap: 8px;
 }
 .filter-btn {
   padding: 5px 13px;
@@ -684,7 +651,6 @@ body {
   display: grid; place-items: center;
   flex-shrink: 0;
 }
-.tx-icon svg { width: 16px; height: 16px; }
 .tx-name { font-weight: 600; font-size: 13.5px; }
 .tx-id { font-size: 11.5px; color: var(--text3); }
 .status-badge {
@@ -821,7 +787,7 @@ body {
   animation: fadeUp .4s ease both;
 }
 .lph { font-size: 13px; color: var(--text3); padding: 20px 0; text-align: center; }
-.txn-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
+.txn-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .stats-row .stat-card:nth-child(1) { animation-delay:.05s }
 .stats-row .stat-card:nth-child(2) { animation-delay:.10s }
 .stats-row .stat-card:nth-child(3) { animation-delay:.15s }
@@ -835,52 +801,59 @@ body {
 @media(max-width:900px) {
   .sidebar { transform: translateX(-100%); z-index: 200; }
   .sidebar.open { transform: translateX(0); }
-  .main { margin-left: 0; padding: 10px; gap: 12px; }
+  .main { margin-left: 0; padding: 12px; gap: 14px; }
   .ham-btn { display: flex; }
-  .stats-row { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
   .actions-row { grid-template-columns: repeat(2, 1fr); }
   .topnav-search { display: none; }
-  .topnav { padding: 10px 14px; gap: 10px; }
-  .chart-card, .donut-card, .table-card { padding: 16px; }
-}
-@media(max-width:600px) {
-  .main { padding: 8px; gap: 10px; }
-  .stats-row { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-  .bal-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-  .actions-row { grid-template-columns: 1fr; }
-  .topnav { gap: 8px; padding: 9px 12px; }
-  .topnav-title { font-size: 15px; }
+  .topnav { gap: 8px; padding: 10px 14px; }
+  .topnav-title { font-size: 16px; }
   .topnav-actions { gap: 5px; }
+  .icon-btn { width: 30px; height: 30px; }
+  .icon-btn svg { width: 14px; height: 14px; }
   .theme-toggle { width: 42px; height: 24px; }
   .theme-toggle .toggle-knob { width: 18px; height: 18px; top: 3px; left: 3px; }
   [data-theme="dark"] .theme-toggle .toggle-knob { transform: translateX(18px); }
   .nav-avatar { width: 30px; height: 30px; }
   .nav-avatar-inner { font-size: 12px; }
-  .data-table th, .data-table td { padding: 8px 6px; font-size: 12px; }
-  .data-table th { font-size: 9.5px; }
-  .stat-value { font-size: 18px; }
-  .bval { font-size: 17px; }
-  .chart-card, .donut-card, .table-card { padding: 14px 12px; }
-  .mid-row { gap: 10px; }
-  .card-title { font-size: 15px; }
-  .card-sub { font-size: 11px; }
-  .filter-btn { padding: 4px 10px; font-size: 11px; }
-  .table-filter { gap: 5px; }
-  .tx-icon { width: 30px; height: 30px; }
-  .tx-name { font-size: 12.5px; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .tx-id { font-size: 10.5px; }
-  .chart-summary { gap: 12px; }
-  .chart-sum-val { font-size: 15px; }
+  .data-table { font-size: 12px; }
+  .data-table th { font-size: 10px; }
+  .data-table td { padding: 10px 8px; }
 }
 
+/* ── CATEGORY SVG ICONS ──────────────────────────────── */
+.tx-icon svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.cat-icon {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+.cat-icon svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 </style>
 </head>
 <body>
 
 <aside class="sidebar" id="sb">
   <div class="logo">
-    <div class="logo-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="var(--nav-text)" stroke-width="1.75">
+    <div class="logo-icon" style="background: linear-gradient(135deg, #7c3aed, #a78bfa);">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
       </svg>
     </div>
@@ -890,27 +863,27 @@ body {
   <div class="nav-section">
     <div class="nav-label">Dashboard</div>
     <a class="nav-item active" href="#" data-page="page-bal">
-      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="1.75"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
       Balances
     </a>
     <a class="nav-item" href="#" data-page="page-ov">
-      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="1.75"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
       Overview
     </a>
     <a class="nav-item" href="#" data-page="page-an">
-      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="1.75"><line x1="18" y1="20" x2="18" y2="4"/><line x1="12" y1="20" x2="12" y2="10"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2"><line x1="18" y1="20" x2="18" y2="4"/><line x1="12" y1="20" x2="12" y2="10"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
       Analytics
     </a>
     <a class="nav-item" href="#" data-page="page-hi">
-      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="1.75"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><line x1="12" y1="7" x2="12" y2="12"/><line x1="12" y1="12" x2="15" y2="14"/></svg>
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><line x1="12" y1="7" x2="12" y2="12"/><line x1="12" y1="12" x2="15" y2="14"/></svg>
       Monthly History
     </a>
   </div>
 
-  <div class="nav-section" style="margin-top:10px">
+  <div class="nav-section">
     <div class="nav-label">Advisor</div>
-    <a class="nav-item" href="/cfo" style="text-decoration:none">
-      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="1.75"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+    <a class="nav-item" href="/cfo" target="_blank" data-page="">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
       Axe
     </a>
   </div>
@@ -923,7 +896,7 @@ body {
         <div class="role">Personal Finance</div>
       </div>
       <a href="/logout" class="logout-btn" title="Sign out">
-        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.75"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       </a>
     </div>
   </div>
@@ -937,14 +910,20 @@ body {
     </button>
     <span class="topnav-title" id="pgtitle">BALANCES</span>
     <div class="topnav-search">
-      <svg class="search-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+      <svg class="search-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
         <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
       </svg>
       <input type="text" placeholder="Search transactions, categories…"/>
     </div>
     <div class="topnav-actions">
+      <button class="icon-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/>
+        </svg>
+        <span class="notif-dot"></span>
+      </button>
       <button class="theme-toggle" id="themeBtn" onclick="toggleTheme()">
-        <div class="toggle-knob" id="knobIcon">☀️</div>
+        <div class="toggle-knob" id="knobIcon"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></div>
       </button>
       <div class="nav-avatar">
         <div class="nav-avatar-inner">M</div>
@@ -954,7 +933,7 @@ body {
 
   <!-- BALANCES PAGE -->
   <div class="page active" id="page-bal">
-    <div class="bal-grid" id="bal-grid"></div>
+    <div class="stats-row" id="bal-grid"></div>
   </div>
 
   <!-- OVERVIEW PAGE -->
@@ -973,66 +952,174 @@ body {
       <div class="txn-wrap">
         <table class="data-table">
           <thead><tr>
-            <th>Description</th>
+            <th>Descr</th>
+            <th>Category</th>
             <th>Date</th>
-            <th>Account</th>
             <th style="text-align:right">Amount</th>
           </tr></thead>
-          <tbody id="txbody"><tr><td colspan="4" class="lph">Loading…</td></tr></tbody>
+          <tbody id="txns"></tbody>
         </table>
       </div>
-      <button class="filter-btn" id="xbtn" style="display:none; width:100%; margin-top:15px;"><span id="xlbl">Show older transactions</span></button>
+    </div>
+    <div class="mid-row">
+      <div class="chart-card">
+        <div class="card-header">
+          <div><div class="card-title">MONTHLY SPENDING</div><div class="card-sub">Overview of your expenses</div></div>
+          <div class="chart-tabs" id="chart-tabs">
+            <button class="chart-tab active" data-timeframe="3m">3M</button>
+            <button class="chart-tab" data-timeframe="6m">6M</button>
+            <button class="chart-tab" data-timeframe="1y">1Y</button>
+            <button class="chart-tab" data-timeframe="all">ALL</button>
+          </div>
+        </div>
+        <div class="chart-summary">
+          <div class="chart-sum-item">
+            <div class="chart-sum-label">Total Spent</div>
+            <div class="chart-sum-val" id="total-spent">฿0.00</div>
+          </div>
+          <div class="chart-sum-item">
+            <div class="chart-sum-label">Avg. Monthly</div>
+            <div class="chart-sum-val" id="avg-spent">฿0.00</div>
+          </div>
+        </div>
+        <div class="chart-wrap"><canvas id="line-chart"></canvas></div>
+      </div>
+      <div class="donut-card">
+        <div class="card-header">
+          <div><div class="card-title">TOP CATEGORIES</div><div class="card-sub">This month's biggest spends</div></div>
+        </div>
+        <div class="donut-wrap">
+          <canvas id="donut-chart"></canvas>
+          <div class="donut-center">
+            <div class="donut-pct" id="donut-pct">0%</div>
+            <div class="donut-pct-sub">of total</div>
+          </div>
+        </div>
+        <div class="donut-legend" id="donut-legend"></div>
+      </div>
     </div>
   </div>
 
   <!-- ANALYTICS PAGE -->
   <div class="page" id="page-an">
+    <div class="stats-row" id="an-grid"></div>
     <div class="mid-row">
       <div class="chart-card">
-        <div class="card-header"><div><div class="card-title">6-MONTH OVERVIEW</div><div class="card-sub">Income vs expenses</div></div></div>
-        <div class="chart-summary">
-          <div class="chart-sum-item"><div class="chart-sum-label">Income</div><div class="chart-sum-val" id="cs-inc">—</div></div>
-          <div class="chart-sum-item"><div class="chart-sum-label">Expenses</div><div class="chart-sum-val" id="cs-exp">—</div></div>
-          <div class="chart-sum-item"><div class="chart-sum-label">Net</div><div class="chart-sum-val" id="cs-net">—</div></div>
+        <div class="card-header">
+          <div><div class="card-title">INCOME VS EXPENSE</div><div class="card-sub">Your financial flow</div></div>
+          <div class="chart-tabs" id="an-chart-tabs">
+            <button class="chart-tab active" data-timeframe="3m">3M</button>
+            <button class="chart-tab" data-timeframe="6m">6M</button>
+            <button class="chart-tab" data-timeframe="1y">1Y</button>
+            <button class="chart-tab" data-timeframe="all">ALL</button>
+          </div>
         </div>
-        <div class="chart-wrap" style="height:210px;"><canvas id="cbar"></canvas></div>
+        <div class="chart-wrap"><canvas id="an-line-chart"></canvas></div>
       </div>
       <div class="donut-card">
-        <div class="card-header"><div><div class="card-title">SPENDING CATEGORIES</div><div class="card-sub">This month</div></div></div>
-        <div class="donut-wrap">
-          <canvas id="cdnt"></canvas>
+        <div class="card-header">
+          <div><div class="card-title">EXPENSE BREAKDOWN</div><div class="card-sub">Where your money goes</div></div>
         </div>
-        <div class="progress-list" id="pbars"></div>
+        <div class="donut-wrap">
+          <canvas id="an-donut-chart"></canvas>
+          <div class="donut-center">
+            <div class="donut-pct" id="an-donut-pct">0%</div>
+            <div class="donut-pct-sub">of total</div>
+          </div>
+        </div>
+        <div class="donut-legend" id="an-donut-legend"></div>
+      </div>
+    </div>
+    <div class="table-card">
+      <div class="card-header">
+        <div><div class="card-title">QUICK ACTIONS</div><div class="card-sub">Manage your finances</div></div>
+      </div>
+      <div class="actions-row">
+        <div class="action-btn">
+          <div class="action-icon" style="background:rgba(52,199,89,.1); color:#34c759;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </div>
+          <div><div class="action-label">Add Income</div><div class="action-sub">Record new earnings</div></div>
+        </div>
+        <div class="action-btn">
+          <div class="action-icon" style="background:rgba(255,59,48,.1); color:#ff3b30;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </div>
+          <div><div class="action-label">Add Expense</div><div class="action-sub">Log a new spending</div></div>
+        </div>
+        <div class="action-btn">
+          <div class="action-icon" style="background:rgba(0,122,255,.1); color:#007aff;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M21 5H3"/><polyline points="7 23 3 19 7 15"/><path d="M3 19h18"/></svg>
+          </div>
+          <div><div class="action-label">Transfer Funds</div><div class="action-sub">Move money between accounts</div></div>
+        </div>
+        <div class="action-btn">
+          <div class="action-icon" style="background:rgba(255,149,0,.1); color:#ff9500;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+          </div>
+          <div><div class="action-label">View Reports</div><div class="action-sub">Generate financial summaries</div></div>
+        </div>
       </div>
     </div>
   </div>
 
   <!-- MONTHLY HISTORY PAGE -->
   <div class="page" id="page-hi">
-    <div class="table-card">
-      <div class="card-header">
-        <button class="filter-btn" id="hprev">&#8592;</button>
-        <div class="card-title" id="hmonth" style="flex:1; text-align:center;">—</div>
-        <button class="filter-btn" id="hnext">&#8594;</button>
+    <div class="card-header">
+      <div><div class="card-title" id="hmonth"></div><div class="card-sub">Detailed breakdown for the month</div></div>
+      <div class="chart-tabs">
+        <button class="chart-tab" id="hprev"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+        <button class="chart-tab" id="hnext"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;">
-        <div class="bcard"><div class="blbl">Income</div><div class="bval" id="hi" style="color:var(--up)">—</div></div>
-        <div class="bcard"><div class="blbl">Expenses</div><div class="bval" id="he" style="color:var(--down)">—</div></div>
-        <div class="bcard primary"><div class="blbl">Net</div><div class="bval" id="hn">—</div></div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card primary">
+        <div class="stat-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
+        <div class="stat-label">Net Balance</div>
+        <div class="stat-value" id="hn">฿0.00</div>
+        <div class="stat-sub">Total income minus total expense</div>
       </div>
-      <div class="card-sub" style="margin-bottom:15px; text-transform:uppercase; letter-spacing:1px;">Spending Breakdown</div>
-      <div class="progress-list" id="hcats"></div>
-      <div class="card-sub" style="margin-top:20px; margin-bottom:15px; text-transform:uppercase; letter-spacing:1px;">All Transactions</div>
-      <div class="txn-wrap">
-        <table class="data-table">
-          <thead><tr>
-            <th>Description</th>
-            <th>Date</th>
-            <th>Account</th>
-            <th style="text-align:right">Amount</th>
-          </tr></thead>
-          <tbody id="htxns"></tbody>
-        </table>
+      <div class="stat-card">
+        <div class="stat-icon-wrap" style="background:var(--up-bg);"><svg viewBox="0 0 24 24" fill="none" stroke="var(--up)" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+        <div class="stat-label">Total Income</div>
+        <div class="stat-value" id="hi">฿0.00</div>
+        <div class="stat-sub">All earnings for the month</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon-wrap" style="background:var(--down-bg);"><svg viewBox="0 0 24 24" fill="none" stroke="var(--down)" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+        <div class="stat-label">Total Expense</div>
+        <div class="stat-value" id="he">฿0.00</div>
+        <div class="stat-sub">All spending for the month</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon-wrap" style="background:var(--badge-bg);"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+        <div class="stat-label">Investments</div>
+        <div class="stat-value" id="hinv">฿0.00</div>
+        <div class="stat-sub">Money allocated to investments</div>
+      </div>
+    </div>
+    <div class="mid-row">
+      <div class="table-card">
+        <div class="card-header">
+          <div><div class="card-title">TRANSACTIONS</div><div class="card-sub">All transactions for the month</div></div>
+        </div>
+        <div class="txn-wrap">
+          <table class="data-table">
+            <thead><tr>
+              <th>Descr</th>
+              <th>Category</th>
+              <th>Date</th>
+              <th style="text-align:right">Amount</th>
+            </tr></thead>
+            <tbody id="htxns"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="donut-card">
+        <div class="card-header">
+          <div><div class="card-title">EXPENSE BREAKDOWN</div><div class="card-sub">Where your money went</div></div>
+        </div>
+        <div class="progress-list" id="hcats"></div>
       </div>
     </div>
   </div>
@@ -1042,306 +1129,524 @@ body {
 var $ = function(id){return document.getElementById(id)};
 var MNAMES=['','January','February','March','April','May','June','July','August','September','October','November','December'];
 var PAL=['#1d1d1f','#6e6e73','#aeaeb2','#48484a','#3a3a3c','#8e8e93','#636366','#d1d1d6'];
+var ICONS={
+'Food & Drinks':'<svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><path d="M6 1v3"/><path d="M10 1v3"/><path d="M14 1v3"/></svg>',
+'Coffee':'<svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><path d="M6 1v3"/><path d="M10 1v3"/><path d="M14 1v3"/></svg>',
+'Transport':'<svg viewBox="0 0 24 24"><path d="M19 17H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2z"/><circle cx="7" cy="15" r="2"/><circle cx="17" cy="15" r="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+'Groceries':'<svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>',
+'Housing':'<svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
+'Health':'<svg viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5L12 22z"/></svg>',
+'Shopping':'<svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>',
+'Entertainment':'<svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>',
+'Subscriptions':'<svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>',
+'Travel':'<svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
+'School':'<svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>',
+'Cigarettes':'<svg viewBox="0 0 24 24"><rect x="1" y="14" width="18" height="5" rx="1"/><line x1="22" y1="14" x2="22" y2="19"/><line x1="20" y1="14" x2="20" y2="19"/><path d="M20 7c0-2.2-1.8-4-4-4"/><path d="M22 7c0-3.3-2.7-6-6-6"/></svg>',
+'Other':'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>',
+'Salary':'<svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>',
+'Freelance':'<svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="17" x2="6" y2="21"/><line x1="18" y1="17" x2="18" y2="21"/><line x1="10" y1="21" x2="14" y2="21"/></svg>',
+'Gallery Sales':'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',
+'Artwork / Commission':'<svg viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r="2.5"/><path d="M17 3a2.83 2.83 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>',
+'Bonus':'<svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+'Gift Money':'<svg viewBox="0 0 24 24"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2 0 0 0 0-5C13 2 12 7 12 7z"/></svg>',
+'Cashback / Refund':'<svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>',
+'Investment':'<svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
+'Business':'<svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>',
+'Other Income':'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>',
+'Transfer':'<svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M21 5H3"/><polyline points="7 23 3 19 7 15"/><path d="M3 19h18"/></svg>'
+};
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 function fmt(n){return '฿'+Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}
-function countUp(node,v,pfx,ms){
-  ms=ms||900;var t0=performance.now();
-  (function tick(now){
-    var p=Math.min((now-t0)/ms,1),ep=1-Math.pow(1-p,3);
-    node.textContent=pfx+(v*ep).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-    if(p<1)requestAnimationFrame(tick);
-  })(performance.now());
-}
-function getVar(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()}
+function countUp(node,v,pfx,ms){var obj={val:0};var anim=new TWEEN.Tween(obj).to({val:v},ms).easing(TWEEN.Easing.Quadratic.Out).onUpdate(function(){node.textContent=pfx+fmt(obj.val)}).start();requestAnimationFrame(animate);function animate(time){TWEEN.update(time);requestAnimationFrame(animate)}}
+function getVar(v){return getComputedStyle(document.documentElement).getPropertyValue(v)}
 
-// ── THEME ─────────────────────────────────────────────────────────────────────
-function toggleTheme() {
-  var currentTheme = document.documentElement.getAttribute('data-theme');
-  var newTheme = currentTheme === 'light' ? 'dark' : 'light';
-  document.documentElement.setAttribute('data-theme', newTheme);
-  localStorage.setItem('mf-theme', newTheme);
+// ── THEME TOGGLE ──────────────────────────────────────────────────────────────
+function toggleTheme(){
+  var theme=document.documentElement.getAttribute('data-theme');
+  var newTheme=(theme==='dark'?'light':'dark');
+  document.documentElement.setAttribute('data-theme',newTheme);
+  localStorage.setItem('mf-theme',newTheme);
   updateKnobIcon(newTheme);
-  // Re-render charts to apply new theme colors
-  if (chartsReady) {
-    loadAnalytics();
-  }
+  if(window.lineChart)window.lineChart.destroy();
+  if(window.donutChart)window.donutChart.destroy();
+  if(window.anLineChart)window.anLineChart.destroy();
+  if(window.anDonutChart)window.anDonutChart.destroy();
+  loadBalances();
+  loadOverview();
+  loadAnalytics();
 }
 
 function updateKnobIcon(theme) {
-  var knob = $('knobIcon');
+  var knob = $("knobIcon");
   if (knob) {
-    knob.textContent = theme === 'dark' ? '🌙' : '☀️';
+    knob.innerHTML = theme === 'dark' 
+      ? '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
+      : '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
   }
 }
 
 // Initial knob icon update
 updateKnobIcon(document.documentElement.getAttribute('data-theme'));
 
-window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',function(e){
-  if(!localStorage.getItem('mf-theme')){
-    document.documentElement.setAttribute('data-theme',e.matches?'dark':'light');
-    updateKnobIcon(e.matches?'dark':'light');
-  }
-});
-
-// ── DATE ──────────────────────────────────────────────────────────────────────
-(function(){
-  var o={timeZone:'Asia/Bangkok',weekday:'short',year:'numeric',month:'short',day:'numeric'};
-  // Removed hdr-date as it's not in the new design, or will be integrated differently
-})();
-
-// ── NAV ───────────────────────────────────────────────────────────────────────
-var curPage='page-bal', chartsReady=false;
+// ── PAGE NAVIGATION ───────────────────────────────────────────────────────────
 var TITLES={'page-bal':'BALANCES','page-ov':'OVERVIEW','page-an':'ANALYTICS','page-hi':'MONTHLY HISTORY'};
+var currentPage='page-bal';
 
-function goTo(id){
-  if(curPage===id){closeSB();return}
-  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active')});
-  document.querySelectorAll('.nav-item').forEach(function(b){b.classList.toggle('active',b.dataset.page===id)});
-  $(id).classList.add('active');
-  $('pgtitle').textContent=TITLES[id]||"";
-  curPage=id; closeSB();
-  window.scrollTo({top:0,behavior:'instant'});
-  if(id==='page-an'&&!chartsReady){chartsReady=true;loadAnalytics()}
+function navigate(pageId){
+  var pages=document.querySelectorAll('.page');
+  pages.forEach(function(page){page.classList.remove('active')});
+  $(pageId).classList.add('active');
+
+  var navItems=document.querySelectorAll('.nav-item');
+  navItems.forEach(function(item){item.classList.remove('active')});
+  var activeNavItem=document.querySelector('.nav-item[data-page="'+pageId+'"]');
+  if(activeNavItem)activeNavItem.classList.add('active');
+
+  $("pgtitle").textContent=TITLES[pageId];
+  currentPage=pageId;
+
+  if(pageId==='page-bal')loadBalances();
+  else if(pageId==='page-ov')loadOverview();
+  else if(pageId==='page-an')loadAnalytics();
+  else if(pageId==='page-hi')loadHistory();
 }
 
-document.querySelectorAll('.nav-item').forEach(function(item) {
-  item.addEventListener('click', function(e) {
-    e.preventDefault();
-    goTo(this.dataset.page);
+document.addEventListener('DOMContentLoaded',function(){
+  var navLinks=document.querySelectorAll('.nav-item');
+  navLinks.forEach(function(link){
+    link.addEventListener('click',function(e){
+      e.preventDefault();
+      var pageId=this.getAttribute('data-page');
+      if(pageId)navigate(pageId);
+    });
   });
+  navigate(currentPage);
 });
 
-function openSB(){$('sb').classList.add('open');$('ovl').classList.add('open')}
-function closeSB(){$('sb').classList.remove('open');$('ovl').classList.remove('open')}
+// ── MOBILE SIDEBAR ────────────────────────────────────────────────────────────
+$("hambtn").addEventListener('click',function(){
+  $("sb").classList.add('open');
+  $("ovl").classList.add('open');
+});
+$("ovl").addEventListener('click',function(){
+  $("sb").classList.remove('open');
+  $("ovl").classList.remove('open');
+});
 
-$('hambtn').addEventListener('click', openSB);
-$('ovl').addEventListener('click', closeSB);
+// ── DATA LOADING ──────────────────────────────────────────────────────────────
+var TWEEN={Easing:{Quadratic:{Out:function(k){return k*(2-k)}}},Tween:function(a){var _valuesStart={};var _valuesEnd={};var _valuesStartRepeat={};var _duration=1000;var _easingFunction=TWEEN.Easing.Quadratic.Out;var _startTime=null;var _delayTime=0;var _isPlaying=false;var _yoyo=false;var _reversed=false;var _onUpdateCallback=null;var _onCompleteCallback=null;for(var field in a){_valuesStart[field]=parseFloat(a[field],10)}this.to=function(b,duration){if(duration!==undefined)_duration=duration;for(var field in b){_valuesEnd[field]=parseFloat(b[field],10)}return this};this.start=function(time){_startTime=time!==undefined?time:performance.now();_startTime+=_delayTime;_isPlaying=true;for(var field in _valuesEnd){if(_valuesEnd[field]instanceof Array){if(_valuesEnd[field].length===0)continue;_valuesEnd[field]=[a[field]].concat(_valuesEnd[field])}_valuesStart[field]=a[field];if((_valuesStart[field]instanceof Array)===false){_valuesStart[field]=parseFloat(_valuesStart[field],10)}_valuesStartRepeat[field]=_valuesStart[field]}return this};this.stop=function(){_isPlaying=false;return this};this.delay=function(amount){_delayTime=amount;return this};this.easing=function(easing){_easingFunction=easing;return this};this.onUpdate=function(callback){_onUpdateCallback=callback;return this};this.onComplete=function(callback){_onCompleteCallback=callback;return this};this.yoyo=function(yoyo){_yoyo=yoyo;return this};function update(time){var property;if(time<_startTime)return true;if(_isPlaying===false)return false;var elapsed=(time-_startTime)/_duration;elapsed=elapsed>1?1:elapsed;var value=_easingFunction(elapsed);for(property in _valuesStart){var start=_valuesStart[property]||0;var end=_valuesEnd[property]||0;if(end instanceof Array){a[property]=lerp(end,value)}else{if(typeof(end)==='string'){end=start+parseFloat(end,10)}if(_yoyo){a[property]=_reversed?end+(start-end)*value:start+(end-start)*value}else{a[property]=start+(end-start)*value}}}if(_onUpdateCallback!==null){_onUpdateCallback.call(a,value)}if(elapsed===1){if(_onCompleteCallback!==null){_onCompleteCallback.call(a)}if(_yoyo){_reversed=!_reversed;this.start()}else{_isPlaying=false}return false}return true}TWEEN.update=function(time){var i=0;var numTweens=TWEEN._tweens.length;while(i<numTweens){if(TWEEN._tweens[i].update(time)){i++}else{TWEEN._tweens.splice(i,1);numTweens--}}return numTweens};TWEEN._tweens=[];return this}()};
 
-// ── BALANCES ──────────────────────────────────────────────────────────────────
-async function loadBalances(){
-  var data=await fetch('/api/balances').then(r=>r.json());
-  var total=data.reduce((s,a)=>s+a.balance,0);
-
-  $('bal-grid').innerHTML=data.map(function(a){
-    return '<div class="bcard" onclick="selBal(this)">'+
-      '<div class="blbl">'+a.name+'</div>'+
-      '<div class="bval" data-v="'+a.balance+'">฿—</div>'+
-    '</div>';
-  }).join('')+
-  '<div class="bcard primary">'+
-    '<div class="blbl">Net Worth</div>'+
-    '<div class="bval" data-v="'+total+'">฿—</div>'+
-  '</div>';
-
-  setTimeout(function(){
-    $('bal-grid').querySelectorAll('.bval').forEach(function(n){
-      countUp(n,parseFloat(n.dataset.v),'฿',900);
-    });
-  },60);
+async function fetchData(url) {
+  const response = await fetch(url);
+  return response.json();
 }
 
-function selBal(card){
-  if(card.classList.contains('primary'))return;
-  var wasOn=card.classList.contains('active');
-  $('bal-grid').querySelectorAll('.bcard:not(.primary)').forEach(function(c){c.classList.remove('active')});
-  if(!wasOn)card.classList.add('active');
-}
+var BAL_ICONS = {
+  'Bangkok Bank': '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M6 7V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"/><line x1="2" y1="12" x2="22" y2="12"/>',
+  'True Money Wallet': '<path d="M20 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2z"/><path d="M16 3H8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z"/><circle cx="17" cy="14" r="1.5"/>',
+  'MRT EMV Visa': '<rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>',
+  'Rabbit Card': '<rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>',
+  'Cash': '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/>',
+  'Muvmi': '<path d="M19 17H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2z"/><circle cx="7" cy="15" r="2"/><circle cx="17" cy="15" r="2"/>',
+  'Solsot Member': '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>'
+};
+var DEFAULT_ACC_ICON = '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/>';
 
-// ── SUMMARY ───────────────────────────────────────────────────────────────────
-async function loadSummary(){
-  var resp=await fetch('/api/summary').then(r=>r.json());
-  var cur=resp.this_month,prev=resp.last_month;
-  function chg(c,p,inv){
-    if(!p)return'';
-    var d=((c-p)/Math.abs(p)*100).toFixed(1),up=inv?d<0:d>0;
-    return'<span class="stat-badge '+(up?'up':'down')+'">'+(up?'▲':'▼')+Math.abs(d)+'%</span>';
-  }
-  $('sum-grid').innerHTML=
-    '<div class="stat-card">'+
-      '<div class="stat-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="var(--up)" stroke-width="1.75"><polyline points="23,6 13.5,15.5 8.5,10.5 1,18"/><polyline points="17,6 23,6 23,12"/></svg></div>'+
-      '<div class="stat-label">Income</div>'+
-      '<div class="stat-value" style="color:var(--up)" data-v="'+cur.income+'">฿—</div>'+
-      '<div>'+chg(cur.income,prev.income)+'<div class="stat-sub">vs last month</div></div>'+
-    '</div>'+
-    '<div class="stat-card">'+
-      '<div class="stat-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="var(--down)" stroke-width="1.75"><polyline points="23,18 13.5,8.5 8.5,13.5 1,6"/><polyline points="17,18 23,18 23,12"/></svg></div>'+
-      '<div class="stat-label">Expenses</div>'+
-      '<div class="stat-value" style="color:var(--down)" data-v="'+cur.expense+'">฿—</div>'+
-      '<div>'+chg(cur.expense,prev.expense,true)+'<div class="stat-sub">vs last month</div></div>'+
-    '</div>'+
-    '<div class="stat-card primary">'+
-      '<div class="stat-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="var(--nav-text)" stroke-width="1.75"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>'+
-      '<div class="stat-label">Net Savings</div>'+
-      '<div class="stat-value" data-v="'+Math.abs(cur.net)+'" data-neg="'+(cur.net<0?1:0)+'">฿—</div>'+
-      '<div>'+chg(cur.net,prev.net)+'<div class="stat-sub">vs last month</div></div>'+
-    '</div>';
-  setTimeout(function(){
-    $('sum-grid').querySelectorAll('.stat-value').forEach(function(n){
-      countUp(n,parseFloat(n.dataset.v),(n.dataset.neg==='1'?'−':'')+' ฿',900);
-    });
-  },60);
-}
-
-// ── TRANSACTIONS ──────────────────────────────────────────────────────────────
-var allTx=[],txExp=false;
-var ICN_IN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5,12 12,5 19,12"/></svg>';
-var ICN_OUT='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19,12 12,19 5,12"/></svg>';
-var ICN_TR='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="17,1 21,5 17,9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7,23 3,19 7,15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>';
+// Shared transaction-row renderer (used by Overview + Monthly History pages)
 function buildRows(txns){
-  if(!txns.length)return'<tr><td colspan="4" class="lph" style="text-align:center; padding:20px 0; color:var(--text3);">No transactions</td></tr>';
+  if(!txns.length)return '<tr><td colspan="4" class="lph" style="text-align:center; padding:20px 0; color:var(--text3);">No transactions</td></tr>';
   return txns.map(function(t){
     var isI=t.type==='income',isT=t.type==='transfer';
-    var icn=isI?ICN_IN:(isT?ICN_TR:ICN_OUT);
+    var em=ICONS[t.category]||(isI?ICONS["Salary"]:isT?ICONS["Transfer"]:ICONS["Other"]);
     var ts=(t.timestamp||'').substring(0,10);
     var ac=isI?'amount-pos':isT?'amount-neu':'amount-neg';
     var ap=isI?'+':isT?'⇄':'-';
     var bgColor = isI ? 'var(--up-bg)' : isT ? 'var(--badge-bg)' : 'var(--down-bg)';
-    var textColor = isI ? 'var(--up)' : isT ? 'var(--badge-text)' : 'var(--down)';
-
-    return'<tr>'+
-      '<td><div class="tx-info"><div class="tx-icon" style="background:'+bgColor+'; color:'+textColor+'">'+icn+'</div><div><div class="tx-name">'+(t.description||'')+'</div><div class="tx-id">'+(t.category||'')+' · '+(t.account||'')+'</div></div></div></td>'+
-      '<td>'+ts+'</td>'+
-      '<td>'+t.account+'</td>'+
-      '<td class="'+ac+'" style="text-align:right">'+ap+fmt(t.amount)+'</td>'+
-    '</tr>';
+    var iconColor = isI ? 'var(--up)' : isT ? 'var(--text2)' : 'var(--down)';
+    return `
+      <tr>
+        <td>
+          <div class="tx-info">
+            <div class="tx-icon" style="background:${bgColor};">
+              <svg viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                ${em}
+              </svg>
+            </div>
+            <div>
+              <div class="tx-name">${t.description||''}</div>
+              <div class="tx-id">${t.account||''}</div>
+            </div>
+          </div>
+        </td>
+        <td>${t.category||''}</td>
+        <td>${ts}</td>
+        <td style="text-align:right" class="${ac}">${ap}${fmt(t.amount)}</td>
+      </tr>
+    `;
   }).join('');
 }
-function renderTx(f){
-  var show=f&&f!=='all'?allTx.filter(t=>t.type===f):allTx;
-  var first=show.slice(0,5),rest=show.slice(5);
-  $('txbody').innerHTML=buildRows(first);
-  if(rest.length){$('xbtn').style.display='block';$('xbtn').dataset.rest=JSON.stringify(rest)}
-  else{$('xbtn').style.display='none'}
-  txExp=false;$('xlbl').textContent='Show older transactions';
+
+// ── BALANCES PAGE ────────────────────────────────────────────────────────────
+async function loadBalances() {
+  const data = await fetchData('/api/balances');
+  const total = data.reduce((s,a)=>s+a.balance,0);
+  const balGrid = $('bal-grid');
+  balGrid.innerHTML = data.map(function(b){
+    return `
+    <div class="stat-card">
+      <div class="stat-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${BAL_ICONS[b.name]||DEFAULT_ACC_ICON}</svg></div>
+      <div class="stat-label">${b.name}</div>
+      <div class="stat-value">${fmt(b.balance)}</div>
+      <div class="stat-sub">Current balance</div>
+    </div>`;
+  }).join('') + `
+    <div class="stat-card primary">
+      <div class="stat-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
+      <div class="stat-label">Net Worth</div>
+      <div class="stat-value">${fmt(total)}</div>
+      <div class="stat-sub">Across all accounts</div>
+    </div>`;
 }
-async function loadTransactions(){
-  var d=await fetch('/api/transactions').then(r=>r.json());
-  allTx=d; renderTx('all');
-  $('fbrow').querySelectorAll('.filter-btn').forEach(function(b){
-    b.addEventListener('click',function(){
-      $('fbrow').querySelectorAll('.filter-btn').forEach(x=>x.classList.remove('active'));
-      b.classList.add('active');renderTx(b.dataset.f);
+
+// ── OVERVIEW PAGE ────────────────────────────────────────────────────────────
+async function loadOverview() {
+  const [summary, categories, monthly, balances, allTxns] = await Promise.all([
+    fetchData('/api/summary'),
+    fetchData('/api/categories'),
+    fetchData('/api/monthly'),
+    fetchData('/api/balances'),
+    fetchData('/api/transactions')
+  ]);
+  const cur = summary.this_month, prev = summary.last_month;
+  const netWorth = balances.reduce((s,a)=>s+a.balance,0);
+  const savingsRate = cur.income > 0 ? ((cur.income - cur.expense) / cur.income) * 100 : 0;
+  const prevSavingsRate = prev.income > 0 ? ((prev.income - prev.expense) / prev.income) * 100 : 0;
+
+  $('sum-grid').innerHTML = `
+    <div class="stat-card primary">
+      <div class="stat-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
+      <div class="stat-label">Net Worth</div>
+      <div class="stat-value">${fmt(netWorth)}</div>
+      <div class="stat-sub">Across all accounts</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon-wrap" style="background:var(--up-bg);"><svg viewBox="0 0 24 24" fill="none" stroke="var(--up)" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+      <div class="stat-label">Total Income</div>
+      <div class="stat-value">${fmt(cur.income)}</div>
+      <div class="stat-badge ${cur.income >= prev.income ? 'up' : 'down'}">${cur.income >= prev.income ? '+' : '-'}${fmt(Math.abs(cur.income - prev.income))}</div>
+      <div class="stat-sub">vs last month</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon-wrap" style="background:var(--down-bg);"><svg viewBox="0 0 24 24" fill="none" stroke="var(--down)" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+      <div class="stat-label">Total Expense</div>
+      <div class="stat-value">${fmt(cur.expense)}</div>
+      <div class="stat-badge ${cur.expense <= prev.expense ? 'up' : 'down'}">${cur.expense <= prev.expense ? '-' : '+'}${fmt(Math.abs(cur.expense - prev.expense))}</div>
+      <div class="stat-sub">vs last month</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon-wrap" style="background:var(--badge-bg);"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+      <div class="stat-label">Savings Rate</div>
+      <div class="stat-value">${savingsRate.toFixed(1)}%</div>
+      <div class="stat-badge ${savingsRate >= prevSavingsRate ? 'up' : 'down'}">${savingsRate >= prevSavingsRate ? '+' : ''}${(savingsRate - prevSavingsRate).toFixed(1)}%</div>
+      <div class="stat-sub">vs last month</div>
+    </div>
+  `;
+
+  function renderTransactions(filterType) {
+    var filtered = filterType === 'all' ? allTxns : allTxns.filter(t => t.type === filterType);
+    $('txns').innerHTML = buildRows(filtered);
+  }
+  renderTransactions('all');
+  document.querySelectorAll('#fbrow .filter-btn').forEach(button => {
+    button.addEventListener('click', function() {
+      document.querySelectorAll('#fbrow .filter-btn').forEach(btn => btn.classList.remove('active'));
+      this.classList.add('active');
+      renderTransactions(this.dataset.f);
     });
   });
-  $('xbtn').addEventListener('click',function(){
-    txExp=!txExp;
-    if(txExp){$('txbody').innerHTML+=buildRows(JSON.parse($('xbtn').dataset.rest||'[]'));$('xlbl').textContent='Show less'}
-    else{var a=$('fbrow').querySelector('.active');renderTx(a?a.dataset.f:'all')}
-  });
-}
 
-// ── ANALYTICS ─────────────────────────────────────────────────────────────────
-async function loadAnalytics(){
-  var [cats,monthly,summ]=await Promise.all([
-    fetch('/api/categories').then(r=>r.json()),
-    fetch('/api/monthly').then(r=>r.json()),
-    fetch('/api/summary').then(r=>r.json())
-  ]);
-  var cur=summ.this_month;
-  $('cs-inc').textContent=fmt(cur.income);
-  $('cs-exp').textContent=fmt(cur.expense);
-  $('cs-net').textContent=(cur.net<0?'−':'')+fmt(Math.abs(cur.net));
+  // Line chart — 6-month expense trend (from /api/monthly)
+  var totalSpent = monthly.reduce((s,m)=>s+m.expense,0);
+  var avgSpent = monthly.length ? totalSpent / monthly.length : 0;
+  $('total-spent').textContent = fmt(totalSpent);
+  $('avg-spent').textContent = fmt(avgSpent);
 
-  // Resolve CSS vars at render time so Chart.js gets real hex values
-  var gridClr=getVar('--chart-grid')||"rgba(0,0,0,.06)";
-  var txtClr=getVar('--text3')||"#8899bb";
-  var cardClr=getVar('--card-bg')||"#ffffff";
-  var upColor = getVar('--up') || '#10b981';
-  var downColor = getVar('--down') || '#ef4444';
-
-  new Chart($('cbar').getContext('2d'),{
-    type:'bar',
-    data:{
-      labels:monthly.map(d=>d.month),
-      datasets:[
-        {label:'Income', data:monthly.map(d=>d.income), backgroundColor:upColor,borderRadius:6,borderSkipped:false},
-        {label:'Expense',data:monthly.map(d=>d.expense),backgroundColor:downColor,borderRadius:6,borderSkipped:false}
-      ]
+  var lineChartCtx = $('line-chart').getContext('2d');
+  if (window.lineChart) window.lineChart.destroy();
+  window.lineChart = new Chart(lineChartCtx, {
+    type: 'line',
+    data: {
+      labels: monthly.map(m => m.month),
+      datasets: [{
+        label: 'Expenses',
+        data: monthly.map(m => m.expense),
+        borderColor: getVar('--nav-bg'),
+        backgroundColor: getVar('--nav-bg'),
+        fill: false,
+        tension: 0.3,
+        pointRadius: 3,
+        pointBackgroundColor: getVar('--nav-bg')
+      }]
     },
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      plugins:{
-        legend:{labels:{font:{size:11},boxWidth:9,boxHeight:9,color:txtClr,usePointStyle:true}},
-        tooltip:{
-          callbacks:{label:ctx=>'  '+ctx.dataset.label+': '+fmt(ctx.raw)},
-          backgroundColor:cardClr,borderColor:'rgba(0,0,0,.1)',borderWidth:1,
-          titleColor:getVar('--text')||"#1d1d1f",bodyColor:txtClr,padding:10,cornerRadius:10
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          callbacks: { label: ctx => ' ' + ctx.dataset.label + ': ' + fmt(ctx.raw) },
+          backgroundColor: getVar('--card-bg'),
+          borderColor: getVar('--divider'),
+          borderWidth: 1,
+          titleColor: getVar('--text'),
+          bodyColor: getVar('--text2'),
+          padding: 10,
+          cornerRadius: 10
         }
       },
-      scales:{
-        x:{grid:{color:gridClr},ticks:{font:{size:10},color:txtClr}},
-        y:{grid:{color:gridClr},ticks:{font:{size:10},color:txtClr,
-          callback:v=>'฿'+(v>=1000?(v/1000).toFixed(0)+'k':v)
-        }}
+      scales: {
+        x: { grid: { color: getVar('--chart-grid') }, ticks: { color: getVar('--text3') } },
+        y: { grid: { color: getVar('--chart-grid') }, ticks: { color: getVar('--text3'),
+          callback: (value) => '฿' + (value >= 1000 ? (value / 1000).toFixed(0) + 'k' : value)
+        } }
       }
     }
   });
 
-  if(cats.length){
-    new Chart($('cdnt').getContext('2d'),{
-      type:'doughnut',
-      data:{labels:cats.map(c=>c.category),datasets:[{data:cats.map(c=>c.total),backgroundColor:PAL,borderWidth:0,hoverOffset:5}]},
-      options:{
-        cutout:'68%',responsive:true,maintainAspectRatio:false,
-        plugins:{
-          legend:{display:false},
-          tooltip:{callbacks:{label:ctx=>'  '+ctx.label+': '+fmt(ctx.raw)},
-            backgroundColor:cardClr,borderColor:'rgba(0,0,0,.1)',borderWidth:1,
-            titleColor:getVar('--text')||"#1d1d1f",bodyColor:txtClr,padding:10,cornerRadius:10}
+  document.querySelectorAll('#chart-tabs .chart-tab').forEach(button => {
+    button.addEventListener('click', function() {
+      document.querySelectorAll('#chart-tabs .chart-tab').forEach(btn => btn.classList.remove('active'));
+      this.classList.add('active');
+    });
+  });
+
+  // Donut chart — top categories
+  var catTotal = categories.reduce((s,c)=>s+c.total, 0);
+  var donutChartCtx = $('donut-chart').getContext('2d');
+  if (window.donutChart) window.donutChart.destroy();
+  window.donutChart = new Chart(donutChartCtx, {
+    type: 'doughnut',
+    data: {
+      labels: categories.map(c => c.category),
+      datasets: [{ data: categories.map(c => c.total), backgroundColor: PAL.slice(0, categories.length), borderWidth: 0 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '75%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              var label = context.label || '';
+              if (label) label += ': ';
+              if (context.parsed !== null) {
+                var pct = catTotal > 0 ? (context.raw / catTotal * 100).toFixed(1) : '0.0';
+                label += fmt(context.parsed) + ' (' + pct + '%)';
+              }
+              return label;
+            }
+          },
+          backgroundColor: getVar('--card-bg'), borderColor: getVar('--divider'), borderWidth: 1,
+          titleColor: getVar('--text'), bodyColor: getVar('--text2'), padding: 10, cornerRadius: 10
         }
       }
+    }
+  });
+
+  $('donut-legend').innerHTML = categories.map((c, i) => `
+    <div class="legend-item">
+      <div class="legend-dot" style="background:${PAL[i % PAL.length]};"></div>
+      <div class="legend-label">${c.category}</div>
+      <div class="legend-val">${fmt(c.total)}</div>
+      <div class="legend-pct">${(catTotal > 0 ? (c.total / catTotal * 100) : 0).toFixed(1)}%</div>
+    </div>
+  `).join('');
+
+  $('donut-pct').textContent = (categories.length && catTotal > 0 ? (categories[0].total / catTotal * 100).toFixed(1) : 0) + '%';
+}
+
+// ── ANALYTICS PAGE ───────────────────────────────────────────────────────────
+async function loadAnalytics() {
+  const [summary, categories, monthly] = await Promise.all([
+    fetchData('/api/summary'),
+    fetchData('/api/categories'),
+    fetchData('/api/monthly')
+  ]);
+  const cur = summary.this_month, prev = summary.last_month;
+  const netChange = cur.income - cur.expense;
+  const prevNetChange = prev.income - prev.expense;
+  const avgIncome = monthly.length ? monthly.reduce((s,m)=>s+m.income,0) / monthly.length : 0;
+  const avgExpense = monthly.length ? monthly.reduce((s,m)=>s+m.expense,0) / monthly.length : 0;
+  const catTotal = categories.reduce((s,c)=>s+c.total, 0);
+  const topShare = categories.length && catTotal > 0 ? (categories[0].total / catTotal * 100) : 0;
+
+  $('an-grid').innerHTML = `
+    <div class="stat-card primary">
+      <div class="stat-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
+      <div class="stat-label">Net Change</div>
+      <div class="stat-value">${fmt(netChange)}</div>
+      <div class="stat-badge ${netChange >= prevNetChange ? 'up' : 'down'}">${netChange >= prevNetChange ? '+' : '-'}${fmt(Math.abs(netChange - prevNetChange))}</div>
+      <div class="stat-sub">vs last month</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon-wrap" style="background:var(--up-bg);"><svg viewBox="0 0 24 24" fill="none" stroke="var(--up)" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+      <div class="stat-label">Avg. Income</div>
+      <div class="stat-value">${fmt(avgIncome)}</div>
+      <div class="stat-badge ${cur.income >= avgIncome ? 'up' : 'down'}">${cur.income >= avgIncome ? '+' : '-'}${fmt(Math.abs(cur.income - avgIncome))}</div>
+      <div class="stat-sub">this month vs 6mo avg</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon-wrap" style="background:var(--down-bg);"><svg viewBox="0 0 24 24" fill="none" stroke="var(--down)" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+      <div class="stat-label">Avg. Expense</div>
+      <div class="stat-value">${fmt(avgExpense)}</div>
+      <div class="stat-badge ${cur.expense <= avgExpense ? 'up' : 'down'}">${cur.expense <= avgExpense ? '-' : '+'}${fmt(Math.abs(cur.expense - avgExpense))}</div>
+      <div class="stat-sub">this month vs 6mo avg</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon-wrap" style="background:var(--badge-bg);"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></div>
+      <div class="stat-label">Top Category Share</div>
+      <div class="stat-value">${topShare.toFixed(1)}%</div>
+      <div class="stat-sub">${categories.length ? categories[0].category : 'No data'} of monthly spend</div>
+    </div>
+  `;
+
+  var anLineChartCtx = $('an-line-chart').getContext('2d');
+  if (window.anLineChart) window.anLineChart.destroy();
+  window.anLineChart = new Chart(anLineChartCtx, {
+    type: 'line',
+    data: {
+      labels: monthly.map(m => m.month),
+      datasets: [
+        { label: 'Income', data: monthly.map(m => m.income), borderColor: getVar('--up'), backgroundColor: getVar('--up'), fill: false, tension: 0.3, pointRadius: 3, pointBackgroundColor: getVar('--up') },
+        { label: 'Expense', data: monthly.map(m => m.expense), borderColor: getVar('--down'), backgroundColor: getVar('--down'), fill: false, tension: 0.3, pointRadius: 3, pointBackgroundColor: getVar('--down') }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { font: { size: 11 }, boxWidth: 9, boxHeight: 9, color: getVar('--text2'), usePointStyle: true } },
+        tooltip: {
+          mode: 'index', intersect: false,
+          callbacks: { label: ctx => ' ' + ctx.dataset.label + ': ' + fmt(ctx.raw) },
+          backgroundColor: getVar('--card-bg'), borderColor: getVar('--divider'), borderWidth: 1,
+          titleColor: getVar('--text'), bodyColor: getVar('--text2'), padding: 10, cornerRadius: 10
+        }
+      },
+      scales: {
+        x: { grid: { color: getVar('--chart-grid') }, ticks: { color: getVar('--text3') } },
+        y: { grid: { color: getVar('--chart-grid') }, ticks: { color: getVar('--text3'),
+          callback: (value) => '฿' + (value >= 1000 ? (value / 1000).toFixed(0) + 'k' : value)
+        } }
+      }
+    }
+  });
+
+  document.querySelectorAll('#an-chart-tabs .chart-tab').forEach(button => {
+    button.addEventListener('click', function() {
+      document.querySelectorAll('#an-chart-tabs .chart-tab').forEach(btn => btn.classList.remove('active'));
+      this.classList.add('active');
     });
-    var mx=cats[0].total||1;
-    $('pbars').innerHTML=cats.slice(0,6).map((c,i)=>'<div class="progress-item"><div class="progress-header"><span class="progress-label">'+c.category+'</span><span class="progress-val">'+fmt(c.total)+'</span></div><div class="progress-track"><div class="progress-fill" style="width:'+((c.total/mx)*100).toFixed(1)+'%;background:'+PAL[i%PAL.length]+'"></div></div></div>').join('');
-  } else {
-    $('pbars').innerHTML='<div class="lph">No expense data this month</div>';
-  }
+  });
+
+  var anDonutChartCtx = $('an-donut-chart').getContext('2d');
+  if (window.anDonutChart) window.anDonutChart.destroy();
+  window.anDonutChart = new Chart(anDonutChartCtx, {
+    type: 'doughnut',
+    data: {
+      labels: categories.map(c => c.category),
+      datasets: [{ data: categories.map(c => c.total), backgroundColor: PAL.slice(0, categories.length), borderWidth: 0 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '75%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              var label = context.label || '';
+              if (label) label += ': ';
+              if (context.parsed !== null) {
+                var pct = catTotal > 0 ? (context.raw / catTotal * 100).toFixed(1) : '0.0';
+                label += fmt(context.parsed) + ' (' + pct + '%)';
+              }
+              return label;
+            }
+          },
+          backgroundColor: getVar('--card-bg'), borderColor: getVar('--divider'), borderWidth: 1,
+          titleColor: getVar('--text'), bodyColor: getVar('--text2'), padding: 10, cornerRadius: 10
+        }
+      }
+    }
+  });
+
+  $('an-donut-legend').innerHTML = categories.map((c, i) => `
+    <div class="legend-item">
+      <div class="legend-dot" style="background:${PAL[i % PAL.length]};"></div>
+      <div class="legend-label">${c.category}</div>
+      <div class="legend-val">${fmt(c.total)}</div>
+      <div class="legend-pct">${(catTotal > 0 ? (c.total / catTotal * 100) : 0).toFixed(1)}%</div>
+    </div>
+  `).join('');
+
+  $('an-donut-pct').textContent = (categories.length && catTotal > 0 ? (categories[0].total / catTotal * 100).toFixed(1) : 0) + '%';
 }
 
-// ── HISTORY ───────────────────────────────────────────────────────────────────
-var HIST=(function(){
-  var l=[],d=new Date();
-  for(var i=0;i<3;i++){var m=d.getMonth()+1-i,y=d.getFullYear();if(m<=0){m+=12;y--}l.push({year:y,month:m})}
-  return l;
-}());
-var hIdx=0;
-function hBtns(){$('hprev').disabled=hIdx>=HIST.length-1;$('hnext').disabled=hIdx<=0}
-async function hRender(){
-  var e=HIST[hIdx];
-  $('hmonth').textContent=MNAMES[e.month]+' '+e.year;
-  $('hi').textContent='…';$('he').textContent='…';$('hn').textContent='…';
-  $('hcats').innerHTML='<div class="lph">Loading…</div>';
-  $('htxns').innerHTML='';
-  hBtns();
-  var d;
-  try{var r=await fetch('/api/month/'+e.year+'/'+e.month);if(!r.ok)throw 0;d=await r.json()}
-  catch(x){$('hi').textContent='฿0.00';$('he').textContent='฿0.00';$('hn').textContent='฿0.00';$('hcats').innerHTML='<div class="lph">No data for this month</div>';return}
-  $('hi').textContent=fmt(d.income);
-  $('he').textContent=fmt(d.expense);
-  var nEl=$('hn');nEl.textContent=(d.net<0?'−':'')+fmt(Math.abs(d.net));
-  nEl.style.color=d.net>=0?'var(--nav-text)':'var(--down)';
-  if(d.categories&&d.categories.length){
-    var mx=d.categories[0].total||1;
-    $('hcats').innerHTML=d.categories.map((c,i)=>'<div class="progress-item"><div class="progress-header"><span class="progress-label">'+c.category+'</span><span class="progress-val">'+fmt(c.total)+'</span></div><div class="progress-track"><div class="progress-fill" style="width:'+((c.total/mx)*100).toFixed(1)+'%;background:'+PAL[i%PAL.length]+'"></div></div></div>').join('');
-  } else {
-    $('hcats').innerHTML='<div class="lph">No spending data this month</div>';
+// ── MONTHLY HISTORY PAGE ─────────────────────────────────────────────────────
+var histNow = new Date();
+var histYear = histNow.getFullYear();
+var histMonth = histNow.getMonth() + 1;
+
+async function loadHistory() {
+  var data;
+  try {
+    data = await fetchData('/api/month/' + histYear + '/' + histMonth);
+  } catch(e) {
+    data = { year: histYear, month: histMonth, income:0, expense:0, net:0, categories:[], transactions:[] };
   }
-  $('htxns').innerHTML=buildRows(d.transactions||[]);
+
+  $('hmonth').textContent = MNAMES[histMonth] + ' ' + histYear;
+  $('hn').textContent = fmt(data.net);
+  $('hi').textContent = fmt(data.income);
+  $('he').textContent = fmt(data.expense);
+
+  // "Investments" tile: sum of income logged under the Investment category this month
+  var invTotal = (data.transactions || [])
+    .filter(t => t.type === 'income' && t.category === 'Investment')
+    .reduce((s,t) => s + Math.abs(t.amount), 0);
+  $('hinv').textContent = fmt(invTotal);
+
+  if (data.categories && data.categories.length) {
+    var mx = data.categories[0].total || 1;
+    $('hcats').innerHTML = data.categories.map((c,i) => `<div class="progress-item"><div class="progress-header"><span class="progress-label"><span class="cat-icon">${ICONS[c.category]||ICONS['Other']}</span> ${c.category}</span><span class="progress-val">${fmt(c.total)}</span></div><div class="progress-track"><div class="progress-fill" style="width:${((c.total/mx)*100).toFixed(1)}%;background:${PAL[i%PAL.length]};"></div></div></div>`).join('');
+  } else {
+    $('hcats').innerHTML = '<div class="lph">No spending data this month</div>';
+  }
+
+  $('htxns').innerHTML = buildRows(data.transactions || []);
 }
 
-$('hprev').addEventListener('click',function(){hIdx++;hRender()});
-$('hnext').addEventListener('click',function(){hIdx--;hRender()});
+$('hprev').addEventListener('click', function(){
+  histMonth--;
+  if (histMonth <= 0) { histMonth = 12; histYear--; }
+  loadHistory();
+});
+$('hnext').addEventListener('click', function(){
+  var n = new Date();
+  if (histYear === n.getFullYear() && histMonth === n.getMonth() + 1) return;
+  histMonth++;
+  if (histMonth > 12) { histMonth = 1; histYear++; }
+  loadHistory();
+});
 
-// ── INIT ──────────────────────────────────────────────────────────────────────
-(function(){
-  loadBalances();
-  loadSummary();
-  loadTransactions();
-  hRender();
-  goTo('page-bal'); // Ensure initial page is set
-})();
+// Initial data loads
+loadBalances();
+loadOverview();
+loadAnalytics();
+loadHistory();
+
 </script>
 </body>
 </html>
