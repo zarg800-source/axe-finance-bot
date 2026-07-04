@@ -185,7 +185,7 @@ body {
   padding: 2px 7px;
   border-radius: var(--radius-pill);
 }
-.nav-item.active .nav-badge { background: rgba(255,255,255,.25); color: #fff; }
+.nav-item.active .nav-badge { background: rgba(255,255,255,.25); color: var(--sidebar-active-text); }
 
 .sidebar-footer {
   margin-top: auto;
@@ -283,19 +283,19 @@ body {
   border: 1px solid rgba(255,255,255,.25);
   border-radius: var(--radius-pill);
   padding: 8px 16px 8px 36px;
-  color: #fff;
+  color: var(--nav-text);
   font-size: 13px;
   font-family: 'DM Sans', sans-serif;
   outline: none;
   transition: background var(--transition);
 }
-.topnav-search input::placeholder { color: rgba(255,255,255,.6); }
+.topnav-search input::placeholder { color: var(--nav-sub); }
 .topnav-search input:focus { background: rgba(255,255,255,.25); }
 .topnav-search .search-ico {
   position: absolute;
   left: 12px; top: 50%;
   transform: translateY(-50%);
-  color: rgba(255,255,255,.7);
+  color: var(--nav-sub);
   width: 15px; height: 15px;
 }
 
@@ -305,7 +305,7 @@ body {
   border-radius: 50%;
   border: none;
   background: rgba(255,255,255,.18);
-  color: #fff;
+  color: var(--nav-text);
   display: grid; place-items: center;
   cursor: pointer;
   transition: background var(--transition);
@@ -316,7 +316,7 @@ body {
 .icon-btn svg { width: 16px; height: 16px; }
 .icon-btn { -webkit-tap-highlight-color: transparent; }
 .ham-btn { display: none; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
-.ham-btn div { width: 15px; height: 2px; border-radius: 2px; background: #fff; }
+.ham-btn div { width: 15px; height: 2px; border-radius: 2px; background: var(--nav-text); }
 .notif-dot {
   position: absolute;
   top: 5px; right: 5px;
@@ -362,7 +362,7 @@ body {
   display: grid; place-items: center;
   font-family: 'Anton', sans-serif;
   font-size: 13px;
-  color: #fff;
+  color: var(--nav-text);
 }
 
 /* ── STATS ROW ──────────────────────────────────────── */
@@ -418,7 +418,7 @@ body {
 }
 .stat-card.primary .stat-icon-wrap { background: rgba(255,255,255,.2); }
 .stat-icon-wrap svg { width: 20px; height: 20px; color: var(--text2); }
-.stat-card.primary .stat-icon-wrap svg { color: #fff; }
+.stat-card.primary .stat-icon-wrap svg { color: var(--nav-text); }
 
 .stat-label {
   font-size: 12px;
@@ -428,7 +428,7 @@ body {
   text-transform: uppercase;
   letter-spacing: .8px;
 }
-.stat-card.primary .stat-label { color: rgba(255,255,255,.75); }
+.stat-card.primary .stat-label { color: var(--nav-sub); }
 
 .stat-value {
   font-family: 'Anton', sans-serif;
@@ -438,7 +438,7 @@ body {
   line-height: 1;
   margin-bottom: 10px;
 }
-.stat-card.primary .stat-value { color: #fff; }
+.stat-card.primary .stat-value { color: var(--nav-text); }
 
 .stat-badge {
   display: inline-flex;
@@ -451,14 +451,14 @@ body {
 }
 .stat-badge.up { background: var(--up-bg); color: var(--up); }
 .stat-badge.down { background: var(--down-bg); color: var(--down); }
-.stat-card.primary .stat-badge { background: rgba(255,255,255,.22); color: #fff; }
+.stat-card.primary .stat-badge { background: rgba(255,255,255,.22); color: var(--nav-text); }
 
 .stat-sub {
   font-size: 11.5px;
   color: var(--text3);
   margin-top: 6px;
 }
-.stat-card.primary .stat-sub { color: rgba(255,255,255,.65); }
+.stat-card.primary .stat-sub { color: var(--nav-sub); }
 
 /* ── MIDDLE ROW ─────────────────────────────────────── */
 .mid-row {
@@ -509,7 +509,7 @@ body {
 }
 .chart-tab.active {
   background: var(--nav-bg);
-  color: #fff;
+  color: var(--nav-text);
   box-shadow: 0 2px 8px rgba(0,0,0,.12);
 }
 
@@ -528,7 +528,7 @@ body {
 }
 .chart-sum-val span { font-family: 'DM Sans', sans-serif; font-size: 12px; color: var(--up); margin-left: 4px; }
 
-.chart-wrap { position: relative; }
+.chart-wrap { position: relative; height: 240px; }
 .chart-svg { width: 100%; height: 200px; overflow: visible; }
 
 /* ── DONUT CARD ─────────────────────────────────────── */
@@ -820,6 +820,21 @@ body {
   .data-table th { font-size: 10px; }
   .data-table td { padding: 10px 8px; }
 }
+@media(max-width:480px) {
+  .stats-row { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .stat-card { padding: 14px; }
+  .stat-icon-wrap { width: 34px; height: 34px; margin-bottom: 10px; }
+  .stat-icon-wrap svg { width: 16px; height: 16px; }
+  .stat-value { font-size: 20px; margin-bottom: 6px; }
+  .stat-label { font-size: 10.5px; }
+  .stat-sub { font-size: 10px; }
+  .stat-badge { font-size: 10.5px; padding: 2px 7px; }
+  .chart-card, .donut-card, .table-card { padding: 16px; }
+  .chart-wrap { height: 170px; }
+  .donut-wrap { width: 140px; height: 140px; margin: 12px auto; }
+  .donut-pct { font-size: 24px; }
+  .main { padding: 10px; gap: 10px; }
+}
 
 /* ── CATEGORY SVG ICONS ──────────────────────────────── */
 .tx-icon svg {
@@ -882,7 +897,7 @@ body {
 
   <div class="nav-section">
     <div class="nav-label">Advisor</div>
-    <a class="nav-item" href="/cfo" target="_blank" data-page="">
+    <a class="nav-item" href="/cfo" data-page="">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
       Axe
     </a>
@@ -1206,6 +1221,10 @@ function navigate(pageId){
   $("pgtitle").textContent=TITLES[pageId];
   currentPage=pageId;
 
+  // Close the mobile slide-out panel whenever a page is selected
+  $("sb").classList.remove('open');
+  $("ovl").classList.remove('open');
+
   if(pageId==='page-bal')loadBalances();
   else if(pageId==='page-ov')loadOverview();
   else if(pageId==='page-an')loadAnalytics();
@@ -1216,9 +1235,12 @@ document.addEventListener('DOMContentLoaded',function(){
   var navLinks=document.querySelectorAll('.nav-item');
   navLinks.forEach(function(link){
     link.addEventListener('click',function(e){
-      e.preventDefault();
       var pageId=this.getAttribute('data-page');
-      if(pageId)navigate(pageId);
+      if(pageId){
+        e.preventDefault();
+        navigate(pageId);
+      }
+      // else: real link (e.g. Axe -> /cfo) — let the browser navigate normally
     });
   });
   navigate(currentPage);
@@ -1641,11 +1663,6 @@ $('hnext').addEventListener('click', function(){
   loadHistory();
 });
 
-// Initial data loads
-loadBalances();
-loadOverview();
-loadAnalytics();
-loadHistory();
 
 </script>
 </body>
