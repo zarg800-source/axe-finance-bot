@@ -1142,6 +1142,22 @@ body {
 
 <script>
 var $ = function(id){return document.getElementById(id)};
+window.addEventListener('error', function(e){
+  showGlobalError('Script error: ' + e.message);
+});
+window.addEventListener('unhandledrejection', function(e){
+  showGlobalError('Load error: ' + (e.reason && e.reason.message ? e.reason.message : e.reason));
+});
+function showGlobalError(msg){
+  var banner = document.getElementById('globalErrBanner');
+  if(!banner){
+    banner = document.createElement('div');
+    banner.id = 'globalErrBanner';
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#ff3b30;color:#fff;padding:10px 16px;font-family:sans-serif;font-size:13px;text-align:center;';
+    document.body.appendChild(banner);
+  }
+  banner.textContent = msg;
+}
 var MNAMES=['','January','February','March','April','May','June','July','August','September','October','November','December'];
 var PAL=['#1d1d1f','#6e6e73','#aeaeb2','#48484a','#3a3a3c','#8e8e93','#636366','#d1d1d6'];
 var ICONS={
@@ -1261,6 +1277,13 @@ var TWEEN={Easing:{Quadratic:{Out:function(k){return k*(2-k)}}},Tween:function(a
 
 async function fetchData(url) {
   const response = await fetch(url);
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    throw new Error('Got status ' + response.status + ' (non-JSON) from ' + url + ' — you may have been logged out.');
+  }
+  if (!response.ok) {
+    throw new Error('Server error ' + response.status + ' from ' + url);
+  }
   return response.json();
 }
 
@@ -1311,28 +1334,38 @@ function buildRows(txns){
 
 // ── BALANCES PAGE ────────────────────────────────────────────────────────────
 async function loadBalances() {
-  const data = await fetchData('/api/balances');
-  const total = data.reduce((s,a)=>s+a.balance,0);
   const balGrid = $('bal-grid');
-  balGrid.innerHTML = data.map(function(b){
-    return `
-    <div class="stat-card">
-      <div class="stat-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${BAL_ICONS[b.name]||DEFAULT_ACC_ICON}</svg></div>
-      <div class="stat-label">${b.name}</div>
-      <div class="stat-value">${fmt(b.balance)}</div>
-      <div class="stat-sub">Current balance</div>
+  try {
+    const data = await fetchData('/api/balances');
+    const total = data.reduce((s,a)=>s+a.balance,0);
+    balGrid.innerHTML = data.map(function(b){
+      return `
+      <div class="stat-card">
+        <div class="stat-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${BAL_ICONS[b.name]||DEFAULT_ACC_ICON}</svg></div>
+        <div class="stat-label">${b.name}</div>
+        <div class="stat-value">${fmt(b.balance)}</div>
+        <div class="stat-sub">Current balance</div>
+      </div>`;
+    }).join('') + `
+      <div class="stat-card primary">
+        <div class="stat-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
+        <div class="stat-label">Net Worth</div>
+        <div class="stat-value">${fmt(total)}</div>
+        <div class="stat-sub">Across all accounts</div>
+      </div>`;
+  } catch (err) {
+    console.error('loadBalances failed:', err);
+    balGrid.innerHTML = `<div class="stat-card" style="grid-column:1/-1;">
+      <div class="stat-label" style="color:var(--down);">Couldn't load balances</div>
+      <div class="stat-sub">${err.message}</div>
     </div>`;
-  }).join('') + `
-    <div class="stat-card primary">
-      <div class="stat-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
-      <div class="stat-label">Net Worth</div>
-      <div class="stat-value">${fmt(total)}</div>
-      <div class="stat-sub">Across all accounts</div>
-    </div>`;
+  }
 }
 
 // ── OVERVIEW PAGE ────────────────────────────────────────────────────────────
 async function loadOverview() {
+  const sumGrid = $('sum-grid');
+  try {
   const [summary, categories, monthly, balances, allTxns] = await Promise.all([
     fetchData('/api/summary'),
     fetchData('/api/categories'),
@@ -1488,10 +1521,19 @@ async function loadOverview() {
   `).join('');
 
   $('donut-pct').textContent = (categories.length && catTotal > 0 ? (categories[0].total / catTotal * 100).toFixed(1) : 0) + '%';
+  } catch (err) {
+    console.error('loadOverview failed:', err);
+    sumGrid.innerHTML = `<div class="stat-card" style="grid-column:1/-1;">
+      <div class="stat-label" style="color:var(--down);">Couldn't load overview</div>
+      <div class="stat-sub">${err.message}</div>
+    </div>`;
+  }
 }
 
 // ── ANALYTICS PAGE ───────────────────────────────────────────────────────────
 async function loadAnalytics() {
+  const anGrid = $('an-grid');
+  try {
   const [summary, categories, monthly] = await Promise.all([
     fetchData('/api/summary'),
     fetchData('/api/categories'),
@@ -1614,6 +1656,13 @@ async function loadAnalytics() {
   `).join('');
 
   $('an-donut-pct').textContent = (categories.length && catTotal > 0 ? (categories[0].total / catTotal * 100).toFixed(1) : 0) + '%';
+  } catch (err) {
+    console.error('loadAnalytics failed:', err);
+    anGrid.innerHTML = `<div class="stat-card" style="grid-column:1/-1;">
+      <div class="stat-label" style="color:var(--down);">Couldn't load analytics</div>
+      <div class="stat-sub">${err.message}</div>
+    </div>`;
+  }
 }
 
 // ── MONTHLY HISTORY PAGE ─────────────────────────────────────────────────────
@@ -1623,9 +1672,14 @@ var histMonth = histNow.getMonth() + 1;
 
 async function loadHistory() {
   var data;
+  var fetchFailed = false;
+  var fetchErr = null;
   try {
     data = await fetchData('/api/month/' + histYear + '/' + histMonth);
   } catch(e) {
+    console.error('loadHistory failed:', e);
+    fetchFailed = true;
+    fetchErr = e;
     data = { year: histYear, month: histMonth, income:0, expense:0, net:0, categories:[], transactions:[] };
   }
 
@@ -1639,6 +1693,12 @@ async function loadHistory() {
     .filter(t => t.type === 'income' && t.category === 'Investment')
     .reduce((s,t) => s + Math.abs(t.amount), 0);
   $('hinv').textContent = fmt(invTotal);
+
+  if (fetchFailed) {
+    $('hcats').innerHTML = `<div class="lph" style="color:var(--down);">Couldn't load this month: ${fetchErr.message}</div>`;
+    $('htxns').innerHTML = buildRows([]);
+    return;
+  }
 
   if (data.categories && data.categories.length) {
     var mx = data.categories[0].total || 1;
