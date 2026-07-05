@@ -722,7 +722,7 @@ body {
 /* ── QUICK ACTIONS ──────────────────────────────────── */
 .actions-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 14px;
 }
 .action-btn {
@@ -751,88 +751,6 @@ body {
 .action-icon svg { width: 18px; height: 18px; }
 .action-label { font-size: 13px; font-weight: 600; color: var(--text); }
 .action-sub { font-size: 11px; color: var(--text3); }
-
-/* ── QUICK ACTION MODALS ─────────────────────────────── */
-.qa-overlay {
-  display: none; position: fixed; inset: 0;
-  background: rgba(0,0,0,.5); z-index: 300;
-  align-items: center; justify-content: center;
-  padding: 20px;
-  opacity: 0; transition: opacity .2s;
-}
-.qa-overlay.open { display: flex; opacity: 1; }
-.qa-modal {
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow-hover);
-  width: 100%; max-width: 400px;
-  max-height: 90vh; overflow-y: auto;
-  animation: fadeUp .25s ease both;
-}
-.qa-modal-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 20px 22px; border-bottom: 1px solid var(--divider);
-}
-.qa-modal-title-wrap { display: flex; align-items: center; gap: 12px; }
-.qa-modal-icon {
-  width: 36px; height: 36px; border-radius: 11px;
-  display: grid; place-items: center; flex-shrink: 0;
-}
-.qa-modal-icon svg { width: 18px; height: 18px; }
-.qa-modal-title { font-family: 'Anton', sans-serif; font-size: 16px; letter-spacing: .5px; color: var(--text); }
-.qa-modal-close {
-  width: 30px; height: 30px; border-radius: 50%;
-  border: 1px solid var(--card-border); background: transparent;
-  color: var(--text2); display: grid; place-items: center;
-  cursor: pointer; transition: all var(--transition); flex-shrink: 0;
-}
-.qa-modal-close svg { width: 14px; height: 14px; }
-.qa-modal-close:hover { background: var(--badge-bg); color: var(--text); }
-.qa-modal-body { padding: 20px 22px 22px; display: flex; flex-direction: column; gap: 16px; }
-.qa-field { display: flex; flex-direction: column; gap: 6px; }
-.qa-label { font-size: 11.5px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .4px; }
-.qa-input, .qa-select {
-  width: 100%; padding: 12px 14px; border: 1.5px solid var(--card-border);
-  border-radius: 12px; background: var(--input-bg); color: var(--text);
-  font-size: 14px; font-family: 'DM Sans', sans-serif; outline: none;
-  transition: border-color .18s; appearance: none;
-}
-.qa-input::placeholder { color: var(--text3); }
-.qa-input:focus, .qa-select:focus { border-color: var(--text); }
-.qa-amount-wrap { position: relative; }
-.qa-amount-wrap .qa-currency {
-  position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
-  color: var(--text3); font-size: 14px; pointer-events: none;
-}
-.qa-amount-wrap .qa-input { padding-left: 30px; }
-.qa-select-wrap { position: relative; }
-.qa-select-wrap .qa-select { padding-right: 36px; }
-.qa-select-wrap svg {
-  position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
-  width: 14px; height: 14px; color: var(--text3); pointer-events: none;
-}
-.qa-error {
-  display: none; padding: 10px 14px; border-radius: 10px;
-  background: var(--down-bg); color: var(--down); font-size: 12.5px; font-weight: 500;
-}
-.qa-error.show { display: block; }
-.qa-submit-btn {
-  width: 100%; padding: 14px; border: none; border-radius: 12px;
-  background: var(--nav-bg); color: var(--nav-text);
-  font-size: 14px; font-weight: 600; font-family: 'DM Sans', sans-serif;
-  cursor: pointer; transition: opacity .18s;
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-}
-.qa-submit-btn:disabled { opacity: .6; cursor: not-allowed; }
-.qa-submit-btn:active:not(:disabled) { opacity: .85; }
-.qa-spinner {
-  width: 14px; height: 14px; border-radius: 50%;
-  border: 2px solid currentColor; border-top-color: transparent;
-  opacity: .85; animation: qaSpin .6s linear infinite; display: none;
-}
-.qa-spinner.show { display: inline-block; }
-@keyframes qaSpin { to { transform: rotate(360deg); } }
 
 /* ── PROGRESS BARS ──────────────────────────────────── */
 .progress-list { display: flex; flex-direction: column; gap: 14px; margin-top: 16px; }
@@ -874,6 +792,108 @@ body {
 .stats-row .stat-card:nth-child(2) { animation-delay:.10s }
 .stats-row .stat-card:nth-child(3) { animation-delay:.15s }
 .stats-row .stat-card:nth-child(4) { animation-delay:.20s }
+
+/* ── MODAL ───────────────────────────────────────────── */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  z-index: 300;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-card);
+  width: min(380px, 100%);
+  box-shadow: var(--shadow-hover);
+  animation: fadeUp .25s ease both;
+  overflow: hidden;
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--divider);
+}
+.modal-title {
+  font-family: 'Anton', sans-serif;
+  font-size: 15px;
+  letter-spacing: .5px;
+  color: var(--text);
+}
+.modal-close {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: var(--badge-bg);
+  color: var(--text2);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: grid; place-items: center;
+  transition: background var(--transition), color var(--transition);
+}
+.modal-close:hover { background: var(--down-bg); color: var(--down); }
+.modal-body { padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
+.modal-field { display: flex; flex-direction: column; gap: 6px; }
+.modal-field label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: .6px;
+}
+.modal-field input, .modal-field select {
+  background: var(--input-bg);
+  border: 1px solid var(--divider);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: 'DM Sans', sans-serif;
+  color: var(--text);
+  outline: none;
+  transition: border-color var(--transition);
+  width: 100%;
+}
+.modal-field input:focus, .modal-field select:focus { border-color: var(--text2); }
+.modal-error {
+  font-size: 12px;
+  color: var(--down);
+  min-height: 14px;
+}
+.modal-footer {
+  display: flex;
+  gap: 10px;
+  padding: 14px 20px 20px;
+}
+.modal-btn {
+  flex: 1;
+  padding: 11px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all var(--transition);
+  font-family: 'DM Sans', sans-serif;
+}
+.modal-btn.secondary {
+  background: var(--badge-bg);
+  color: var(--text2);
+}
+.modal-btn.secondary:hover { color: var(--text); }
+.modal-btn.primary {
+  background: var(--nav-bg);
+  color: var(--nav-text);
+}
+.modal-btn.primary:hover { opacity: .88; }
+.modal-btn:disabled { opacity: .5; cursor: not-allowed; }
 
 /* ── RESPONSIVE ───────────────────────────────────────────────────── */
 @media(max-width:1200px) {
@@ -1132,29 +1152,23 @@ body {
         <div><div class="card-title">QUICK ACTIONS</div><div class="card-sub">Manage your finances</div></div>
       </div>
       <div class="actions-row">
-        <div class="action-btn" id="qaOpenIncome">
+        <div class="action-btn" onclick="openTxnModal('income')">
           <div class="action-icon" style="background:rgba(52,199,89,.1); color:#34c759;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           </div>
           <div><div class="action-label">Add Income</div><div class="action-sub">Record new earnings</div></div>
         </div>
-        <div class="action-btn" id="qaOpenExpense">
+        <div class="action-btn" onclick="openTxnModal('expense')">
           <div class="action-icon" style="background:rgba(255,59,48,.1); color:#ff3b30;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
           </div>
           <div><div class="action-label">Add Expense</div><div class="action-sub">Log a new spending</div></div>
         </div>
-        <div class="action-btn" id="qaOpenTransfer">
+        <div class="action-btn" onclick="openTransferModal()">
           <div class="action-icon" style="background:rgba(0,122,255,.1); color:#007aff;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M21 5H3"/><polyline points="7 23 3 19 7 15"/><path d="M3 19h18"/></svg>
           </div>
           <div><div class="action-label">Transfer Funds</div><div class="action-sub">Move money between accounts</div></div>
-        </div>
-        <div class="action-btn">
-          <div class="action-icon" style="background:rgba(255,149,0,.1); color:#ff9500;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
-          </div>
-          <div><div class="action-label">View Reports</div><div class="action-sub">Generate financial summaries</div></div>
         </div>
       </div>
     </div>
@@ -1222,165 +1236,70 @@ body {
   </div>
 </main>
 
-<!-- QUICK ACTION MODALS -->
-<div class="qa-overlay" id="incomeModalOverlay">
-  <div class="qa-modal">
-    <div class="qa-modal-header">
-      <div class="qa-modal-title-wrap">
-        <div class="qa-modal-icon" style="background:rgba(52,199,89,.1); color:#34c759;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        </div>
-        <div class="qa-modal-title">ADD INCOME</div>
-      </div>
-      <button class="qa-modal-close" data-close="incomeModalOverlay" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
+<!-- ADD INCOME / ADD EXPENSE MODAL -->
+<div class="modal-overlay" id="txnModalOverlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title" id="txnModalTitle">Add Income</div>
+      <button class="modal-close" id="txnModalClose" type="button">&times;</button>
     </div>
-    <form class="qa-modal-body" id="incomeForm">
-      <div class="qa-field">
-        <label class="qa-label">Amount</label>
-        <div class="qa-amount-wrap">
-          <span class="qa-currency">฿</span>
-          <input class="qa-input" type="text" inputmode="decimal" id="incomeAmount" placeholder="0.00">
-        </div>
+    <div class="modal-body">
+      <div class="modal-field">
+        <label>Amount (฿)</label>
+        <input type="number" id="txnAmount" placeholder="0.00" step="0.01" min="0.01" inputmode="decimal"/>
       </div>
-      <div class="qa-field">
-        <label class="qa-label">Description</label>
-        <input class="qa-input" type="text" id="incomeDescription" placeholder="e.g. Salary for June">
+      <div class="modal-field">
+        <label>Description</label>
+        <input type="text" id="txnDescription" placeholder="e.g. Freelance payment"/>
       </div>
-      <div class="qa-field">
-        <label class="qa-label">Category</label>
-        <div class="qa-select-wrap">
-          <select class="qa-select" id="incomeCategory"><option value="">Loading…</option></select>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="6 9 12 15 18 9"/></svg>
-        </div>
+      <div class="modal-field">
+        <label>Category</label>
+        <select id="txnCategory"></select>
       </div>
-      <div class="qa-field">
-        <label class="qa-label">Account</label>
-        <div class="qa-select-wrap">
-          <select class="qa-select" id="incomeAccount"><option value="">Loading…</option></select>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="6 9 12 15 18 9"/></svg>
-        </div>
+      <div class="modal-field">
+        <label>Account</label>
+        <select id="txnAccount"></select>
       </div>
-      <div class="qa-error" id="incomeError"></div>
-      <button class="qa-submit-btn" type="submit" id="incomeSubmitBtn">
-        <span>Add Income</span>
-        <span class="qa-spinner" id="incomeSpinner"></span>
-      </button>
-    </form>
+      <div class="modal-error" id="txnError"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" id="txnCancelBtn" type="button">Cancel</button>
+      <button class="modal-btn primary" id="txnSubmitBtn" type="button">Save</button>
+    </div>
   </div>
 </div>
 
-<div class="qa-overlay" id="expenseModalOverlay">
-  <div class="qa-modal">
-    <div class="qa-modal-header">
-      <div class="qa-modal-title-wrap">
-        <div class="qa-modal-icon" style="background:rgba(255,59,48,.1); color:#ff3b30;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        </div>
-        <div class="qa-modal-title">ADD EXPENSE</div>
-      </div>
-      <button class="qa-modal-close" data-close="expenseModalOverlay" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
+<!-- TRANSFER FUNDS MODAL -->
+<div class="modal-overlay" id="transferModalOverlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">Transfer Funds</div>
+      <button class="modal-close" id="transferModalClose" type="button">&times;</button>
     </div>
-    <form class="qa-modal-body" id="expenseForm">
-      <div class="qa-field">
-        <label class="qa-label">Amount</label>
-        <div class="qa-amount-wrap">
-          <span class="qa-currency">฿</span>
-          <input class="qa-input" type="text" inputmode="decimal" id="expenseAmount" placeholder="0.00">
-        </div>
+    <div class="modal-body">
+      <div class="modal-field">
+        <label>Amount (฿)</label>
+        <input type="number" id="transferAmount" placeholder="0.00" step="0.01" min="0.01" inputmode="decimal"/>
       </div>
-      <div class="qa-field">
-        <label class="qa-label">Description</label>
-        <input class="qa-input" type="text" id="expenseDescription" placeholder="e.g. Lunch at MK">
+      <div class="modal-field">
+        <label>From Account</label>
+        <select id="transferFrom"></select>
       </div>
-      <div class="qa-field">
-        <label class="qa-label">Category</label>
-        <div class="qa-select-wrap">
-          <select class="qa-select" id="expenseCategory"><option value="">Loading…</option></select>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="6 9 12 15 18 9"/></svg>
-        </div>
+      <div class="modal-field">
+        <label>To Account</label>
+        <select id="transferTo"></select>
       </div>
-      <div class="qa-field">
-        <label class="qa-label">Account</label>
-        <div class="qa-select-wrap">
-          <select class="qa-select" id="expenseAccount"><option value="">Loading…</option></select>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="6 9 12 15 18 9"/></svg>
-        </div>
-      </div>
-      <div class="qa-error" id="expenseError"></div>
-      <button class="qa-submit-btn" type="submit" id="expenseSubmitBtn">
-        <span>Add Expense</span>
-        <span class="qa-spinner" id="expenseSpinner"></span>
-      </button>
-    </form>
-  </div>
-</div>
-
-<div class="qa-overlay" id="transferModalOverlay">
-  <div class="qa-modal">
-    <div class="qa-modal-header">
-      <div class="qa-modal-title-wrap">
-        <div class="qa-modal-icon" style="background:rgba(0,122,255,.1); color:#007aff;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="17 1 21 5 17 9"/><path d="M21 5H3"/><polyline points="7 23 3 19 7 15"/><path d="M3 19h18"/></svg>
-        </div>
-        <div class="qa-modal-title">TRANSFER FUNDS</div>
-      </div>
-      <button class="qa-modal-close" data-close="transferModalOverlay" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
+      <div class="modal-error" id="transferError"></div>
     </div>
-    <form class="qa-modal-body" id="transferForm">
-      <div class="qa-field">
-        <label class="qa-label">Amount</label>
-        <div class="qa-amount-wrap">
-          <span class="qa-currency">฿</span>
-          <input class="qa-input" type="text" inputmode="decimal" id="transferAmount" placeholder="0.00">
-        </div>
-      </div>
-      <div class="qa-field">
-        <label class="qa-label">From Account</label>
-        <div class="qa-select-wrap">
-          <select class="qa-select" id="transferFrom"><option value="">Loading…</option></select>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="6 9 12 15 18 9"/></svg>
-        </div>
-      </div>
-      <div class="qa-field">
-        <label class="qa-label">To Account</label>
-        <div class="qa-select-wrap">
-          <select class="qa-select" id="transferTo"><option value="">Loading…</option></select>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="6 9 12 15 18 9"/></svg>
-        </div>
-      </div>
-      <div class="qa-error" id="transferError"></div>
-      <button class="qa-submit-btn" type="submit" id="transferSubmitBtn">
-        <span>Transfer Funds</span>
-        <span class="qa-spinner" id="transferSpinner"></span>
-      </button>
-    </form>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" id="transferCancelBtn" type="button">Cancel</button>
+      <button class="modal-btn primary" id="transferSubmitBtn" type="button">Transfer</button>
+    </div>
   </div>
 </div>
 
 <script>
 var $ = function(id){return document.getElementById(id)};
-window.addEventListener('error', function(e){
-  showGlobalError('Script error: ' + e.message);
-});
-window.addEventListener('unhandledrejection', function(e){
-  showGlobalError('Load error: ' + (e.reason && e.reason.message ? e.reason.message : e.reason));
-});
-function showGlobalError(msg){
-  var banner = document.getElementById('globalErrBanner');
-  if(!banner){
-    banner = document.createElement('div');
-    banner.id = 'globalErrBanner';
-    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#ff3b30;color:#fff;padding:10px 16px;font-family:sans-serif;font-size:13px;text-align:center;';
-    document.body.appendChild(banner);
-  }
-  banner.textContent = msg;
-}
 var MNAMES=['','January','February','March','April','May','June','July','August','September','October','November','December'];
 var PAL=['#1d1d1f','#6e6e73','#aeaeb2','#48484a','#3a3a3c','#8e8e93','#636366','#d1d1d6'];
 var ICONS={
@@ -1412,6 +1331,7 @@ var ICONS={
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 function fmt(n){return '฿'+Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function countUp(node,v,pfx,ms){var obj={val:0};var anim=new TWEEN.Tween(obj).to({val:v},ms).easing(TWEEN.Easing.Quadratic.Out).onUpdate(function(){node.textContent=pfx+fmt(obj.val)}).start();requestAnimationFrame(animate);function animate(time){TWEEN.update(time);requestAnimationFrame(animate)}}
 function getVar(v){return getComputedStyle(document.documentElement).getPropertyValue(v)}
 
 // ── THEME TOGGLE ──────────────────────────────────────────────────────────────
@@ -1495,16 +1415,10 @@ $("ovl").addEventListener('click',function(){
 });
 
 // ── DATA LOADING ──────────────────────────────────────────────────────────────
+var TWEEN={Easing:{Quadratic:{Out:function(k){return k*(2-k)}}},Tween:function(a){var _valuesStart={};var _valuesEnd={};var _valuesStartRepeat={};var _duration=1000;var _easingFunction=TWEEN.Easing.Quadratic.Out;var _startTime=null;var _delayTime=0;var _isPlaying=false;var _yoyo=false;var _reversed=false;var _onUpdateCallback=null;var _onCompleteCallback=null;for(var field in a){_valuesStart[field]=parseFloat(a[field],10)}this.to=function(b,duration){if(duration!==undefined)_duration=duration;for(var field in b){_valuesEnd[field]=parseFloat(b[field],10)}return this};this.start=function(time){_startTime=time!==undefined?time:performance.now();_startTime+=_delayTime;_isPlaying=true;for(var field in _valuesEnd){if(_valuesEnd[field]instanceof Array){if(_valuesEnd[field].length===0)continue;_valuesEnd[field]=[a[field]].concat(_valuesEnd[field])}_valuesStart[field]=a[field];if((_valuesStart[field]instanceof Array)===false){_valuesStart[field]=parseFloat(_valuesStart[field],10)}_valuesStartRepeat[field]=_valuesStart[field]}return this};this.stop=function(){_isPlaying=false;return this};this.delay=function(amount){_delayTime=amount;return this};this.easing=function(easing){_easingFunction=easing;return this};this.onUpdate=function(callback){_onUpdateCallback=callback;return this};this.onComplete=function(callback){_onCompleteCallback=callback;return this};this.yoyo=function(yoyo){_yoyo=yoyo;return this};function update(time){var property;if(time<_startTime)return true;if(_isPlaying===false)return false;var elapsed=(time-_startTime)/_duration;elapsed=elapsed>1?1:elapsed;var value=_easingFunction(elapsed);for(property in _valuesStart){var start=_valuesStart[property]||0;var end=_valuesEnd[property]||0;if(end instanceof Array){a[property]=lerp(end,value)}else{if(typeof(end)==='string'){end=start+parseFloat(end,10)}if(_yoyo){a[property]=_reversed?end+(start-end)*value:start+(end-start)*value}else{a[property]=start+(end-start)*value}}}if(_onUpdateCallback!==null){_onUpdateCallback.call(a,value)}if(elapsed===1){if(_onCompleteCallback!==null){_onCompleteCallback.call(a)}if(_yoyo){_reversed=!_reversed;this.start()}else{_isPlaying=false}return false}return true}TWEEN.update=function(time){var i=0;var numTweens=TWEEN._tweens.length;while(i<numTweens){if(TWEEN._tweens[i].update(time)){i++}else{TWEEN._tweens.splice(i,1);numTweens--}}return numTweens};TWEEN._tweens=[];return this}()};
 
 async function fetchData(url) {
   const response = await fetch(url);
-  const contentType = response.headers.get('content-type') || '';
-  if (!contentType.includes('application/json')) {
-    throw new Error('Got status ' + response.status + ' (non-JSON) from ' + url + ' — you may have been logged out.');
-  }
-  if (!response.ok) {
-    throw new Error('Server error ' + response.status + ' from ' + url);
-  }
   return response.json();
 }
 
@@ -1555,38 +1469,28 @@ function buildRows(txns){
 
 // ── BALANCES PAGE ────────────────────────────────────────────────────────────
 async function loadBalances() {
+  const data = await fetchData('/api/balances');
+  const total = data.reduce((s,a)=>s+a.balance,0);
   const balGrid = $('bal-grid');
-  try {
-    const data = await fetchData('/api/balances');
-    const total = data.reduce((s,a)=>s+a.balance,0);
-    balGrid.innerHTML = data.map(function(b){
-      return `
-      <div class="stat-card">
-        <div class="stat-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${BAL_ICONS[b.name]||DEFAULT_ACC_ICON}</svg></div>
-        <div class="stat-label">${b.name}</div>
-        <div class="stat-value">${fmt(b.balance)}</div>
-        <div class="stat-sub">Current balance</div>
-      </div>`;
-    }).join('') + `
-      <div class="stat-card primary">
-        <div class="stat-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
-        <div class="stat-label">Net Worth</div>
-        <div class="stat-value">${fmt(total)}</div>
-        <div class="stat-sub">Across all accounts</div>
-      </div>`;
-  } catch (err) {
-    console.error('loadBalances failed:', err);
-    balGrid.innerHTML = `<div class="stat-card" style="grid-column:1/-1;">
-      <div class="stat-label" style="color:var(--down);">Couldn't load balances</div>
-      <div class="stat-sub">${err.message}</div>
+  balGrid.innerHTML = data.map(function(b){
+    return `
+    <div class="stat-card">
+      <div class="stat-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${BAL_ICONS[b.name]||DEFAULT_ACC_ICON}</svg></div>
+      <div class="stat-label">${b.name}</div>
+      <div class="stat-value">${fmt(b.balance)}</div>
+      <div class="stat-sub">Current balance</div>
     </div>`;
-  }
+  }).join('') + `
+    <div class="stat-card primary">
+      <div class="stat-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
+      <div class="stat-label">Net Worth</div>
+      <div class="stat-value">${fmt(total)}</div>
+      <div class="stat-sub">Across all accounts</div>
+    </div>`;
 }
 
 // ── OVERVIEW PAGE ────────────────────────────────────────────────────────────
 async function loadOverview() {
-  const sumGrid = $('sum-grid');
-  try {
   const [summary, categories, monthly, balances, allTxns] = await Promise.all([
     fetchData('/api/summary'),
     fetchData('/api/categories'),
@@ -1742,19 +1646,10 @@ async function loadOverview() {
   `).join('');
 
   $('donut-pct').textContent = (categories.length && catTotal > 0 ? (categories[0].total / catTotal * 100).toFixed(1) : 0) + '%';
-  } catch (err) {
-    console.error('loadOverview failed:', err);
-    sumGrid.innerHTML = `<div class="stat-card" style="grid-column:1/-1;">
-      <div class="stat-label" style="color:var(--down);">Couldn't load overview</div>
-      <div class="stat-sub">${err.message}</div>
-    </div>`;
-  }
 }
 
 // ── ANALYTICS PAGE ───────────────────────────────────────────────────────────
 async function loadAnalytics() {
-  const anGrid = $('an-grid');
-  try {
   const [summary, categories, monthly] = await Promise.all([
     fetchData('/api/summary'),
     fetchData('/api/categories'),
@@ -1877,13 +1772,6 @@ async function loadAnalytics() {
   `).join('');
 
   $('an-donut-pct').textContent = (categories.length && catTotal > 0 ? (categories[0].total / catTotal * 100).toFixed(1) : 0) + '%';
-  } catch (err) {
-    console.error('loadAnalytics failed:', err);
-    anGrid.innerHTML = `<div class="stat-card" style="grid-column:1/-1;">
-      <div class="stat-label" style="color:var(--down);">Couldn't load analytics</div>
-      <div class="stat-sub">${err.message}</div>
-    </div>`;
-  }
 }
 
 // ── MONTHLY HISTORY PAGE ─────────────────────────────────────────────────────
@@ -1893,14 +1781,9 @@ var histMonth = histNow.getMonth() + 1;
 
 async function loadHistory() {
   var data;
-  var fetchFailed = false;
-  var fetchErr = null;
   try {
     data = await fetchData('/api/month/' + histYear + '/' + histMonth);
   } catch(e) {
-    console.error('loadHistory failed:', e);
-    fetchFailed = true;
-    fetchErr = e;
     data = { year: histYear, month: histMonth, income:0, expense:0, net:0, categories:[], transactions:[] };
   }
 
@@ -1914,12 +1797,6 @@ async function loadHistory() {
     .filter(t => t.type === 'income' && t.category === 'Investment')
     .reduce((s,t) => s + Math.abs(t.amount), 0);
   $('hinv').textContent = fmt(invTotal);
-
-  if (fetchFailed) {
-    $('hcats').innerHTML = `<div class="lph" style="color:var(--down);">Couldn't load this month: ${fetchErr.message}</div>`;
-    $('htxns').innerHTML = buildRows([]);
-    return;
-  }
 
   if (data.categories && data.categories.length) {
     var mx = data.categories[0].total || 1;
@@ -1944,205 +1821,157 @@ $('hnext').addEventListener('click', function(){
   loadHistory();
 });
 
-// ── QUICK ACTIONS: ADD INCOME / ADD EXPENSE / TRANSFER FUNDS ──────────────────
-async function postData(url, payload) {
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-  const contentType = response.headers.get('content-type') || '';
-  if (!contentType.includes('application/json')) {
-    throw new Error('Got status ' + response.status + ' (non-JSON) from ' + url + ' — you may have been logged out.');
+// ── QUICK ACTIONS: ADD INCOME / ADD EXPENSE / TRANSFER ───────────────────────
+var EXPENSE_CATS = ['Food & Drinks','Coffee','Transport','Groceries','Housing','Health','Shopping','Entertainment','Subscriptions','Travel','School','Cigarettes','Other'];
+var INCOME_CATS  = ['Salary','Freelance','Gallery Sales','Artwork / Commission','Bonus','Gift Money','Cashback / Refund','Investment','Business','Other Income'];
+var txnModalType = 'income';
+
+function fillSelect(selectEl, options){
+  selectEl.innerHTML = options.map(function(o){ return '<option value="'+o+'">'+o+'</option>'; }).join('');
+}
+
+async function openTxnModal(type){
+  txnModalType = type;
+  $('txnModalTitle').textContent = type === 'income' ? 'Add Income' : 'Add Expense';
+  $('txnAmount').value = '';
+  $('txnDescription').value = '';
+  $('txnError').textContent = '';
+  fillSelect($('txnCategory'), type === 'income' ? INCOME_CATS : EXPENSE_CATS);
+
+  try {
+    var balances = await fetchData('/api/balances');
+    fillSelect($('txnAccount'), balances.map(function(b){ return b.name; }));
+  } catch(e) {
+    fillSelect($('txnAccount'), ['Cash']);
   }
-  return response.json();
+
+  $('txnModalOverlay').classList.add('open');
+  $('txnAmount').focus();
 }
 
-function qaPopulateSelect(selectEl, items) {
-  selectEl.innerHTML = items.map(function(it){
-    return '<option value="' + it.value + '">' + it.label + '</option>';
-  }).join('');
+function closeTxnModal(){
+  $('txnModalOverlay').classList.remove('open');
 }
 
-function qaShowError(errEl, msg) {
-  errEl.textContent = msg;
-  errEl.classList.add('show');
-}
-function qaHideError(errEl) {
-  errEl.classList.remove('show');
+async function submitTxnModal(){
+  var amount = parseFloat($('txnAmount').value);
+  var description = $('txnDescription').value.trim();
+  var category = $('txnCategory').value;
+  var account = $('txnAccount').value;
+  var errEl = $('txnError');
   errEl.textContent = '';
-}
 
-function qaOpenOverlay(overlayId) { $(overlayId).classList.add('open'); }
-function qaCloseOverlay(overlayId) { $(overlayId).classList.remove('open'); }
-
-document.querySelectorAll('.qa-overlay').forEach(function(overlay){
-  overlay.addEventListener('click', function(e){
-    if (e.target === overlay) overlay.classList.remove('open');
-  });
-});
-document.querySelectorAll('.qa-modal-close').forEach(function(btn){
-  btn.addEventListener('click', function(){
-    qaCloseOverlay(this.getAttribute('data-close'));
-  });
-});
-document.addEventListener('keydown', function(e){
-  if (e.key === 'Escape') {
-    document.querySelectorAll('.qa-overlay.open').forEach(function(o){ o.classList.remove('open'); });
+  if (!amount || amount <= 0) {
+    errEl.textContent = 'Please enter an amount greater than zero.';
+    return;
   }
-});
 
-async function qaLoadAccountOptions(selectEl) {
-  selectEl.innerHTML = '<option value="">Loading…</option>';
-  try {
-    const balances = await fetchData('/api/balances');
-    qaPopulateSelect(selectEl, balances.map(function(b){ return { value: b.name, label: b.name }; }));
-  } catch (err) {
-    selectEl.innerHTML = '<option value="">Couldn\'t load accounts</option>';
-  }
-}
-
-async function qaLoadCategoryOptions(selectEl, kind) {
-  selectEl.innerHTML = '<option value="">Loading…</option>';
-  try {
-    const lists = await fetchData('/api/category-lists');
-    const items = (kind === 'income' ? lists.income : lists.expense) || [];
-    qaPopulateSelect(selectEl, items.map(function(c){ return { value: c.name, label: c.emoji + ' ' + c.name }; }));
-  } catch (err) {
-    selectEl.innerHTML = '<option value="">Couldn\'t load categories</option>';
-  }
-}
-
-// ── Add Income ─────────────────────────────────────────────────────────────
-var qaIncomeBtn = $('qaOpenIncome');
-if (qaIncomeBtn) {
-  qaIncomeBtn.addEventListener('click', function(){
-    $('incomeForm').reset();
-    qaHideError($('incomeError'));
-    qaOpenOverlay('incomeModalOverlay');
-    qaLoadCategoryOptions($('incomeCategory'), 'income');
-    qaLoadAccountOptions($('incomeAccount'));
-  });
-}
-$('incomeForm').addEventListener('submit', async function(e){
-  e.preventDefault();
-  const errEl = $('incomeError');
-  qaHideError(errEl);
-
-  const amount = parseFloat(($('incomeAmount').value || '').replace(/,/g, ''));
-  const category = $('incomeCategory').value;
-  const account = $('incomeAccount').value;
-  const description = $('incomeDescription').value.trim();
-
-  if (!amount || amount <= 0) { qaShowError(errEl, 'Please enter an amount greater than zero.'); return; }
-  if (!category) { qaShowError(errEl, 'Please choose a category.'); return; }
-  if (!account) { qaShowError(errEl, 'Please choose an account.'); return; }
-
-  const btn = $('incomeSubmitBtn');
+  var btn = $('txnSubmitBtn');
   btn.disabled = true;
-  $('incomeSpinner').classList.add('show');
   try {
-    const result = await postData('/api/add-transaction', { type: 'income', amount: amount, category: category, account: account, description: description });
-    if (result.success) {
-      qaCloseOverlay('incomeModalOverlay');
-      loadBalances(); loadOverview(); loadAnalytics();
-    } else {
-      qaShowError(errEl, result.error || 'Something went wrong. Please try again.');
+    var res = await fetch('/api/transactions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: txnModalType,
+        amount: amount,
+        description: description,
+        category: category,
+        account: account
+      })
+    });
+    var data = await res.json();
+    if (!res.ok) {
+      errEl.textContent = data.error || 'Something went wrong. Please try again.';
+      btn.disabled = false;
+      return;
     }
-  } catch (err) {
-    qaShowError(errEl, err.message || 'Network error. Please try again.');
-  } finally {
-    btn.disabled = false;
-    $('incomeSpinner').classList.remove('show');
+    closeTxnModal();
+    loadBalances();
+    if (currentPage === 'page-ov') loadOverview();
+    if (currentPage === 'page-an') loadAnalytics();
+    if (currentPage === 'page-hi') loadHistory();
+  } catch(e) {
+    errEl.textContent = 'Network error. Please try again.';
   }
-});
-
-// ── Add Expense ────────────────────────────────────────────────────────────
-var qaExpenseBtn = $('qaOpenExpense');
-if (qaExpenseBtn) {
-  qaExpenseBtn.addEventListener('click', function(){
-    $('expenseForm').reset();
-    qaHideError($('expenseError'));
-    qaOpenOverlay('expenseModalOverlay');
-    qaLoadCategoryOptions($('expenseCategory'), 'expense');
-    qaLoadAccountOptions($('expenseAccount'));
-  });
+  btn.disabled = false;
 }
-$('expenseForm').addEventListener('submit', async function(e){
-  e.preventDefault();
-  const errEl = $('expenseError');
-  qaHideError(errEl);
 
-  const amount = parseFloat(($('expenseAmount').value || '').replace(/,/g, ''));
-  const category = $('expenseCategory').value;
-  const account = $('expenseAccount').value;
-  const description = $('expenseDescription').value.trim();
+async function openTransferModal(){
+  $('transferAmount').value = '';
+  $('transferError').textContent = '';
 
-  if (!amount || amount <= 0) { qaShowError(errEl, 'Please enter an amount greater than zero.'); return; }
-  if (!category) { qaShowError(errEl, 'Please choose a category.'); return; }
-  if (!account) { qaShowError(errEl, 'Please choose an account.'); return; }
-
-  const btn = $('expenseSubmitBtn');
-  btn.disabled = true;
-  $('expenseSpinner').classList.add('show');
   try {
-    const result = await postData('/api/add-transaction', { type: 'expense', amount: amount, category: category, account: account, description: description });
-    if (result.success) {
-      qaCloseOverlay('expenseModalOverlay');
-      loadBalances(); loadOverview(); loadAnalytics();
-    } else {
-      qaShowError(errEl, result.error || 'Something went wrong. Please try again.');
-    }
-  } catch (err) {
-    qaShowError(errEl, err.message || 'Network error. Please try again.');
-  } finally {
-    btn.disabled = false;
-    $('expenseSpinner').classList.remove('show');
+    var balances = await fetchData('/api/balances');
+    var names = balances.map(function(b){ return b.name; });
+    fillSelect($('transferFrom'), names);
+    fillSelect($('transferTo'), names);
+    if (names.length > 1) $('transferTo').value = names[1];
+  } catch(e) {
+    fillSelect($('transferFrom'), ['Cash']);
+    fillSelect($('transferTo'), ['Cash']);
   }
-});
 
-// ── Transfer Funds ─────────────────────────────────────────────────────────
-var qaTransferBtn = $('qaOpenTransfer');
-if (qaTransferBtn) {
-  qaTransferBtn.addEventListener('click', function(){
-    $('transferForm').reset();
-    qaHideError($('transferError'));
-    qaOpenOverlay('transferModalOverlay');
-    qaLoadAccountOptions($('transferFrom'));
-    qaLoadAccountOptions($('transferTo'));
-  });
+  $('transferModalOverlay').classList.add('open');
+  $('transferAmount').focus();
 }
-$('transferForm').addEventListener('submit', async function(e){
-  e.preventDefault();
-  const errEl = $('transferError');
-  qaHideError(errEl);
 
-  const amount = parseFloat(($('transferAmount').value || '').replace(/,/g, ''));
-  const fromAccount = $('transferFrom').value;
-  const toAccount = $('transferTo').value;
+function closeTransferModal(){
+  $('transferModalOverlay').classList.remove('open');
+}
 
-  if (!amount || amount <= 0) { qaShowError(errEl, 'Please enter an amount greater than zero.'); return; }
-  if (!fromAccount || !toAccount) { qaShowError(errEl, 'Please choose both accounts.'); return; }
-  if (fromAccount === toAccount) { qaShowError(errEl, "From and To accounts can't be the same."); return; }
+async function submitTransferModal(){
+  var amount = parseFloat($('transferAmount').value);
+  var fromAccount = $('transferFrom').value;
+  var toAccount = $('transferTo').value;
+  var errEl = $('transferError');
+  errEl.textContent = '';
 
-  const btn = $('transferSubmitBtn');
-  btn.disabled = true;
-  $('transferSpinner').classList.add('show');
-  try {
-    const result = await postData('/api/transfer', { amount: amount, from_account: fromAccount, to_account: toAccount });
-    if (result.success) {
-      qaCloseOverlay('transferModalOverlay');
-      loadBalances(); loadOverview(); loadAnalytics();
-    } else {
-      qaShowError(errEl, result.error || 'Something went wrong. Please try again.');
-    }
-  } catch (err) {
-    qaShowError(errEl, err.message || 'Network error. Please try again.');
-  } finally {
-    btn.disabled = false;
-    $('transferSpinner').classList.remove('show');
+  if (!amount || amount <= 0) {
+    errEl.textContent = 'Please enter an amount greater than zero.';
+    return;
   }
-});
+  if (fromAccount === toAccount) {
+    errEl.textContent = 'From and To accounts must be different.';
+    return;
+  }
+
+  var btn = $('transferSubmitBtn');
+  btn.disabled = true;
+  try {
+    var res = await fetch('/api/transfer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: amount, from_account: fromAccount, to_account: toAccount })
+    });
+    var data = await res.json();
+    if (!res.ok) {
+      errEl.textContent = data.error || 'Something went wrong. Please try again.';
+      btn.disabled = false;
+      return;
+    }
+    closeTransferModal();
+    loadBalances();
+    if (currentPage === 'page-ov') loadOverview();
+    if (currentPage === 'page-an') loadAnalytics();
+    if (currentPage === 'page-hi') loadHistory();
+  } catch(e) {
+    errEl.textContent = 'Network error. Please try again.';
+  }
+  btn.disabled = false;
+}
+
+$('txnModalClose').addEventListener('click', closeTxnModal);
+$('txnCancelBtn').addEventListener('click', closeTxnModal);
+$('txnSubmitBtn').addEventListener('click', submitTxnModal);
+$('txnModalOverlay').addEventListener('click', function(e){ if (e.target === this) closeTxnModal(); });
+$('txnAmount').addEventListener('keydown', function(e){ if (e.key === 'Enter') submitTxnModal(); });
+
+$('transferModalClose').addEventListener('click', closeTransferModal);
+$('transferCancelBtn').addEventListener('click', closeTransferModal);
+$('transferSubmitBtn').addEventListener('click', submitTransferModal);
+$('transferModalOverlay').addEventListener('click', function(e){ if (e.target === this) closeTransferModal(); });
+$('transferAmount').addEventListener('keydown', function(e){ if (e.key === 'Enter') submitTransferModal(); });
 
 </script>
 </body>
