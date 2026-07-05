@@ -14,7 +14,7 @@ from threading import Thread
 import time
 import requests
 import pytz
-from main import main as bot_main
+from main import main as bot_main, AUTHORIZED_USER_ID, CATEGORY_LIST, INCOME_CATEGORY_LIST
 
 # ── Config ──────────────────────────────────────────────────────────────────
 DATABASE   = '/data/finance.db'
@@ -278,6 +278,118 @@ def api_months():
     data = [{'year': int(r['year']), 'month': int(r['month'])} for r in c.fetchall()]
     conn.close()
     return jsonify(data)
+
+# ── API: Category lists (for Quick Actions dropdowns) ─────────────────────────
+@app.route('/api/category-lists')
+@require_auth
+def api_category_lists():
+    return jsonify({
+        'expense': [{'name': name, 'emoji': emoji} for emoji, name in CATEGORY_LIST],
+        'income':  [{'name': name, 'emoji': emoji} for emoji, name in INCOME_CATEGORY_LIST]
+    })
+
+# ── API: Add income/expense transaction (Quick Actions) ───────────────────────
+@app.route('/api/add-transaction', methods=['POST'])
+@require_auth
+def api_add_transaction():
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        txn_type = data.get('type')
+        if txn_type not in ('income', 'expense'):
+            return jsonify({'success': False, 'error': 'Invalid transaction type.'}), 400
+
+        try:
+            amount = float(str(data.get('amount', '')).replace(',', '').replace('฿', ''))
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'error': 'Invalid amount.'}), 400
+        if amount <= 0:
+            return jsonify({'success': False, 'error': 'Amount must be greater than zero.'}), 400
+
+        category = (data.get('category') or '').strip()
+        account = (data.get('account') or '').strip()
+        if not category:
+            return jsonify({'success': False, 'error': 'Please choose a category.'}), 400
+        if not account:
+            return jsonify({'success': False, 'error': 'Please choose an account.'}), 400
+        description = (data.get('description') or '').strip() or category
+
+        conn = get_db(); c = conn.cursor()
+        c.execute("SELECT balance FROM accounts WHERE user_id = ? AND name = ?", (AUTHORIZED_USER_ID, account))
+        if not c.fetchone():
+            conn.close()
+            return jsonify({'success': False, 'error': f"Account '{account}' not found."}), 400
+
+        signed_amount = amount if txn_type == 'income' else -amount
+        c.execute(
+            "INSERT INTO transactions (user_id, amount, description, type, category, account) VALUES (?, ?, ?, ?, ?, ?)",
+            (AUTHORIZED_USER_ID, signed_amount, description, txn_type, category, account)
+        )
+        c.execute(
+            "UPDATE accounts SET balance = balance + ? WHERE user_id = ? AND name = ?",
+            (signed_amount, AUTHORIZED_USER_ID, account)
+        )
+        conn.commit()
+        c.execute("SELECT balance FROM accounts WHERE user_id = ? AND name = ?", (AUTHORIZED_USER_ID, account))
+        new_balance = c.fetchone()['balance']
+        conn.close()
+
+        return jsonify({'success': True, 'new_balance': new_balance})
+    except Exception as e:
+        logging.error(f"add-transaction error: {e}")
+        return jsonify({'success': False, 'error': 'Server error. Please try again.'}), 500
+
+# ── API: Transfer between accounts (Quick Actions) ────────────────────────────
+@app.route('/api/transfer', methods=['POST'])
+@require_auth
+def api_transfer():
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        try:
+            amount = float(str(data.get('amount', '')).replace(',', '').replace('฿', ''))
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'error': 'Invalid amount.'}), 400
+        if amount <= 0:
+            return jsonify({'success': False, 'error': 'Amount must be greater than zero.'}), 400
+
+        from_account = (data.get('from_account') or '').strip()
+        to_account = (data.get('to_account') or '').strip()
+        if not from_account or not to_account:
+            return jsonify({'success': False, 'error': 'Please choose both accounts.'}), 400
+        if from_account == to_account:
+            return jsonify({'success': False, 'error': "From and To accounts can't be the same."}), 400
+
+        conn = get_db(); c = conn.cursor()
+        c.execute("SELECT balance FROM accounts WHERE user_id = ? AND name = ?", (AUTHORIZED_USER_ID, from_account))
+        if not c.fetchone():
+            conn.close()
+            return jsonify({'success': False, 'error': f"Account '{from_account}' not found."}), 400
+        c.execute("SELECT balance FROM accounts WHERE user_id = ? AND name = ?", (AUTHORIZED_USER_ID, to_account))
+        if not c.fetchone():
+            conn.close()
+            return jsonify({'success': False, 'error': f"Account '{to_account}' not found."}), 400
+
+        c.execute("UPDATE accounts SET balance = balance - ? WHERE user_id = ? AND name = ?", (amount, AUTHORIZED_USER_ID, from_account))
+        c.execute("UPDATE accounts SET balance = balance + ? WHERE user_id = ? AND name = ?", (amount, AUTHORIZED_USER_ID, to_account))
+        c.execute(
+            "INSERT INTO transactions (user_id, amount, description, type, category, account) VALUES (?, ?, ?, 'transfer', 'Transfer', ?)",
+            (AUTHORIZED_USER_ID, -amount, f"Transfer to {to_account}", from_account)
+        )
+        c.execute(
+            "INSERT INTO transactions (user_id, amount, description, type, category, account) VALUES (?, ?, ?, 'transfer', 'Transfer', ?)",
+            (AUTHORIZED_USER_ID, amount, f"Transfer from {from_account}", to_account)
+        )
+        conn.commit()
+
+        c.execute("SELECT balance FROM accounts WHERE user_id = ? AND name = ?", (AUTHORIZED_USER_ID, from_account))
+        new_from = c.fetchone()['balance']
+        c.execute("SELECT balance FROM accounts WHERE user_id = ? AND name = ?", (AUTHORIZED_USER_ID, to_account))
+        new_to = c.fetchone()['balance']
+        conn.close()
+
+        return jsonify({'success': True, 'from_balance': new_from, 'to_balance': new_to})
+    except Exception as e:
+        logging.error(f"transfer error: {e}")
+        return jsonify({'success': False, 'error': 'Server error. Please try again.'}), 500
 
 # ── PWA Assets ────────────────────────────────────────────────────────────────
 _ICON_192 = "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"
