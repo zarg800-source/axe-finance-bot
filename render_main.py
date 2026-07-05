@@ -14,7 +14,25 @@ from threading import Thread
 import time
 import requests
 import pytz
-from main import main as bot_main, AUTHORIZED_USER_ID, CATEGORY_LIST, INCOME_CATEGORY_LIST
+from main import main as bot_main
+
+try:
+    from main import AUTHORIZED_USER_ID
+except ImportError as e:
+    logging.error(f"Could not import AUTHORIZED_USER_ID from main.py: {e}")
+    AUTHORIZED_USER_ID = int(os.environ.get('AUTHORIZED_USER_ID', '0'))
+
+try:
+    from main import CATEGORY_LIST
+except ImportError as e:
+    logging.error(f"Could not import CATEGORY_LIST from main.py: {e}")
+    CATEGORY_LIST = []
+
+try:
+    from main import INCOME_CATEGORY_LIST
+except ImportError as e:
+    logging.error(f"Could not import INCOME_CATEGORY_LIST from main.py: {e}")
+    INCOME_CATEGORY_LIST = []
 
 # ── Config ──────────────────────────────────────────────────────────────────
 DATABASE   = '/data/finance.db'
