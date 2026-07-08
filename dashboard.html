@@ -456,6 +456,7 @@ body::after {
   box-shadow: var(--glass-shadow);
   position: relative;
   overflow: hidden;
+  min-width: 0;
   transition: transform var(--transition), box-shadow var(--transition), background var(--transition);
   cursor: default;
 }
@@ -531,6 +532,7 @@ body::after {
   border-radius: var(--radius-pill);
   font-size: 12px;
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 .stat-badge.up { background: var(--up-bg); color: var(--up); }
 .stat-badge.down { background: var(--down-bg); color: var(--down); }
@@ -712,7 +714,10 @@ body::after {
   font-weight: 600;
 }
 
-.data-table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+.data-table { width: 100%; border-collapse: collapse; margin-top: 16px; table-layout: fixed; }
+.data-table th:nth-child(1), .data-table td:nth-child(1) { width: 52%; }
+.data-table th:nth-child(2), .data-table td:nth-child(2) { width: 26%; }
+.data-table th:nth-child(3), .data-table td:nth-child(3) { width: 22%; }
 .data-table th {
   text-align: left;
   font-size: 11px;
@@ -733,15 +738,16 @@ body::after {
 .data-table tr:last-child td { border-bottom: none; }
 .data-table tbody tr:hover td { background: var(--bg3); }
 
-.tx-info { display: flex; align-items: center; gap: 10px; }
+.tx-info { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.tx-text { min-width: 0; flex: 1; }
 .tx-icon {
   width: 36px; height: 36px;
   border-radius: 10px;
   display: grid; place-items: center;
   flex-shrink: 0;
 }
-.tx-name { font-weight: 600; font-size: 13.5px; }
-.tx-id { font-size: 11.5px; color: var(--text3); }
+.tx-name { font-weight: 600; font-size: 13.5px; overflow-wrap: break-word; }
+.tx-id { font-size: 11.5px; color: var(--text3); overflow-wrap: break-word; }
 .status-badge {
   display: inline-flex;
   align-items: center;
@@ -903,30 +909,113 @@ body::after {
   to   { opacity: 1; transform: translateY(0); }
 }
 .qa-label { font-size: 11.5px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .4px; }
-.qa-input, .qa-select {
+.qa-input {
   width: 100%; padding: 12px 14px; border: 1.5px solid var(--glass-border);
   border-radius: 12px; background: var(--glass-bg); color: var(--text);
   font-size: 14px; font-family: 'DM Sans', sans-serif; outline: none;
-  transition: border-color .18s, background .18s; appearance: none;
+  transition: border-color .18s, background .18s;
 }
 .qa-input::placeholder { color: var(--text3); }
-.qa-input:focus, .qa-select:focus { border-color: var(--gold-border); background: var(--glass-bg-strong); }
+.qa-input:focus { border-color: var(--gold-border); background: var(--glass-bg-strong); }
 .qa-amount-wrap { position: relative; }
 .qa-amount-wrap .qa-currency {
   position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
   color: var(--text3); font-size: 14px; pointer-events: none;
 }
 .qa-amount-wrap .qa-input { padding-left: 30px; }
-.qa-select-wrap { position: relative; }
-.qa-select-wrap .qa-select { padding-right: 36px; }
-.qa-select-wrap svg {
-  position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
-  width: 14px; height: 14px; color: var(--text3); pointer-events: none;
-}
 .qa-error {
   display: none; padding: 10px 14px; border-radius: 10px;
   background: var(--down-bg); color: var(--down); font-size: 12.5px; font-weight: 500;
 }
+
+/* ── CUSTOM ICON SELECT (replaces native <select> so we can show real icons) ── */
+.cs-hidden-select { display: none; }
+.cs-trigger {
+  width: 100%; padding: 10px 14px; border: 1.5px solid var(--glass-border);
+  border-radius: 12px; background: var(--glass-bg);
+  display: flex; align-items: center; gap: 10px;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: border-color .18s, background .18s;
+  font-family: 'DM Sans', sans-serif;
+}
+.cs-trigger:hover, .cs-trigger:focus-visible { border-color: var(--gold-border); background: var(--glass-bg-strong); }
+.cs-trigger-icon {
+  width: 26px; height: 26px; border-radius: 8px;
+  display: grid; place-items: center; flex-shrink: 0;
+  color: var(--text3); background: var(--badge-bg);
+  transition: color .15s, background .15s;
+}
+.cs-trigger.has-value .cs-trigger-icon { color: var(--gold); background: var(--gold-bg); }
+.cs-trigger-icon svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.cs-trigger-label { flex: 1; text-align: left; font-size: 14px; color: var(--text3); }
+.cs-trigger.has-value .cs-trigger-label { color: var(--text); }
+.cs-chevron { width: 14px; height: 14px; color: var(--text3); flex-shrink: 0; stroke: currentColor; fill: none; stroke-width: 1.75; }
+
+.cs-picker-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.55); z-index: 400;
+  align-items: center; justify-content: center;
+  padding: 20px;
+  opacity: 0; transition: opacity .22s cubic-bezier(.4,0,.2,1);
+}
+.cs-picker-overlay.open { display: flex; opacity: 1; }
+.cs-picker-sheet {
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(30px) saturate(150%);
+  -webkit-backdrop-filter: blur(30px) saturate(150%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--glass-shadow-hover);
+  width: 100%; max-width: 380px;
+  max-height: 76vh;
+  display: flex; flex-direction: column;
+  animation: qaModalIn .28s cubic-bezier(.4,0,.2,1) both;
+}
+.cs-picker-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 18px 12px; flex-shrink: 0;
+}
+.cs-picker-title { font-family: 'Anton', sans-serif; font-size: 15px; letter-spacing: .5px; color: var(--text); }
+.cs-picker-close {
+  width: 28px; height: 28px; border-radius: 50%;
+  border: 1px solid var(--glass-border); background: transparent;
+  color: var(--text2); display: grid; place-items: center;
+  cursor: pointer; transition: all .18s; flex-shrink: 0;
+}
+.cs-picker-close svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 1.75; }
+.cs-picker-close:hover { background: var(--badge-bg); color: var(--text); }
+.cs-picker-list { overflow-y: auto; padding: 4px 8px 12px; }
+.cs-picker-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 10px; border-radius: 12px;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: background .15s;
+}
+.cs-picker-row:hover, .cs-picker-row:active { background: var(--badge-bg); }
+.cs-row-icon {
+  width: 32px; height: 32px; border-radius: 9px;
+  display: grid; place-items: center; flex-shrink: 0;
+  color: var(--text2); background: var(--badge-bg);
+  transition: color .15s, background .15s;
+}
+.cs-picker-row.selected .cs-row-icon { color: var(--gold); background: var(--gold-bg); }
+.cs-row-icon svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.cs-row-label { flex: 1; font-size: 14.5px; color: var(--text); }
+.cs-radio {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 2px solid var(--divider);
+  display: grid; place-items: center; flex-shrink: 0;
+  transition: border-color .15s;
+}
+.cs-radio::after {
+  content: ''; width: 10px; height: 10px; border-radius: 50%;
+  background: var(--gold);
+  transform: scale(0);
+  transition: transform .15s cubic-bezier(.4,0,.2,1);
+}
+.cs-picker-row.selected .cs-radio { border-color: var(--gold); }
+.cs-picker-row.selected .cs-radio::after { transform: scale(1); }
+
 .qa-error.show { display: block; }
 .qa-submit-btn {
   width: 100%; padding: 14px; border: none; border-radius: 12px;
@@ -1327,17 +1416,21 @@ body::after {
       </div>
       <div class="qa-field">
         <label class="qa-label">Category</label>
-        <div class="qa-select-wrap">
-          <select class="qa-select" id="incomeCategory"><option value="">Loading…</option></select>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="6 9 12 15 18 9"/></svg>
-        </div>
+        <button type="button" class="cs-trigger" id="incomeCategoryTrigger">
+          <span class="cs-trigger-icon" id="incomeCategoryTriggerIcon"></span>
+          <span class="cs-trigger-label" id="incomeCategoryTriggerLabel">Select category</span>
+          <svg class="cs-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <select class="cs-hidden-select" id="incomeCategory"></select>
       </div>
       <div class="qa-field">
         <label class="qa-label">Account</label>
-        <div class="qa-select-wrap">
-          <select class="qa-select" id="incomeAccount"><option value="">Loading…</option></select>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="6 9 12 15 18 9"/></svg>
-        </div>
+        <button type="button" class="cs-trigger" id="incomeAccountTrigger">
+          <span class="cs-trigger-icon" id="incomeAccountTriggerIcon"></span>
+          <span class="cs-trigger-label" id="incomeAccountTriggerLabel">Select account</span>
+          <svg class="cs-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <select class="cs-hidden-select" id="incomeAccount"></select>
       </div>
       <div class="qa-error" id="incomeError"></div>
       <button class="qa-submit-btn" type="submit" id="incomeSubmitBtn">
@@ -1375,17 +1468,21 @@ body::after {
       </div>
       <div class="qa-field">
         <label class="qa-label">Category</label>
-        <div class="qa-select-wrap">
-          <select class="qa-select" id="expenseCategory"><option value="">Loading…</option></select>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="6 9 12 15 18 9"/></svg>
-        </div>
+        <button type="button" class="cs-trigger" id="expenseCategoryTrigger">
+          <span class="cs-trigger-icon" id="expenseCategoryTriggerIcon"></span>
+          <span class="cs-trigger-label" id="expenseCategoryTriggerLabel">Select category</span>
+          <svg class="cs-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <select class="cs-hidden-select" id="expenseCategory"></select>
       </div>
       <div class="qa-field">
         <label class="qa-label">Account</label>
-        <div class="qa-select-wrap">
-          <select class="qa-select" id="expenseAccount"><option value="">Loading…</option></select>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="6 9 12 15 18 9"/></svg>
-        </div>
+        <button type="button" class="cs-trigger" id="expenseAccountTrigger">
+          <span class="cs-trigger-icon" id="expenseAccountTriggerIcon"></span>
+          <span class="cs-trigger-label" id="expenseAccountTriggerLabel">Select account</span>
+          <svg class="cs-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <select class="cs-hidden-select" id="expenseAccount"></select>
       </div>
       <div class="qa-error" id="expenseError"></div>
       <button class="qa-submit-btn" type="submit" id="expenseSubmitBtn">
@@ -1419,17 +1516,21 @@ body::after {
       </div>
       <div class="qa-field">
         <label class="qa-label">From Account</label>
-        <div class="qa-select-wrap">
-          <select class="qa-select" id="transferFrom"><option value="">Loading…</option></select>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="6 9 12 15 18 9"/></svg>
-        </div>
+        <button type="button" class="cs-trigger" id="transferFromTrigger">
+          <span class="cs-trigger-icon" id="transferFromTriggerIcon"></span>
+          <span class="cs-trigger-label" id="transferFromTriggerLabel">Select account</span>
+          <svg class="cs-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <select class="cs-hidden-select" id="transferFrom"></select>
       </div>
       <div class="qa-field">
         <label class="qa-label">To Account</label>
-        <div class="qa-select-wrap">
-          <select class="qa-select" id="transferTo"><option value="">Loading…</option></select>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="6 9 12 15 18 9"/></svg>
-        </div>
+        <button type="button" class="cs-trigger" id="transferToTrigger">
+          <span class="cs-trigger-icon" id="transferToTriggerIcon"></span>
+          <span class="cs-trigger-label" id="transferToTriggerLabel">Select account</span>
+          <svg class="cs-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <select class="cs-hidden-select" id="transferTo"></select>
       </div>
       <div class="qa-error" id="transferError"></div>
       <button class="qa-submit-btn" type="submit" id="transferSubmitBtn">
@@ -1437,6 +1538,19 @@ body::after {
         <span class="qa-spinner" id="transferSpinner"></span>
       </button>
     </form>
+  </div>
+</div>
+
+<!-- SHARED ICON PICKER SHEET -->
+<div class="cs-picker-overlay" id="csPickerOverlay">
+  <div class="cs-picker-sheet">
+    <div class="cs-picker-header">
+      <div class="cs-picker-title" id="csPickerTitle">Select</div>
+      <button class="cs-picker-close" id="csPickerClose" type="button">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="cs-picker-list" id="csPickerList"></div>
   </div>
 </div>
 
@@ -1630,7 +1744,7 @@ function buildRows(txns){
                 ${em}
               </svg>
             </div>
-            <div>
+            <div class="tx-text">
               <div class="tx-name">${t.description||''}</div>
               <div class="tx-id">${t.account||''}</div>
             </div>
@@ -2047,12 +2161,6 @@ async function postData(url, payload) {
   return response.json();
 }
 
-function qaPopulateSelect(selectEl, items) {
-  selectEl.innerHTML = items.map(function(it){
-    return '<option value="' + it.value + '">' + it.label + '</option>';
-  }).join('');
-}
-
 function qaShowError(errEl, msg) {
   errEl.textContent = msg;
   errEl.classList.add('show');
@@ -2078,41 +2186,98 @@ document.querySelectorAll('.qa-modal-close').forEach(function(btn){
 document.addEventListener('keydown', function(e){
   if (e.key === 'Escape') {
     document.querySelectorAll('.qa-overlay.open').forEach(function(o){ o.classList.remove('open'); });
+    closeCsPicker();
   }
 });
 
-var ACCOUNT_EMOJI = {
-  'Bangkok Bank': '🏦',
-  'True Money Wallet': '📱',
-  'MRT EMV Visa': '🚇',
-  'Rabbit Card': '🐇',
-  'Cash': '💵',
-  'Muvmi': '🛺',
-  'Solsot Member': '🎫'
-};
-var DEFAULT_ACCOUNT_EMOJI = '💳';
+// ── CUSTOM ICON PICKER (replaces native <select> so real line-icons can show) ─
+function csIconSvg(pathContent) {
+  return '<svg viewBox="0 0 24 24">' + pathContent + '</svg>';
+}
 
-async function qaLoadAccountOptions(selectEl) {
-  selectEl.innerHTML = '<option value="">Loading…</option>';
+function csSetTrigger(fieldKey, value, label, iconHtml) {
+  var triggerEl = $(fieldKey + 'Trigger');
+  var iconEl = $(fieldKey + 'TriggerIcon');
+  var labelEl = $(fieldKey + 'TriggerLabel');
+  var hiddenSelect = $(fieldKey);
+  hiddenSelect.innerHTML = '<option value="' + value + '">' + label + '</option>';
+  hiddenSelect.value = value;
+  iconEl.innerHTML = iconHtml;
+  labelEl.textContent = label;
+  triggerEl.classList.add('has-value');
+}
+
+var csActiveField = null;
+var csOverlay, csTitle, csList;
+
+function openCsPicker(fieldKey, title, items, currentValue) {
+  csActiveField = fieldKey;
+  csTitle.textContent = title;
+  csList.innerHTML = items.map(function(it){
+    var sel = it.value === currentValue ? ' selected' : '';
+    return '<div class="cs-picker-row' + sel + '" data-value="' + it.value + '" data-label="' + it.label + '">' +
+      '<span class="cs-row-icon">' + it.icon + '</span>' +
+      '<span class="cs-row-label">' + it.label + '</span>' +
+      '<span class="cs-radio"></span>' +
+    '</div>';
+  }).join('');
+  csList.querySelectorAll('.cs-picker-row').forEach(function(row){
+    row.addEventListener('click', function(){
+      var item = items.find(function(it){ return it.value === row.getAttribute('data-value'); });
+      if (item) csSetTrigger(csActiveField, item.value, item.label, item.icon);
+      closeCsPicker();
+    });
+  });
+  csOverlay.classList.add('open');
+}
+function closeCsPicker() { if (csOverlay) csOverlay.classList.remove('open'); }
+
+document.addEventListener('DOMContentLoaded', function(){
+  csOverlay = $('csPickerOverlay');
+  csTitle = $('csPickerTitle');
+  csList = $('csPickerList');
+  $('csPickerClose').addEventListener('click', closeCsPicker);
+  csOverlay.addEventListener('click', function(e){ if (e.target === csOverlay) closeCsPicker(); });
+});
+
+async function qaLoadAccountItems() {
+  const balances = await fetchData('/api/balances');
+  return balances.map(function(b){
+    return { value: b.name, label: b.name, icon: csIconSvg(BAL_ICONS[b.name] || DEFAULT_ACC_ICON) };
+  });
+}
+
+async function qaLoadCategoryItems(kind) {
+  const lists = await fetchData('/api/category-lists');
+  const items = (kind === 'income' ? lists.income : lists.expense) || [];
+  return items.map(function(c){
+    return { value: c.name, label: c.name, icon: ICONS[c.name] || csIconSvg('<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>') };
+  });
+}
+
+async function qaWireCategoryField(fieldKey, kind) {
+  var triggerEl = $(fieldKey + 'Trigger');
+  triggerEl.classList.remove('has-value');
+  $(fieldKey + 'TriggerLabel').textContent = 'Loading…';
   try {
-    const balances = await fetchData('/api/balances');
-    qaPopulateSelect(selectEl, balances.map(function(b){
-      var emoji = ACCOUNT_EMOJI[b.name] || DEFAULT_ACCOUNT_EMOJI;
-      return { value: b.name, label: emoji + ' ' + b.name };
-    }));
+    const items = await qaLoadCategoryItems(kind);
+    if (items.length) csSetTrigger(fieldKey, items[0].value, items[0].label, items[0].icon);
+    triggerEl.onclick = function(){ openCsPicker(fieldKey, 'Select category', items, $(fieldKey).value); };
   } catch (err) {
-    selectEl.innerHTML = '<option value="">Couldn\'t load accounts</option>';
+    $(fieldKey + 'TriggerLabel').textContent = "Couldn't load categories";
   }
 }
 
-async function qaLoadCategoryOptions(selectEl, kind) {
-  selectEl.innerHTML = '<option value="">Loading…</option>';
+async function qaWireAccountField(fieldKey) {
+  var triggerEl = $(fieldKey + 'Trigger');
+  triggerEl.classList.remove('has-value');
+  $(fieldKey + 'TriggerLabel').textContent = 'Loading…';
   try {
-    const lists = await fetchData('/api/category-lists');
-    const items = (kind === 'income' ? lists.income : lists.expense) || [];
-    qaPopulateSelect(selectEl, items.map(function(c){ return { value: c.name, label: c.emoji + ' ' + c.name }; }));
+    const items = await qaLoadAccountItems();
+    if (items.length) csSetTrigger(fieldKey, items[0].value, items[0].label, items[0].icon);
+    triggerEl.onclick = function(){ openCsPicker(fieldKey, 'Select account', items, $(fieldKey).value); };
   } catch (err) {
-    selectEl.innerHTML = '<option value="">Couldn\'t load categories</option>';
+    $(fieldKey + 'TriggerLabel').textContent = "Couldn't load accounts";
   }
 }
 
@@ -2124,8 +2289,8 @@ if (qaIncomeBtn) {
     $('incomeForm').reset();
     qaHideError($('incomeError'));
     qaOpenOverlay('incomeModalOverlay');
-    qaLoadCategoryOptions($('incomeCategory'), 'income');
-    qaLoadAccountOptions($('incomeAccount'));
+    qaWireCategoryField('incomeCategory', 'income');
+    qaWireAccountField('incomeAccount');
   });
 }
 $('incomeForm').addEventListener('submit', async function(e){
@@ -2169,8 +2334,8 @@ if (qaExpenseBtn) {
     $('expenseForm').reset();
     qaHideError($('expenseError'));
     qaOpenOverlay('expenseModalOverlay');
-    qaLoadCategoryOptions($('expenseCategory'), 'expense');
-    qaLoadAccountOptions($('expenseAccount'));
+    qaWireCategoryField('expenseCategory', 'expense');
+    qaWireAccountField('expenseAccount');
   });
 }
 $('expenseForm').addEventListener('submit', async function(e){
@@ -2214,8 +2379,8 @@ if (qaTransferBtn) {
     $('transferForm').reset();
     qaHideError($('transferError'));
     qaOpenOverlay('transferModalOverlay');
-    qaLoadAccountOptions($('transferFrom'));
-    qaLoadAccountOptions($('transferTo'));
+    qaWireAccountField('transferFrom');
+    qaWireAccountField('transferTo');
   });
 }
 $('transferForm').addEventListener('submit', async function(e){
