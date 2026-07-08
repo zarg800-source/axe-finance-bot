@@ -153,7 +153,9 @@ def logout():
 @app.route('/dashboard')
 @require_auth
 def dashboard():
-    return send_file(DASHBOARD_HTML)
+    resp = make_response(send_file(DASHBOARD_HTML))
+    resp.headers['Cache-Control'] = 'no-store'
+    return resp
 
 # ── API: Balances ─────────────────────────────────────────────────────────────
 @app.route('/api/balances')
@@ -403,7 +405,7 @@ def icon_512():
 @app.route('/sw.js')
 def service_worker():
     sw = """
-const C='mf-v7';
+const C='mf-v8';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['/dashboard','/icon-192.png'])));self.skipWaiting();});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});
 self.addEventListener('fetch',e=>{
