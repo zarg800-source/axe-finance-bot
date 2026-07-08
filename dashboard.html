@@ -238,6 +238,11 @@ body::after {
   flex-direction: column-reverse;
   align-items: flex-end;
   gap: 12px;
+  /* The hidden fab-menu below still occupies layout space even when invisible,
+     which on narrow phone widths overlaps the Analytics/History nav icons and
+     silently blocks taps to them. Make the wrapper click-through by default,
+     and only allow clicks through to the actual visible controls. */
+  pointer-events: none;
 }
 .fab-add {
   width: 58px; height: 58px;
@@ -250,6 +255,7 @@ body::after {
   transition: transform .22s cubic-bezier(.4,0,.2,1), box-shadow var(--transition);
   -webkit-tap-highlight-color: transparent;
   flex-shrink: 0;
+  pointer-events: auto;
 }
 .fab-add:active { transform: scale(.93); }
 .fab-add svg { width: 24px; height: 24px; stroke: #f4f8ff; fill: none; stroke-width: 2.3; transition: transform .28s cubic-bezier(.4,0,.2,1); }
@@ -266,6 +272,7 @@ body::after {
   pointer-events: none;
   transition: opacity .2s ease, transform .2s cubic-bezier(.4,0,.2,1);
 }
+.fab-wrap.open { pointer-events: auto; }
 .fab-wrap.open .fab-menu { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
 .fab-menu-item {
   display: flex;
@@ -844,7 +851,7 @@ body::after {
   background: rgba(0,0,0,.5); z-index: 300;
   align-items: center; justify-content: center;
   padding: 20px;
-  opacity: 0; transition: opacity .2s;
+  opacity: 0; transition: opacity .22s cubic-bezier(.4,0,.2,1);
 }
 .qa-overlay.open { display: flex; opacity: 1; }
 .qa-modal {
@@ -856,7 +863,12 @@ body::after {
   box-shadow: var(--glass-shadow-hover);
   width: 100%; max-width: 400px;
   max-height: 90vh; overflow-y: auto;
-  animation: fadeUp .25s ease both;
+  animation: qaModalIn .28s cubic-bezier(.4,0,.2,1) both;
+  transform-origin: center bottom;
+}
+@keyframes qaModalIn {
+  from { opacity: 0; transform: translateY(18px) scale(.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 .qa-modal-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -878,16 +890,27 @@ body::after {
 .qa-modal-close svg { width: 14px; height: 14px; }
 .qa-modal-close:hover { background: var(--badge-bg); color: var(--text); }
 .qa-modal-body { padding: 20px 22px 22px; display: flex; flex-direction: column; gap: 16px; }
-.qa-field { display: flex; flex-direction: column; gap: 6px; }
+.qa-field {
+  display: flex; flex-direction: column; gap: 6px;
+  animation: qaFieldIn .3s cubic-bezier(.4,0,.2,1) both;
+}
+.qa-field:nth-child(1){animation-delay:.03s}
+.qa-field:nth-child(2){animation-delay:.07s}
+.qa-field:nth-child(3){animation-delay:.11s}
+.qa-field:nth-child(4){animation-delay:.15s}
+@keyframes qaFieldIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 .qa-label { font-size: 11.5px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .4px; }
 .qa-input, .qa-select {
-  width: 100%; padding: 12px 14px; border: 1.5px solid var(--card-border);
-  border-radius: 12px; background: var(--input-bg); color: var(--text);
+  width: 100%; padding: 12px 14px; border: 1.5px solid var(--glass-border);
+  border-radius: 12px; background: var(--glass-bg); color: var(--text);
   font-size: 14px; font-family: 'DM Sans', sans-serif; outline: none;
-  transition: border-color .18s; appearance: none;
+  transition: border-color .18s, background .18s; appearance: none;
 }
 .qa-input::placeholder { color: var(--text3); }
-.qa-input:focus, .qa-select:focus { border-color: var(--text); }
+.qa-input:focus, .qa-select:focus { border-color: var(--gold-border); background: var(--glass-bg-strong); }
 .qa-amount-wrap { position: relative; }
 .qa-amount-wrap .qa-currency {
   position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
@@ -1093,7 +1116,6 @@ body::after {
         <table class="data-table">
           <thead><tr>
             <th>Descr</th>
-            <th>Category</th>
             <th>Date</th>
             <th style="text-align:right">Amount</th>
           </tr></thead>
@@ -1216,7 +1238,6 @@ body::after {
           <table class="data-table">
             <thead><tr>
               <th>Descr</th>
-              <th>Category</th>
               <th>Date</th>
               <th style="text-align:right">Amount</th>
             </tr></thead>
@@ -1591,7 +1612,7 @@ var DEFAULT_ACC_ICON = '<rect x="2" y="6" width="20" height="12" rx="2"/><circle
 
 // Shared transaction-row renderer (used by Overview + Monthly History pages)
 function buildRows(txns){
-  if(!txns.length)return '<tr><td colspan="4" class="lph" style="text-align:center; padding:20px 0; color:var(--text3);">No transactions</td></tr>';
+  if(!txns.length)return '<tr><td colspan="3" class="lph" style="text-align:center; padding:20px 0; color:var(--text3);">No transactions</td></tr>';
   return txns.map(function(t){
     var isI=t.type==='income',isT=t.type==='transfer';
     var em=ICONS[t.category]||(isI?ICONS["Salary"]:isT?ICONS["Transfer"]:ICONS["Other"]);
@@ -1615,7 +1636,6 @@ function buildRows(txns){
             </div>
           </div>
         </td>
-        <td>${t.category||''}</td>
         <td>${ts}</td>
         <td style="text-align:right" class="${ac}">${ap}${fmt(t.amount)}</td>
       </tr>
@@ -1635,7 +1655,6 @@ async function loadBalances() {
         <div class="stat-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${BAL_ICONS[b.name]||DEFAULT_ACC_ICON}</svg></div>
         <div class="stat-label">${b.name}</div>
         <div class="stat-value">${fmt(b.balance)}</div>
-        <div class="stat-sub">Current balance</div>
       </div>`;
     }).join('') + `
       <div class="stat-card primary">
@@ -2062,31 +2081,39 @@ document.addEventListener('keydown', function(e){
   }
 });
 
+var ACCOUNT_EMOJI = {
+  'Bangkok Bank': '🏦',
+  'True Money Wallet': '📱',
+  'MRT EMV Visa': '🚇',
+  'Rabbit Card': '🐇',
+  'Cash': '💵',
+  'Muvmi': '🛺',
+  'Solsot Member': '🎫'
+};
+var DEFAULT_ACCOUNT_EMOJI = '💳';
+
 async function qaLoadAccountOptions(selectEl) {
   selectEl.innerHTML = '<option value="">Loading…</option>';
   try {
     const balances = await fetchData('/api/balances');
-    qaPopulateSelect(selectEl, balances.map(function(b){ return { value: b.name, label: b.name }; }));
+    qaPopulateSelect(selectEl, balances.map(function(b){
+      var emoji = ACCOUNT_EMOJI[b.name] || DEFAULT_ACCOUNT_EMOJI;
+      return { value: b.name, label: emoji + ' ' + b.name };
+    }));
   } catch (err) {
     selectEl.innerHTML = '<option value="">Couldn\'t load accounts</option>';
   }
 }
 
-var EXPENSE_CATS = [
-  {name:'Food & Drinks', emoji:'🍜'}, {name:'Coffee', emoji:'☕'}, {name:'Transport', emoji:'🚕'},
-  {name:'Groceries', emoji:'🛒'}, {name:'Housing', emoji:'🏠'}, {name:'Health', emoji:'💊'},
-  {name:'Shopping', emoji:'👗'}, {name:'Entertainment', emoji:'🎉'}, {name:'Subscriptions', emoji:'📱'},
-  {name:'Travel', emoji:'✈️'}, {name:'School', emoji:'🎓'}, {name:'Cigarettes', emoji:'🚬'}, {name:'Other', emoji:'🧾'}
-];
-var INCOME_CATS = [
-  {name:'Salary', emoji:'💵'}, {name:'Freelance', emoji:'💼'}, {name:'Gallery Sales', emoji:'🖼️'},
-  {name:'Artwork / Commission', emoji:'🎨'}, {name:'Bonus', emoji:'🏆'}, {name:'Gift Money', emoji:'🎁'},
-  {name:'Cashback / Refund', emoji:'💳'}, {name:'Investment', emoji:'💹'}, {name:'Business', emoji:'🤝'},
-  {name:'Other Income', emoji:'🧾'}
-];
 async function qaLoadCategoryOptions(selectEl, kind) {
-  var items = kind === 'income' ? INCOME_CATS : EXPENSE_CATS;
-  qaPopulateSelect(selectEl, items.map(function(c){ return { value: c.name, label: c.emoji + ' ' + c.name }; }));
+  selectEl.innerHTML = '<option value="">Loading…</option>';
+  try {
+    const lists = await fetchData('/api/category-lists');
+    const items = (kind === 'income' ? lists.income : lists.expense) || [];
+    qaPopulateSelect(selectEl, items.map(function(c){ return { value: c.name, label: c.emoji + ' ' + c.name }; }));
+  } catch (err) {
+    selectEl.innerHTML = '<option value="">Couldn\'t load categories</option>';
+  }
 }
 
 // ── Add Income ─────────────────────────────────────────────────────────────

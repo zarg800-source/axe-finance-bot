@@ -14,7 +14,7 @@ from threading import Thread
 import time
 import requests
 import pytz
-from main import main as bot_main, AUTHORIZED_USER_ID
+from main import main as bot_main, AUTHORIZED_USER_ID, CATEGORY_LIST, INCOME_CATEGORY_LIST
 
 # ── Config ──────────────────────────────────────────────────────────────────
 DATABASE   = '/data/finance.db'
@@ -193,7 +193,7 @@ def api_summary():
         'last_month': {'income': li, 'expense': le, 'net': li - le}
     })
 
-# ── API: Categories ───────────────────────────────────────────────────────────
+# ── API: Categories (top categories used this month, for charts) ─────────────
 @app.route('/api/categories')
 @require_auth
 def api_categories():
@@ -206,6 +206,17 @@ def api_categories():
     data = [dict(r) for r in c.fetchall()]
     conn.close()
     return jsonify(data)
+
+# ── API: Full category lists (for Add Income / Add Expense dropdowns) ────────
+# Sourced from the same CATEGORY_LIST / INCOME_CATEGORY_LIST the Telegram bot
+# uses, so the dashboard dropdowns never drift out of sync with the bot menus.
+@app.route('/api/category-lists')
+@require_auth
+def api_category_lists():
+    return jsonify({
+        'expense': [{'name': name, 'emoji': emoji} for emoji, name in CATEGORY_LIST],
+        'income': [{'name': name, 'emoji': emoji} for emoji, name in INCOME_CATEGORY_LIST]
+    })
 
 # ── API: Monthly trend ────────────────────────────────────────────────────────
 @app.route('/api/monthly')
