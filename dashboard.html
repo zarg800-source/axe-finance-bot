@@ -317,6 +317,7 @@ body::after {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  min-width: 0;
   max-width: 1180px;
   margin: 0 auto;
   padding: 24px 28px 110px;
@@ -444,7 +445,15 @@ body::after {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 18px;
+  min-width: 0;
 }
+
+/* These cards sit as flex/grid items inside .mid-row / .bottom-row / .page.
+   Flex and grid items refuse to shrink below their content's natural width
+   by default, which was the actual root cause of the Overview page overflow
+   on narrow phones — not just the stat-card grid itself, but every level of
+   this container chain. min-width:0 removes that artificial floor. */
+.chart-card, .donut-card, .table-card, .activity-card { min-width: 0; }
 
 .stat-card {
   background: var(--glass-grad);
@@ -550,6 +559,7 @@ body::after {
   display: grid;
   grid-template-columns: 1fr 340px;
   gap: 18px;
+  min-width: 0;
 }
 
 /* ── CHART CARD ─────────────────────────────────────── */
@@ -567,6 +577,8 @@ body::after {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
   margin-bottom: 20px;
 }
 .card-title {
@@ -585,6 +597,8 @@ body::after {
   padding: 4px;
 }
 .chart-tab {
+  padding: 6px 12px;
+  white-space: nowrap;
   border-radius: var(--radius-pill);
   font-size: 12px;
   font-weight: 600;
@@ -677,6 +691,7 @@ body::after {
   display: grid;
   grid-template-columns: 1fr 320px;
   gap: 18px;
+  min-width: 0;
 }
 
 /* ── TABLE CARD ─────────────────────────────────────── */
@@ -694,6 +709,7 @@ body::after {
 .table-filter {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 .filter-btn {
   padding: 5px 13px;
@@ -821,6 +837,7 @@ body::after {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 14px;
+  min-width: 0;
 }
 .action-btn {
   background: var(--glass-grad);
@@ -1063,7 +1080,7 @@ body::after {
   from { opacity: 0; transform: translateY(14px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.page { display: none; flex-direction: column; gap: 18px; animation: fadeUp .3s ease both; }
+.page { display: none; flex-direction: column; gap: 18px; min-width: 0; animation: fadeUp .3s ease both; }
 .page.active { display: flex; }
 .stat-card, .chart-card, .donut-card, .table-card, .activity-card, .action-btn {
   animation: fadeUp .4s ease both;
