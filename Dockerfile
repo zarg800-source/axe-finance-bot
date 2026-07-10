@@ -2,13 +2,13 @@ FROM python:3.11-slim-bookworm
 
 WORKDIR /app
 
-# Install tesseract OCR
+# Install tesseract OCR (still needed by receipt_parser.py's OCR fallback)
 RUN apt-get update && apt-get install -y tesseract-ocr && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY main.py .
+COPY core.py .
 COPY receipt_parser.py .
 COPY render_main.py .
 COPY finance.db .

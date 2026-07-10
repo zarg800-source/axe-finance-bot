@@ -5,6 +5,7 @@ import calendar
 import hashlib
 import secrets
 import json
+import shutil
 import base64 as _b64
 from datetime import datetime, timedelta
 from functools import wraps
@@ -14,7 +15,33 @@ from threading import Thread
 import time
 import requests
 import pytz
-from main import main as bot_main, AUTHORIZED_USER_ID, CATEGORY_LIST, INCOME_CATEGORY_LIST
+
+# ── Axe Finance is a pure web app now — no Telegram anywhere ─────────────────
+import core
+from core import (
+    AUTHORIZED_USER_ID, CATEGORY_LIST, INCOME_CATEGORY_LIST,
+    init_db as core_init_db, process_due_subscriptions,
+    generate_monthly_excel, upload_to_gdrive, GDRIVE_AVAILABLE,
+)
+from receipt_parser import create_parser
+
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO,
+)
+
+# ── Receipt scanning (AI vision via OpenAI, same engine the old bot used) ────
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
+_ai_client = None
+if OPENAI_API_KEY and OPENAI_API_KEY.strip():
+    try:
+        from openai import OpenAI
+        _ai_client = OpenAI()
+        logging.info("OpenAI client initialized for receipt scanning.")
+    except Exception as e:
+        logging.warning(f"Could not initialize OpenAI client: {e}. Receipt scanning will use OCR fallback only.")
+
+receipt_parser = create_parser(openai_client=_ai_client)
 
 # ── Config ──────────────────────────────────────────────────────────────────
 DATABASE   = '/data/finance.db'
@@ -153,9 +180,7 @@ def logout():
 @app.route('/dashboard')
 @require_auth
 def dashboard():
-    resp = make_response(send_file(DASHBOARD_HTML))
-    resp.headers['Cache-Control'] = 'no-store'
-    return resp
+    return send_file(DASHBOARD_HTML)
 
 # ── API: Balances ─────────────────────────────────────────────────────────────
 @app.route('/api/balances')
@@ -405,7 +430,7 @@ def icon_512():
 @app.route('/sw.js')
 def service_worker():
     sw = """
-const C='mf-v8';
+const C='mf-v7';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['/dashboard','/icon-192.png'])));self.skipWaiting();});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});
 self.addEventListener('fetch',e=>{
@@ -588,6 +613,212 @@ def api_cfo_chat():
         return jsonify({'reply': f'Error: {str(e)}'}), 200
 
 
+# ── Receipt Scanning (replaces the old Telegram photo handler) ───────────────
+@app.route('/api/scan-receipt', methods=['POST'])
+@require_auth
+def api_scan_receipt():
+    """
+    Accepts a multipart/form-data upload:
+      - photo: the receipt/bank-slip image (required)
+      - caption: optional text the user typed alongside it (overrides
+                 description/category detection, same as the old Telegram bot)
+    Parses it with the same ReceiptParser (AI vision + OCR fallback) the
+    Telegram bot used to use, logs the transaction, and returns the result
+    so the Axe chat UI can show it and offer an Undo.
+    """
+    try:
+        if 'photo' not in request.files or not request.files['photo'].filename:
+            return jsonify({'success': False, 'error': 'No photo was uploaded.'}), 400
+
+        photo_file = request.files['photo']
+        photo_bytes = photo_file.read()
+        if not photo_bytes:
+            return jsonify({'success': False, 'error': 'The uploaded photo was empty.'}), 400
+
+        caption = (request.form.get('caption') or '').strip()
+
+        result = receipt_parser.parse(photo_bytes, caption=caption or None)
+
+        if not result.amount or result.amount <= 0:
+            return jsonify({
+                'success': False,
+                'error': "Couldn't read an amount from this receipt. Try a clearer photo, or log it manually from Quick Actions."
+            }), 200
+
+        amount = round(float(result.amount), 2)
+        description = (result.description or 'Receipt scan').strip() or 'Receipt scan'
+        category = result.category or 'Other'
+        account = result.account or 'Bangkok Bank'
+
+        conn = get_db()
+        c = conn.cursor()
+
+        # Make sure the detected account actually exists — fall back to Cash.
+        c.execute("SELECT 1 FROM accounts WHERE name = ?", (account,))
+        if not c.fetchone():
+            account = 'Cash'
+
+        ts = now_bkk().strftime('%Y-%m-%d %H:%M:%S')
+
+        # ── Transfer (e.g. top-up to True Money / Rabbit / MRT) ──────────────
+        if result.is_transfer:
+            to_account = result.transfer_to or 'Cash'
+            c.execute("SELECT 1 FROM accounts WHERE name = ?", (to_account,))
+            if not to_account or not c.fetchone():
+                to_account = 'Cash'
+            if to_account == account:
+                to_account = 'Cash' if account != 'Cash' else 'Bangkok Bank'
+
+            c.execute(
+                """INSERT INTO transactions (user_id, amount, description, type, category, account, timestamp)
+                   VALUES (?, ?, ?, 'transfer', 'Transfer', ?, ?)""",
+                (AUTHORIZED_USER_ID, -amount, f"Transfer to {to_account}", account, ts)
+            )
+            c.execute(
+                """INSERT INTO transactions (user_id, amount, description, type, category, account, timestamp)
+                   VALUES (?, ?, ?, 'transfer', 'Transfer', ?, ?)""",
+                (AUTHORIZED_USER_ID, amount, f"Transfer from {account}", to_account, ts)
+            )
+            c.execute("UPDATE accounts SET balance = balance - ? WHERE name = ?", (amount, account))
+            c.execute("UPDATE accounts SET balance = balance + ? WHERE name = ?", (amount, to_account))
+            conn.commit()
+            conn.close()
+            return jsonify({
+                'success': True,
+                'type': 'transfer',
+                'amount': amount,
+                'from_account': account,
+                'to_account': to_account,
+                'method': result.method,
+            })
+
+        # ── Regular income / expense ──────────────────────────────────────────
+        txn_type = 'income' if result.direction == 'IN' else 'expense'
+        signed_amount = amount if txn_type == 'income' else -amount
+
+        c.execute(
+            """INSERT INTO transactions (user_id, amount, description, type, category, account, timestamp)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (AUTHORIZED_USER_ID, signed_amount, description, txn_type, category, account, ts)
+        )
+        c.execute("UPDATE accounts SET balance = balance + ? WHERE name = ?", (signed_amount, account))
+        conn.commit()
+        c.execute("SELECT balance FROM accounts WHERE name = ?", (account,))
+        new_balance = c.fetchone()['balance']
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'type': txn_type,
+            'amount': amount,
+            'description': description,
+            'category': category,
+            'account': account,
+            'new_balance': new_balance,
+            'method': result.method,
+        })
+
+    except Exception as e:
+        logging.error(f"scan-receipt error: {e}")
+        return jsonify({'success': False, 'error': 'Server error while scanning the receipt. Please try again.'}), 500
+
+
+# ── Undo — deletes the most recent transaction (mirrors the old /delete) ─────
+@app.route('/api/delete-last-transaction', methods=['POST'])
+@require_auth
+def api_delete_last_transaction():
+    try:
+        conn = get_db()
+        c = conn.cursor()
+        c.execute(
+            "SELECT id, amount, account, description FROM transactions ORDER BY id DESC LIMIT 1"
+        )
+        txn = c.fetchone()
+        if not txn:
+            conn.close()
+            return jsonify({'success': False, 'error': 'No transactions to undo.'}), 200
+
+        c.execute("DELETE FROM transactions WHERE id = ?", (txn['id'],))
+        c.execute("UPDATE accounts SET balance = balance - ? WHERE name = ?", (txn['amount'], txn['account']))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'description': txn['description']})
+    except Exception as e:
+        logging.error(f"delete-last-transaction error: {e}")
+        return jsonify({'success': False, 'error': 'Server error. Please try again.'}), 500
+
+
+# ── Database Backup (replaces the old Telegram /backup command) ──────────────
+@app.route('/backup')
+@require_auth
+def download_backup():
+    if not os.path.exists(DATABASE):
+        return jsonify({"error": "Database file not found."}), 404
+    now_str = now_bkk().strftime('%Y%m%d_%H%M')
+    filename = f"finance_backup_{now_str}.db"
+    return send_file(DATABASE, as_attachment=True, download_name=filename, mimetype='application/x-sqlite3')
+
+
+# ── Database Restore (replaces the old Telegram /restore document handler) ───
+@app.route('/api/restore', methods=['POST'])
+@require_auth
+def api_restore():
+    try:
+        if 'backup' not in request.files or not request.files['backup'].filename:
+            return jsonify({'success': False, 'error': 'No backup file was uploaded.'}), 400
+
+        upload = request.files['backup']
+        if not upload.filename.endswith('.db'):
+            return jsonify({'success': False, 'error': "Please upload a '.db' file."}), 400
+
+        file_bytes = upload.read()
+        if not file_bytes:
+            return jsonify({'success': False, 'error': 'The uploaded file was empty.'}), 400
+        if len(file_bytes) > 50 * 1024 * 1024:
+            return jsonify({'success': False, 'error': 'File too large. Maximum 50 MB.'}), 400
+        if not file_bytes[:16].startswith(b'SQLite format 3'):
+            return jsonify({'success': False, 'error': "This doesn't look like a valid SQLite database."}), 400
+
+        tmp_path = '/tmp/restore_check.db'
+        with open(tmp_path, 'wb') as f:
+            f.write(file_bytes)
+
+        try:
+            vconn = sqlite3.connect(tmp_path)
+            vc = vconn.cursor()
+            vc.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tables = {r[0] for r in vc.fetchall()}
+            required = {'transactions', 'accounts', 'recurring_subscriptions'}
+            if not required.issubset(tables):
+                vconn.close()
+                missing = required - tables
+                return jsonify({'success': False, 'error': f"Missing required tables: {', '.join(missing)}. This doesn't look like an Axe Finance backup."}), 400
+
+            txn_cnt = vc.execute("SELECT COUNT(*) FROM transactions").fetchone()[0]
+            acc_cnt = vc.execute("SELECT COUNT(*) FROM accounts").fetchone()[0]
+            sub_cnt = vc.execute("SELECT COUNT(*) FROM recurring_subscriptions").fetchone()[0]
+            vconn.close()
+        except Exception as ve:
+            return jsonify({'success': False, 'error': f'Could not open the database: {ve}'}), 400
+
+        # Safety copy of the current live DB before overwriting.
+        if os.path.exists(DATABASE):
+            shutil.copy2(DATABASE, DATABASE + '.before_restore')
+
+        shutil.copy2(tmp_path, DATABASE)
+        logging.info(f"Database restored from uploaded file: {upload.filename}")
+
+        return jsonify({
+            'success': True,
+            'transactions': txn_cnt,
+            'accounts': acc_cnt,
+            'subscriptions': sub_cnt,
+        })
+    except Exception as e:
+        logging.error(f"restore error: {e}")
+        return jsonify({'success': False, 'error': 'Server error while restoring. Your original database was not modified.'}), 500
+
+
 # ── Error handlers ────────────────────────────────────────────────────────────
 @app.errorhandler(404)
 def not_found(e):
@@ -599,6 +830,42 @@ def not_found(e):
 @app.errorhandler(500)
 def server_error(e):
     return jsonify({"error": "Internal server error"}), 500
+
+# ── Scheduled jobs (replaces the Telegram bot's JobQueue) ────────────────────
+# These used to run inside the Telegram bot's event loop. Now that there's no
+# bot, APScheduler runs them directly inside this Flask process.
+from apscheduler.schedulers.background import BackgroundScheduler
+
+def _job_process_subscriptions():
+    try:
+        processed = process_due_subscriptions()
+        for name, amount, account, user_id in processed:
+            logging.info(f"Auto-logged subscription: {name} -฿{amount:,.2f} from {account}")
+    except Exception as e:
+        logging.error(f"Subscription check job failed: {e}")
+
+def _job_monthly_gdrive_backup():
+    """Runs daily; only actually uploads on the 1st of the month, for the
+    previous month — same behaviour as the old Telegram job."""
+    try:
+        now = now_bkk()
+        if now.day != 1:
+            return
+        month = now.month - 1 if now.month > 1 else 12
+        year = now.year if now.month > 1 else now.year - 1
+        excel_bytes = generate_monthly_excel(year, month)
+        filename = f"Axe_Finance_{calendar.month_name[month]}_{year}.xlsx"
+        link = upload_to_gdrive(excel_bytes, filename) if GDRIVE_AVAILABLE else ''
+        if link:
+            logging.info(f"Monthly Drive backup uploaded: {filename} -> {link}")
+        else:
+            logging.warning(f"Monthly Drive backup skipped/failed for {filename}")
+    except Exception as e:
+        logging.error(f"Monthly Drive backup job failed: {e}")
+
+scheduler = BackgroundScheduler(timezone=BANGKOK_TZ)
+scheduler.add_job(_job_process_subscriptions, 'cron', hour=8, minute=0, id='check_subs')
+scheduler.add_job(_job_monthly_gdrive_backup, 'cron', hour=9, minute=5, id='monthly_gdrive_backup')
 
 # ── Flask runner ──────────────────────────────────────────────────────────────
 def run_flask():
@@ -618,8 +885,16 @@ def keep_alive():
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 if __name__ == '__main__':
-    flask_thread = Thread(target=run_flask, daemon=True)
-    flask_thread.start()
+    core_init_db()
+    logging.info("Database initialized.")
+
+    # Catch any subscriptions that came due while the app was offline.
+    _job_process_subscriptions()
+
+    scheduler.start()
+    logging.info("Scheduler started. Sub checks: daily 8AM, Drive backup: daily 9:05AM (Bangkok time)")
+
     keep_alive_thread = Thread(target=keep_alive, daemon=True)
     keep_alive_thread.start()
-    bot_main()
+
+    run_flask()

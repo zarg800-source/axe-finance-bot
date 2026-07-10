@@ -1189,6 +1189,20 @@ body::after {
             </button>
           </div>
           <div class="avatar-menu-divider"></div>
+          <a class="avatar-menu-row" href="/backup" id="backupRow">
+            <div class="row-left">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>Backup</span>
+            </div>
+          </a>
+          <div class="avatar-menu-row" id="restoreRow">
+            <div class="row-left">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <span>Restore</span>
+            </div>
+          </div>
+          <input type="file" id="restoreFileInput" accept=".db" style="display:none">
+          <div class="avatar-menu-divider"></div>
           <a class="avatar-menu-row danger" href="/logout">
             <div class="row-left">
               <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -1700,6 +1714,52 @@ document.addEventListener('click', function(e){
     avatarMenu.classList.remove('open');
   }
 });
+
+// ── BACKUP / RESTORE ──────────────────────────────────────────────────────────
+var backupRow = $("backupRow");
+if (backupRow) {
+  backupRow.addEventListener('click', function(){
+    avatarMenu.classList.remove('open');
+  });
+}
+
+var restoreRow = $("restoreRow");
+var restoreFileInput = $("restoreFileInput");
+if (restoreRow && restoreFileInput) {
+  restoreRow.addEventListener('click', function(){
+    avatarMenu.classList.remove('open');
+    var ok = confirm(
+      "Restoring will REPLACE all current balances, transactions, and subscriptions with the uploaded backup.\n\n" +
+      "This cannot be undone. Continue?"
+    );
+    if (ok) restoreFileInput.click();
+  });
+  restoreFileInput.addEventListener('change', async function(e){
+    var file = e.target.files && e.target.files[0];
+    if (!file) return;
+    var formData = new FormData();
+    formData.append('backup', file);
+    try {
+      var res = await fetch('/api/restore', { method: 'POST', body: formData });
+      var data = await res.json();
+      if (data.success) {
+        alert(
+          '✅ Restore complete!\n\n' +
+          data.transactions + ' transactions\n' +
+          data.accounts + ' accounts\n' +
+          data.subscriptions + ' subscriptions\n\n' +
+          'Reloading…'
+        );
+        location.reload();
+      } else {
+        alert('❌ Restore failed: ' + (data.error || 'Unknown error'));
+      }
+    } catch (err) {
+      alert('❌ Restore failed: ' + err.message);
+    }
+    e.target.value = '';
+  });
+}
 
 // ── QUICK-ADD FAB ─────────────────────────────────────────────────────────────
 var fabWrap = $("fabWrap");
