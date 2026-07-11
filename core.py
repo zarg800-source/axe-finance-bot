@@ -1056,13 +1056,19 @@ def get_gdrive_service():
         return None
 
 
-def upload_to_gdrive(file_bytes: bytes, filename: str) -> str:
-    """Upload a file to Google Drive. Returns the file URL or empty string."""
+def upload_to_gdrive(file_bytes: bytes, filename: str, error_out: list = None) -> str:
+    """Upload a file to Google Drive. Returns the file URL or empty string.
+    If error_out is provided (a list), the real exception text is appended
+    to it on failure so callers can surface Google's actual error message."""
     if not GDRIVE_AVAILABLE:
         logger.error("Google API packages not available.")
+        if error_out is not None:
+            error_out.append("Google API packages not available.")
         return ''
     service = get_gdrive_service()
     if not service:
+        if error_out is not None:
+            error_out.append("Could not build Google Drive service — check GOOGLE_SERVICE_ACCOUNT_JSON is valid.")
         return ''
     try:
         file_metadata = {
@@ -1084,6 +1090,8 @@ def upload_to_gdrive(file_bytes: bytes, filename: str) -> str:
         return link
     except Exception as e:
         logger.error(f"Google Drive upload failed: {e}")
+        if error_out is not None:
+            error_out.append(str(e))
         return ''
 
 

@@ -813,7 +813,8 @@ def api_test_gdrive_backup():
 
         excel_bytes = generate_monthly_excel(year, month)
         filename = f"Axe_Finance_TEST_{calendar.month_name[month]}_{year}.xlsx"
-        link = upload_to_gdrive(excel_bytes, filename)
+        gdrive_errors = []
+        link = upload_to_gdrive(excel_bytes, filename, error_out=gdrive_errors)
 
         if link:
             return jsonify({
@@ -823,9 +824,11 @@ def api_test_gdrive_backup():
                 'diagnostics': diagnostics,
             })
         else:
+            real_error = gdrive_errors[0] if gdrive_errors else 'Unknown — no exception was raised, but Drive returned no link.'
             return jsonify({
                 'success': False,
-                'error': 'Upload returned no link. Check Render logs for the exact Google API error — most likely the Drive folder is not shared with the service account email, or the Drive API is not enabled on the Google Cloud project.',
+                'error': f'Google Drive rejected the upload: {real_error}',
+                'hint': 'If this mentions "insufficient permissions" or 403/404, the Drive folder is not shared with the service account email as Editor. If it mentions the Drive API being disabled, enable it in Google Cloud Console for this project.',
                 'diagnostics': diagnostics,
             }), 200
 
