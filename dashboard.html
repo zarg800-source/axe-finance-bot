@@ -1202,6 +1202,12 @@ body::after {
             </div>
           </div>
           <input type="file" id="restoreFileInput" accept=".db" style="display:none">
+          <div class="avatar-menu-row" id="testDriveRow">
+            <div class="row-left">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+              <span>Test Drive Backup</span>
+            </div>
+          </div>
           <div class="avatar-menu-divider"></div>
           <a class="avatar-menu-row danger" href="/logout">
             <div class="row-left">
@@ -1758,6 +1764,41 @@ if (restoreRow && restoreFileInput) {
       alert('❌ Restore failed: ' + err.message);
     }
     e.target.value = '';
+  });
+}
+
+var testDriveRow = $("testDriveRow");
+if (testDriveRow) {
+  testDriveRow.addEventListener('click', async function(){
+    avatarMenu.classList.remove('open');
+    testDriveRow.style.opacity = '0.5';
+    try {
+      var res = await fetch('/api/test-gdrive-backup', { method: 'POST' });
+      var data = await res.json();
+      if (data.success) {
+        alert(
+          '✅ Google Drive backup works!\n\n' +
+          data.message + '\n\n' +
+          'Service account: ' + (data.diagnostics.service_account_email || 'unknown') + '\n\n' +
+          'Check your Drive folder to confirm the file appeared.'
+        );
+      } else {
+        var msg = '❌ Drive backup failed:\n\n' + (data.error || 'Unknown error');
+        if (data.hint) msg += '\n\nFix: ' + data.hint;
+        if (data.diagnostics) {
+          msg += '\n\n— Diagnostics —\n' +
+            'Packages installed: ' + data.diagnostics.gdrive_available + '\n' +
+            'Env var set: ' + data.diagnostics.service_account_json_set;
+          if ('service_account_json_valid' in data.diagnostics) {
+            msg += '\nJSON valid: ' + data.diagnostics.service_account_json_valid;
+          }
+        }
+        alert(msg);
+      }
+    } catch (err) {
+      alert('❌ Test failed: ' + err.message);
+    }
+    testDriveRow.style.opacity = '1';
   });
 }
 

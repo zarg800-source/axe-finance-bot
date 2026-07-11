@@ -759,6 +759,81 @@ def download_backup():
     return send_file(DATABASE, as_attachment=True, download_name=filename, mimetype='application/x-sqlite3')
 
 
+# ── Manual Google Drive backup test (replaces the old Telegram /testbackup) ──
+@app.route('/api/test-gdrive-backup', methods=['POST', 'GET'])
+@require_auth
+def api_test_gdrive_backup():
+    """
+    Manually trigger a Google Drive monthly export right now, instead of
+    waiting for the 1st-of-month scheduled job. Lets you verify the whole
+    pipeline (env var -> Drive API -> folder permissions) without waiting.
+    Usage: GET or POST /api/test-gdrive-backup?year=2026&month=6
+    Defaults to last month if year/month aren't given.
+    """
+    try:
+        now = now_bkk()
+        try:
+            year = int(request.args.get('year', 0)) or (now.year if now.month > 1 else now.year - 1)
+            month = int(request.args.get('month', 0)) or (now.month - 1 if now.month > 1 else 12)
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'error': 'year/month must be integers, e.g. ?year=2026&month=6'}), 400
+
+        diagnostics = {
+            'gdrive_available': GDRIVE_AVAILABLE,
+            'service_account_json_set': bool(os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON', '').strip()),
+        }
+
+        if not GDRIVE_AVAILABLE:
+            return jsonify({
+                'success': False,
+                'error': 'Google API packages not installed (google-api-python-client / google-auth missing from requirements.txt).',
+                'diagnostics': diagnostics,
+            }), 200
+
+        if not diagnostics['service_account_json_set']:
+            return jsonify({
+                'success': False,
+                'error': 'GOOGLE_SERVICE_ACCOUNT_JSON environment variable is not set on Render.',
+                'diagnostics': diagnostics,
+            }), 200
+
+        # Validate the JSON itself before attempting the upload — this is
+        # where "malformed / not minified" failures show up.
+        try:
+            parsed = json.loads(os.environ['GOOGLE_SERVICE_ACCOUNT_JSON'])
+            diagnostics['service_account_json_valid'] = True
+            diagnostics['service_account_email'] = parsed.get('client_email', 'MISSING client_email field')
+        except Exception as je:
+            return jsonify({
+                'success': False,
+                'error': f'GOOGLE_SERVICE_ACCOUNT_JSON is not valid JSON: {je}',
+                'hint': 'Copy the entire service account JSON file content, minify it to one line (no line breaks), and paste it as the env var value on Render.',
+                'diagnostics': diagnostics,
+            }), 200
+
+        excel_bytes = generate_monthly_excel(year, month)
+        filename = f"Axe_Finance_TEST_{calendar.month_name[month]}_{year}.xlsx"
+        link = upload_to_gdrive(excel_bytes, filename)
+
+        if link:
+            return jsonify({
+                'success': True,
+                'message': f'Uploaded {filename} to Google Drive.',
+                'link': link,
+                'diagnostics': diagnostics,
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Upload returned no link. Check Render logs for the exact Google API error — most likely the Drive folder is not shared with the service account email, or the Drive API is not enabled on the Google Cloud project.',
+                'diagnostics': diagnostics,
+            }), 200
+
+    except Exception as e:
+        logging.error(f"test-gdrive-backup error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 # ── Database Restore (replaces the old Telegram /restore document handler) ───
 @app.route('/api/restore', methods=['POST'])
 @require_auth
