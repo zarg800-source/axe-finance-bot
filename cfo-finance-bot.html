@@ -191,15 +191,16 @@ body::after{
 }
 .back-btn:hover{color:var(--gold);transform:translateY(-1px);}
 .back-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.2;}
-.header-text{}
+.header-text{flex:1;min-width:0;}
 .header-title{
   font-family:'Anton',sans-serif;font-size:16px;
   letter-spacing:1px;
   background:linear-gradient(100deg, var(--text) 45%, var(--gold-light) 140%);
   -webkit-background-clip:text;background-clip:text;
   color:transparent;-webkit-text-fill-color:transparent;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
-.header-sub{font-size:11px;color:var(--text3);margin-top:1px}
+.header-sub{font-size:11px;color:var(--text3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .status{
   margin-left:auto;display:flex;align-items:center;gap:6px;
   font-size:11px;color:var(--text3);
@@ -208,6 +209,7 @@ body::after{
   border:1px solid var(--glass-border);
   border-radius:var(--radius-pill);
   flex-shrink:0;
+  white-space:nowrap;
 }
 .status-dot{
   width:7px;height:7px;border-radius:50%;
@@ -257,8 +259,9 @@ body::after{
 }
 
 .msg-bubble{
-  max-width:78%;padding:12px 16px;border-radius:16px;
+  max-width:78%;padding:10px 14px 8px;border-radius:16px;
   font-size:13.5px;line-height:1.6;
+  display:flex;flex-direction:column;gap:2px;
 }
 .msg.axe .msg-bubble{
   background:var(--glass-grad);
@@ -276,17 +279,22 @@ body::after{
   box-shadow:0 10px 24px -10px var(--gold-glow);
 }
 
-.msg-time{
-  font-size:10px;color:var(--text3);
-  margin-top:4px;
-  text-align:right;
+.bubble-time{
+  align-self:flex-end;
+  font-size:10px;
+  line-height:1;
+  flex-shrink:0;
+  user-select:none;
+  padding-top:2px;
 }
-.msg.axe .msg-time{text-align:left}
+.msg.axe .msg-bubble .bubble-time{color:var(--text3);}
+.msg.user .msg-bubble .bubble-time{color:rgba(244,248,255,.7);}
 
 /* Axe message formatting */
 .msg.axe .msg-bubble strong{color:var(--text);font-weight:600}
 .msg.axe .msg-bubble .highlight{color:var(--up);font-weight:600}
 .msg.axe .msg-bubble .warn{color:var(--down);font-weight:600}
+
 
 /* Thinking indicator */
 .thinking-bubble{
@@ -326,26 +334,26 @@ body::after{
   z-index:1;
 }
 .input-row{
-  display:flex;gap:10px;align-items:flex-end;
+  display:flex;gap:10px;align-items:center;
 }
-.input-wrap{flex:1;position:relative}
+.input-wrap{flex:1;position:relative;display:flex;}
 textarea{
   width:100%;
   background:var(--glass-bg);
   border:1.5px solid var(--glass-border);
   border-radius:14px;
-  padding:12px 16px;
+  padding:0 16px;
   color:var(--text);
   font-family:'DM Sans',sans-serif;
   font-size:14px;
   resize:none;
   outline:none;
-  min-height:48px;max-height:120px;
-  line-height:1.5;
-  transition:border-color var(--transition);
+  height:48px;min-height:48px;max-height:120px;
+  line-height:48px;
+  transition:border-color var(--transition),height var(--transition);
 }
 textarea::placeholder{color:var(--text3)}
-textarea:focus{border-color:var(--gold-border)}
+textarea:focus{border-color:var(--gold-border);line-height:1.5;padding:12px 16px;}
 .send-btn{
   width:48px;height:48px;border-radius:14px;
   background:linear-gradient(150deg,var(--gold-light),var(--gold-deep));
@@ -377,14 +385,51 @@ textarea:focus{border-color:var(--gold-border)}
 
 /* Receipt thumbnail inside a user message bubble */
 .receipt-thumb{
-  max-width:200px;max-height:200px;border-radius:12px;
+  width:100%;max-width:150px;max-height:180px;object-fit:cover;
+  border-radius:12px;
   display:block;margin-bottom:6px;
   border:1px solid var(--glass-border);
 }
 
+/* ── RESULT CARD (transfer / income / expense logged) ── */
+.result-card{padding:2px 0 0;}
+.result-head{
+  display:flex;align-items:center;gap:8px;
+  margin-bottom:10px;
+}
+.result-icon{
+  width:26px;height:26px;border-radius:8px;
+  display:grid;place-items:center;flex-shrink:0;
+  font-size:13px;
+  background:var(--glass-bg);
+  border:1px solid var(--glass-border);
+}
+.result-title{font-size:12.5px;font-weight:600;color:var(--text2);}
+.result-amount{
+  font-family:'Anton',sans-serif;font-size:22px;letter-spacing:.3px;
+  margin-bottom:10px;color:var(--text);
+}
+.result-amount.up{color:var(--up);}
+.result-amount.down{color:var(--down);}
+.result-rows{
+  display:flex;flex-direction:column;gap:6px;
+  padding-top:8px;margin-bottom:2px;
+  border-top:1px solid var(--divider);
+}
+.result-row{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:12px;font-size:12.5px;
+}
+.result-row .label{color:var(--text3);flex-shrink:0;}
+.result-row .value{color:var(--text);font-weight:500;text-align:right;}
+
+.result-foot{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-top:10px;
+}
+
 /* Undo button inside an Axe receipt-result bubble */
 .undo-btn{
-  margin-top:10px;
   font-size:11px;padding:6px 14px;border-radius:var(--radius-pill);
   background:transparent;
   border:1px solid var(--glass-border);
@@ -431,7 +476,7 @@ textarea:focus{border-color:var(--gold-border)}
     <span class="logo-mark">A</span>
   </div>
   <div class="header-text">
-    <div class="header-title">AXE FINANCE — AXE</div>
+    <div class="header-title">AXE</div>
     <div class="header-sub">Your personal finance advisor</div>
   </div>
   <div class="status">
@@ -447,7 +492,7 @@ textarea:focus{border-color:var(--gold-border)}
       <span class="logo-mark">A</span>
     </div>
     <h2>AXE IS READY</h2>
-    <p>Ask me anything about your finances, or tap the 📎 button to scan a receipt or bank slip — I'll log it for you automatically.</p>
+    <p>Ask me anything about your finances.</p>
   </div>
 </div>
 
@@ -516,17 +561,11 @@ function appendMessage(role, text) {
   if (role === 'cfo' || role === 'axe') {
     div.innerHTML = `
       <div class="msg-avatar">A</div>
-      <div>
-        <div class="msg-bubble">${formatCFOText(text)}</div>
-        <div class="msg-time">${getTime()}</div>
-      </div>`;
+      <div class="msg-bubble">${formatCFOText(text)}<span class="bubble-time">${getTime()}</span></div>`;
   } else {
     div.innerHTML = `
       <div class="msg-avatar">M</div>
-      <div>
-        <div class="msg-bubble">${text}</div>
-        <div class="msg-time">${getTime()}</div>
-      </div>`;
+      <div class="msg-bubble">${text}<span class="bubble-time">${getTime()}</span></div>`;
   }
 
   area.appendChild(div);
@@ -641,12 +680,10 @@ function appendReceiptUserMessage(file, caption) {
   div.className = 'msg user';
   div.innerHTML = `
     <div class="msg-avatar">M</div>
-    <div>
-      <div class="msg-bubble">
-        <img class="receipt-thumb" src="${url}" alt="receipt photo">
-        ${caption ? caption.replace(/</g, '&lt;') : ''}
-      </div>
-      <div class="msg-time">${getTime()}</div>
+    <div class="msg-bubble">
+      <img class="receipt-thumb" src="${url}" alt="receipt photo">
+      ${caption ? caption.replace(/</g, '&lt;') : ''}
+      <span class="bubble-time">${getTime()}</span>
     </div>`;
   area.appendChild(div);
   scrollToBottom();
@@ -661,31 +698,42 @@ function appendReceiptResult(data) {
   const welcome = area.querySelector('.welcome');
   if (welcome) welcome.remove();
 
-  let bodyHtml;
+  let icon, title, amountHtml, rowsHtml;
+
   if (data.type === 'transfer') {
-    bodyHtml = `🔄 <strong>Transfer logged!</strong><br>${moneyFmt(data.amount)}<br>${data.from_account} → ${data.to_account}`;
+    icon = '🔄';
+    title = 'Transfer logged';
+    amountHtml = `<div class="result-amount">${moneyFmt(data.amount)}</div>`;
+    rowsHtml = `
+      <div class="result-row"><span class="label">From</span><span class="value">${data.from_account}</span></div>
+      <div class="result-row"><span class="label">To</span><span class="value">${data.to_account}</span></div>`;
   } else {
     const isIncome = data.type === 'income';
-    const emoji = isIncome ? '💵' : '💸';
+    icon = isIncome ? '💵' : '💸';
+    title = 'Receipt logged';
     const sign = isIncome ? '+' : '-';
-    bodyHtml =
-      `${emoji} <strong>Receipt logged!</strong><br>` +
-      `${sign}${moneyFmt(data.amount)}<br>` +
-      `📝 ${data.description}<br>` +
-      `📂 ${data.category}<br>` +
-      `🏦 ${data.account}`;
+    amountHtml = `<div class="result-amount ${isIncome ? 'up' : 'down'}">${sign}${moneyFmt(data.amount)}</div>`;
+    rowsHtml = `
+      <div class="result-row"><span class="label">Description</span><span class="value">${data.description}</span></div>
+      <div class="result-row"><span class="label">Category</span><span class="value">${data.category}</span></div>
+      <div class="result-row"><span class="label">Account</span><span class="value">${data.account}</span></div>`;
   }
 
   const div = document.createElement('div');
   div.className = 'msg axe';
   div.innerHTML = `
     <div class="msg-avatar">A</div>
-    <div>
-      <div class="msg-bubble">
-        ${bodyHtml}
-        <div><button class="undo-btn" onclick="undoLastTransaction(this)">Undo</button></div>
+    <div class="msg-bubble result-card">
+      <div class="result-head">
+        <span class="result-icon">${icon}</span>
+        <span class="result-title">${title}</span>
       </div>
-      <div class="msg-time">${getTime()}</div>
+      ${amountHtml}
+      <div class="result-rows">${rowsHtml}</div>
+      <div class="result-foot">
+        <button class="undo-btn" onclick="undoLastTransaction(this)">Undo</button>
+        <span class="bubble-time">${getTime()}</span>
+      </div>
     </div>`;
   area.appendChild(div);
   scrollToBottom();
