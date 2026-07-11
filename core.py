@@ -18,6 +18,8 @@ import sqlite3
 import logging
 from datetime import datetime, timedelta, date
 import pytz
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment
 
 logger = logging.getLogger(__name__)
 
