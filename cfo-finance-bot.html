@@ -17,7 +17,7 @@
 <style>
 /* ── TOKENS ───────────────────────────────────────────── */
 :root {
-  --radius-card: 18px;
+  --radius-card: 22px;
   --radius-pill: 999px;
   --transition: .22s cubic-bezier(.4,0,.2,1);
 }
@@ -37,29 +37,34 @@
   --badge-bg:  #f5f5f7;
   --up:        #34c759;
   --down:      #ff3b30;
-  --input-bg:  #f5f5f7;
-  --input-border: rgba(0,0,0,.12);
-  --input-border-focus: rgba(0,0,0,.35);
-  --user-bubble-bg: #1d1d1f;
-  --user-bubble-text: #ffffff;
-  --axe-bubble-bg: #ffffff;
-  --axe-bubble-border: rgba(0,0,0,.08);
-  --axe-bubble-text: #1d1d1f;
-  --thinking-bg: #ffffff;
   --status-online: #34c759;
   --status-thinking: #ff9500;
-  --send-bg: #1d1d1f;
-  --send-icon: #ffffff;
-  --qp-bg: #f5f5f7;
-  --qp-border: rgba(0,0,0,.1);
-  --qp-text: #6e6e73;
-  --qp-hover-bg: #1d1d1f;
-  --qp-hover-text: #ffffff;
-  --back-btn-bg: #f5f5f7;
-  --back-btn-color: #6e6e73;
-  --back-btn-hover: #1d1d1f;
-  --back-btn-hover-text: #ffffff;
-  --shadow: 0 4px 24px rgba(0,0,0,.07);
+
+  /* Glassmorphism — matches dashboard */
+  --glass-grad: linear-gradient(165deg, rgba(255,255,255,.62), rgba(255,255,255,.34));
+  --glass-bg:        rgba(255,255,255,.44);
+  --glass-bg-strong: rgba(255,255,255,.78);
+  --glass-border:    rgba(255,255,255,.55);
+  --glass-shadow:
+    inset 0 1px 0 rgba(255,255,255,.85),
+    inset 0 0 0 1px rgba(255,255,255,.18),
+    0 1px 2px rgba(30,32,60,.04),
+    0 18px 40px -16px rgba(30,32,60,.16);
+  --glass-shadow-hover:
+    inset 0 1px 0 rgba(255,255,255,.9),
+    inset 0 0 0 1px rgba(255,255,255,.22),
+    0 24px 48px -16px rgba(30,32,60,.22);
+  --blob-1: rgba(30,41,90,.08);
+  --blob-2: rgba(70,130,200,.09);
+  --blob-3: rgba(16,110,80,.06);
+
+  /* Sapphire accent */
+  --gold:       #3763a8;
+  --gold-light: #6f97d6;
+  --gold-deep:  #2a4d85;
+  --gold-border: rgba(55,99,168,.35);
+  --gold-glow:  rgba(55,99,168,.35);
+  --gold-bg:    rgba(55,99,168,.10);
 }
 
 [data-theme="dark"] {
@@ -77,29 +82,34 @@
   --badge-bg:  rgba(255,255,255,.1);
   --up:        #30d158;
   --down:      #ff453a;
-  --input-bg:  #2c2c2e;
-  --input-border: rgba(255,255,255,.1);
-  --input-border-focus: rgba(255,255,255,.35);
-  --user-bubble-bg: #f5f5f7;
-  --user-bubble-text: #1d1d1f;
-  --axe-bubble-bg: #1c1c1e;
-  --axe-bubble-border: rgba(255,255,255,.08);
-  --axe-bubble-text: #f5f5f7;
-  --thinking-bg: #1c1c1e;
   --status-online: #30d158;
   --status-thinking: #ff9f0a;
-  --send-bg: #f5f5f7;
-  --send-icon: #1d1d1f;
-  --qp-bg: #2c2c2e;
-  --qp-border: rgba(255,255,255,.08);
-  --qp-text: #aeaeb2;
-  --qp-hover-bg: #f5f5f7;
-  --qp-hover-text: #1d1d1f;
-  --back-btn-bg: rgba(255,255,255,.08);
-  --back-btn-color: #aeaeb2;
-  --back-btn-hover: #f5f5f7;
-  --back-btn-hover-text: #1d1d1f;
-  --shadow: 0 4px 24px rgba(0,0,0,.3);
+
+  /* Glassmorphism — matches dashboard */
+  --glass-grad: linear-gradient(165deg, rgba(255,255,255,.10), rgba(255,255,255,.025));
+  --glass-bg:        rgba(255,255,255,.055);
+  --glass-bg-strong: rgba(35,35,40,.82);
+  --glass-border:    rgba(255,255,255,.10);
+  --glass-shadow:
+    inset 0 1px 0 rgba(255,255,255,.09),
+    inset 0 0 0 1px rgba(255,255,255,.05),
+    0 1px 2px rgba(0,0,0,.3),
+    0 24px 48px -16px rgba(0,0,0,.55);
+  --glass-shadow-hover:
+    inset 0 1px 0 rgba(255,255,255,.12),
+    inset 0 0 0 1px rgba(255,255,255,.07),
+    0 28px 56px -16px rgba(0,0,0,.65);
+  --blob-1: rgba(24,34,84,.55);
+  --blob-2: rgba(70,150,220,.16);
+  --blob-3: rgba(16,110,80,.16);
+
+  /* Sapphire accent */
+  --gold:       #7fa8e8;
+  --gold-light: #a9c6f2;
+  --gold-deep:  #5683c9;
+  --gold-border: rgba(127,168,232,.35);
+  --gold-glow:  rgba(127,168,232,.45);
+  --gold-bg:    rgba(127,168,232,.12);
 }
 
 /* ── RESET ────────────────────────────────────────────── */
@@ -112,44 +122,92 @@ body{
   display:flex;
   flex-direction:column;
   height:100%;
+  position:relative;
   -webkit-font-smoothing:antialiased;
   transition:background var(--transition),color var(--transition);
 }
 
+/* ── AMBIENT BACKGROUND (glassmorphism) ─────────────────── */
+body::before{
+  content:'';
+  position:fixed;
+  inset:-10%;
+  z-index:0;
+  pointer-events:none;
+  background-image:
+    radial-gradient(900px 800px at 12% -10%, var(--blob-1), transparent 60%),
+    radial-gradient(800px 700px at 108% 12%, var(--blob-2), transparent 62%),
+    radial-gradient(750px 750px at 40% 115%, var(--blob-3), transparent 60%);
+  filter:blur(60px);
+}
+body::after{
+  content:'';
+  position:fixed;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  opacity:.035;
+  mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size:120px 120px;
+}
+[data-theme="dark"] body::after{opacity:.05}
+
 /* ── HEADER ── */
 .header{
   display:flex;align-items:center;gap:12px;
-  padding:14px 20px;
-  background:var(--bg2);
-  border-bottom:1px solid var(--divider);
+  margin:14px 14px 0;
+  padding:12px 16px;
+  background:var(--glass-grad);
+  backdrop-filter:blur(24px) saturate(150%);
+  -webkit-backdrop-filter:blur(24px) saturate(150%);
+  border:1px solid var(--glass-border);
+  border-radius:20px;
+  box-shadow:var(--glass-shadow);
   flex-shrink:0;
-  box-shadow:var(--shadow);
+  position:relative;
+  z-index:1;
 }
 .logo-icon{
-  width:36px;height:36px;border-radius:10px;
-  background:var(--nav-bg);
+  width:36px;height:36px;border-radius:11px;
+  background:linear-gradient(150deg,var(--gold-light),var(--gold-deep));
   display:grid;place-items:center;flex-shrink:0;
+  box-shadow:0 4px 14px -4px var(--gold-glow);
 }
-.logo-icon svg{width:20px;height:20px;}
+.logo-mark{
+  font-family:'Anton',sans-serif;
+  color:#f4f8ff;
+  line-height:1;
+  -webkit-text-fill-color:#f4f8ff;
+}
+.logo-icon .logo-mark{font-size:17px;}
 .back-btn{
-  width:34px;height:34px;border-radius:10px;
-  background:var(--back-btn-bg);
-  border:1px solid var(--divider);
+  width:36px;height:36px;border-radius:50%;
+  background:var(--glass-bg);
+  border:1px solid var(--glass-border);
   display:grid;place-items:center;flex-shrink:0;
-  color:var(--back-btn-color);text-decoration:none;
+  color:var(--text2);text-decoration:none;
   transition:all var(--transition);
 }
-.back-btn:hover{background:var(--back-btn-hover);color:var(--back-btn-hover-text);border-color:transparent;}
+.back-btn:hover{color:var(--gold);transform:translateY(-1px);}
 .back-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.2;}
 .header-text{}
 .header-title{
-  font-family:'Anton',sans-serif;font-size:17px;
-  letter-spacing:1px;color:var(--text);
+  font-family:'Anton',sans-serif;font-size:16px;
+  letter-spacing:1px;
+  background:linear-gradient(100deg, var(--text) 45%, var(--gold-light) 140%);
+  -webkit-background-clip:text;background-clip:text;
+  color:transparent;-webkit-text-fill-color:transparent;
 }
 .header-sub{font-size:11px;color:var(--text3);margin-top:1px}
 .status{
   margin-left:auto;display:flex;align-items:center;gap:6px;
   font-size:11px;color:var(--text3);
+  padding:6px 11px;
+  background:var(--glass-bg);
+  border:1px solid var(--glass-border);
+  border-radius:var(--radius-pill);
+  flex-shrink:0;
 }
 .status-dot{
   width:7px;height:7px;border-radius:50%;
@@ -164,9 +222,11 @@ body{
   flex:1;
   overflow-y:auto;
   -webkit-overflow-scrolling:touch;
-  padding:20px;
+  padding:20px 16px;
   display:flex;flex-direction:column;gap:16px;
   scroll-behavior:smooth;
+  position:relative;
+  z-index:1;
 }
 .chat-area::-webkit-scrollbar{width:4px}
 .chat-area::-webkit-scrollbar-track{background:transparent}
@@ -185,12 +245,15 @@ body{
   align-self:flex-end;
 }
 .msg.axe .msg-avatar{
-  background:var(--nav-bg);
-  color:var(--nav-text);
-  font-family:'Anton',sans-serif;font-size:10px;letter-spacing:.5px;
+  background:linear-gradient(150deg,var(--gold-light),var(--gold-deep));
+  color:#f4f8ff;
+  font-family:'Anton',sans-serif;font-size:15px;
+  box-shadow:0 4px 12px -4px var(--gold-glow);
 }
 .msg.user .msg-avatar{
-  background:var(--badge-bg);color:var(--text2);
+  background:var(--glass-grad);
+  border:1px solid var(--glass-border);
+  color:var(--text2);
 }
 
 .msg-bubble{
@@ -198,16 +261,19 @@ body{
   font-size:13.5px;line-height:1.6;
 }
 .msg.axe .msg-bubble{
-  background:var(--axe-bubble-bg);
-  border:1px solid var(--axe-bubble-border);
-  color:var(--axe-bubble-text);
+  background:var(--glass-grad);
+  backdrop-filter:blur(20px) saturate(150%);
+  -webkit-backdrop-filter:blur(20px) saturate(150%);
+  border:1px solid var(--glass-border);
+  color:var(--text);
   border-bottom-left-radius:4px;
-  box-shadow:var(--shadow);
+  box-shadow:var(--glass-shadow);
 }
 .msg.user .msg-bubble{
-  background:var(--user-bubble-bg);
-  color:var(--user-bubble-text);
+  background:linear-gradient(150deg,var(--gold-light),var(--gold-deep));
+  color:#f4f8ff;
   border-bottom-right-radius:4px;
+  box-shadow:0 10px 24px -10px var(--gold-glow);
 }
 
 .msg-time{
@@ -226,12 +292,14 @@ body{
 .thinking-bubble{
   display:flex;align-items:center;gap:8px;
   padding:12px 16px;
-  background:var(--thinking-bg);
-  border:1px solid var(--axe-bubble-border);
+  background:var(--glass-grad);
+  backdrop-filter:blur(20px) saturate(150%);
+  -webkit-backdrop-filter:blur(20px) saturate(150%);
+  border:1px solid var(--glass-border);
   border-radius:16px;border-bottom-left-radius:4px;
   font-size:12px;color:var(--text3);
   max-width:78%;
-  box-shadow:var(--shadow);
+  box-shadow:var(--glass-shadow);
 }
 .thinking-dots{display:flex;gap:4px}
 .thinking-dots span{
@@ -245,13 +313,17 @@ body{
 
 /* ── INPUT AREA ── */
 .input-area{
-  padding:12px 16px 16px;
-  background:var(--bg2);
-  border-top:1px solid var(--divider);
+  margin:0 14px 14px;
+  padding:14px 16px 16px;
+  background:var(--glass-grad);
+  backdrop-filter:blur(26px) saturate(150%);
+  -webkit-backdrop-filter:blur(26px) saturate(150%);
+  border:1px solid var(--glass-border);
+  border-radius:22px;
+  box-shadow:var(--glass-shadow);
   flex-shrink:0;
-  position:sticky;
-  bottom:0;
-  z-index:100;
+  position:relative;
+  z-index:1;
 }
 .input-row{
   display:flex;gap:10px;align-items:flex-end;
@@ -259,8 +331,8 @@ body{
 .input-wrap{flex:1;position:relative}
 textarea{
   width:100%;
-  background:var(--input-bg);
-  border:1.5px solid var(--input-border);
+  background:var(--glass-bg);
+  border:1.5px solid var(--glass-border);
   border-radius:14px;
   padding:12px 16px;
   color:var(--text);
@@ -273,33 +345,33 @@ textarea{
   transition:border-color var(--transition);
 }
 textarea::placeholder{color:var(--text3)}
-textarea:focus{border-color:var(--input-border-focus)}
+textarea:focus{border-color:var(--gold-border)}
 .send-btn{
   width:48px;height:48px;border-radius:14px;
-  background:var(--send-bg);
+  background:linear-gradient(150deg,var(--gold-light),var(--gold-deep));
   border:none;cursor:pointer;
   display:grid;place-items:center;
   flex-shrink:0;
   transition:opacity var(--transition),transform .15s;
-  box-shadow:0 4px 14px rgba(0,0,0,.15);
+  box-shadow:0 10px 24px -8px var(--gold-glow), inset 0 1px 0 rgba(255,255,255,.4);
 }
-.send-btn:hover{opacity:.85;transform:translateY(-1px)}
+.send-btn:hover{opacity:.9;transform:translateY(-1px)}
 .send-btn:active{transform:translateY(0)}
 .send-btn:disabled{opacity:.35;cursor:not-allowed;transform:none}
-.send-btn svg{width:18px;height:18px;stroke:var(--send-icon);fill:none;stroke-width:2}
+.send-btn svg{width:18px;height:18px;stroke:#f4f8ff;fill:none;stroke-width:2}
 
 /* Attach / receipt-scan button */
 .attach-btn{
   width:48px;height:48px;border-radius:14px;
-  background:var(--qp-bg);
-  border:1.5px solid var(--qp-border);
+  background:var(--glass-bg);
+  border:1.5px solid var(--glass-border);
   cursor:pointer;
   display:grid;place-items:center;
   flex-shrink:0;
   transition:all var(--transition);
   color:var(--text2);
 }
-.attach-btn:hover{background:var(--qp-hover-bg);color:var(--qp-hover-text);border-color:transparent;}
+.attach-btn:hover{color:var(--gold);border-color:var(--gold-border);}
 .attach-btn:disabled{opacity:.4;cursor:not-allowed;}
 .attach-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;}
 
@@ -307,7 +379,7 @@ textarea:focus{border-color:var(--input-border-focus)}
 .receipt-thumb{
   max-width:200px;max-height:200px;border-radius:12px;
   display:block;margin-bottom:6px;
-  border:1px solid var(--axe-bubble-border);
+  border:1px solid var(--glass-border);
 }
 
 /* Undo button inside an Axe receipt-result bubble */
@@ -315,27 +387,13 @@ textarea:focus{border-color:var(--input-border-focus)}
   margin-top:10px;
   font-size:11px;padding:6px 14px;border-radius:var(--radius-pill);
   background:transparent;
-  border:1px solid var(--axe-bubble-border);
+  border:1px solid var(--glass-border);
   color:var(--text2);cursor:pointer;
   transition:all var(--transition);
   font-family:'DM Sans',sans-serif;
 }
 .undo-btn:hover{color:var(--down);border-color:var(--down);}
 .undo-btn:disabled{opacity:.5;cursor:not-allowed;}
-
-/* Quick prompts */
-.quick-prompts{
-  display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;
-}
-.qp{
-  font-size:11px;padding:5px 11px;border-radius:var(--radius-pill);
-  background:var(--qp-bg);
-  border:1px solid var(--qp-border);
-  color:var(--qp-text);cursor:pointer;
-  transition:all var(--transition);white-space:nowrap;
-  font-family:'DM Sans',sans-serif;
-}
-.qp:hover{background:var(--qp-hover-bg);color:var(--qp-hover-text);border-color:transparent;}
 
 /* ── WELCOME ── */
 .welcome{
@@ -344,12 +402,12 @@ textarea:focus{border-color:var(--input-border-focus)}
 }
 .welcome-icon{
   width:56px;height:56px;border-radius:16px;
-  background:var(--nav-bg);
+  background:linear-gradient(150deg,var(--gold-light),var(--gold-deep));
   display:grid;place-items:center;
-  box-shadow:0 8px 24px rgba(0,0,0,.15);
+  box-shadow:0 12px 28px -8px var(--gold-glow);
   margin-bottom:4px;
 }
-.welcome-icon svg{width:26px;height:26px;}
+.welcome-icon .logo-mark{font-size:26px;}
 .welcome h2{
   font-family:'Anton',sans-serif;font-size:20px;letter-spacing:.5px;
   color:var(--text);
@@ -370,9 +428,7 @@ textarea:focus{border-color:var(--input-border-focus)}
     <svg viewBox="0 0 24 24"><polyline points="15,18 9,12 15,6"/></svg>
   </a>
   <div class="logo-icon">
-    <svg viewBox="0 0 24 24" fill="none" stroke="var(--nav-text)" stroke-width="2.2">
-      <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
-    </svg>
+    <span class="logo-mark">A</span>
   </div>
   <div class="header-text">
     <div class="header-title">AXE FINANCE — AXE</div>
@@ -388,9 +444,7 @@ textarea:focus{border-color:var(--input-border-focus)}
 <div class="chat-area" id="chatArea">
   <div class="welcome">
     <div class="welcome-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="var(--nav-text)" stroke-width="2.2">
-        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
-      </svg>
+      <span class="logo-mark">A</span>
     </div>
     <h2>AXE IS READY</h2>
     <p>Ask me anything about your finances, or tap the 📎 button to scan a receipt or bank slip — I'll log it for you automatically.</p>
@@ -399,18 +453,11 @@ textarea:focus{border-color:var(--input-border-focus)}
 
 <!-- INPUT AREA -->
 <div class="input-area">
-  <div class="quick-prompts">
-    <div class="qp" onclick="sendQuick(this)">How am I doing this month?</div>
-    <div class="qp" onclick="sendQuick(this)">Where am I overspending?</div>
-    <div class="qp" onclick="sendQuick(this)">Review my subscriptions</div>
-    <div class="qp" onclick="sendQuick(this)">How much did I spend on food?</div>
-    <div class="qp" onclick="sendQuick(this)">Give me a full financial review</div>
-  </div>
-  <div class="input-row">
+<div class="input-row">
     <button class="attach-btn" id="attachBtn" title="Scan a receipt or bank slip" type="button">
       <svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
     </button>
-    <input type="file" id="receiptInput" accept="image/*" capture="environment" style="display:none">
+    <input type="file" id="receiptInput" accept="image/*" style="display:none">
     <div class="input-wrap">
       <textarea id="userInput" placeholder="Ask your CFO anything…" rows="1"></textarea>
     </div>
@@ -468,7 +515,7 @@ function appendMessage(role, text) {
 
   if (role === 'cfo' || role === 'axe') {
     div.innerHTML = `
-      <div class="msg-avatar">AXE</div>
+      <div class="msg-avatar">A</div>
       <div>
         <div class="msg-bubble">${formatCFOText(text)}</div>
         <div class="msg-time">${getTime()}</div>
@@ -495,7 +542,7 @@ function showThinking(label) {
   div.className = 'msg axe';
   div.id = 'thinkingMsg';
   div.innerHTML = `
-    <div class="msg-avatar">AXE</div>
+    <div class="msg-avatar">A</div>
     <div class="thinking-bubble">
       <div class="thinking-dots">
         <span></span><span></span><span></span>
@@ -567,11 +614,18 @@ async function sendMessage() {
   input.focus();
 }
 
-function sendQuick(el) {
-  const input = document.getElementById('userInput');
-  input.value = el.textContent;
-  sendMessage();
-}
+// ── INPUT AUTO-RESIZE ─────────────────────────────────────────────────────────
+document.getElementById('userInput').addEventListener('input', function() {
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+});
+
+document.getElementById('userInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
 
 // ── RECEIPT SCANNING ──────────────────────────────────────────────────────────
 const RECEIPT_SCAN_ENDPOINT = '/api/scan-receipt';
@@ -625,7 +679,7 @@ function appendReceiptResult(data) {
   const div = document.createElement('div');
   div.className = 'msg axe';
   div.innerHTML = `
-    <div class="msg-avatar">AXE</div>
+    <div class="msg-avatar">A</div>
     <div>
       <div class="msg-bubble">
         ${bodyHtml}
@@ -709,19 +763,6 @@ document.getElementById('receiptInput').addEventListener('change', function (e) 
   if (!file) return;
   scanReceipt(file);
   e.target.value = ''; // allow selecting the same file again later
-});
-
-// ── INPUT AUTO-RESIZE ─────────────────────────────────────────────────────────
-document.getElementById('userInput').addEventListener('input', function() {
-  this.style.height = 'auto';
-  this.style.height = Math.min(this.scrollHeight, 120) + 'px';
-});
-
-document.getElementById('userInput').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  }
 });
 </script>
 </body>
