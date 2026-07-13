@@ -22,6 +22,7 @@ from core import (
     AUTHORIZED_USER_ID, CATEGORY_LIST, INCOME_CATEGORY_LIST,
     init_db as core_init_db, process_due_subscriptions,
     generate_monthly_excel, upload_to_gdrive, GDRIVE_AVAILABLE,
+    send_excel_email,
 )
 from receipt_parser import create_parser
 
@@ -759,15 +760,15 @@ def download_backup():
     return send_file(DATABASE, as_attachment=True, download_name=filename, mimetype='application/x-sqlite3')
 
 
-# ── Manual Google Drive backup test (replaces the old Telegram /testbackup) ──
-@app.route('/api/test-gdrive-backup', methods=['POST', 'GET'])
+# ── Manual email backup test (replaces the failed Google Drive approach) ────
+@app.route('/api/test-email-backup', methods=['POST', 'GET'])
 @require_auth
-def api_test_gdrive_backup():
+def api_test_email_backup():
     """
-    Manually trigger a Google Drive monthly export right now, instead of
+    Manually trigger a monthly Excel export via email right now, instead of
     waiting for the 1st-of-month scheduled job. Lets you verify the whole
-    pipeline (env var -> Drive API -> folder permissions) without waiting.
-    Usage: GET or POST /api/test-gdrive-backup?year=2026&month=6
+    pipeline (SMTP env vars -> Gmail login -> send) without waiting.
+    Usage: GET or POST /api/test-email-backup?year=2026&month=6
     Defaults to last month if year/month aren't given.
     """
     try:
@@ -779,61 +780,42 @@ def api_test_gdrive_backup():
             return jsonify({'success': False, 'error': 'year/month must be integers, e.g. ?year=2026&month=6'}), 400
 
         diagnostics = {
-            'gdrive_available': GDRIVE_AVAILABLE,
-            'service_account_json_set': bool(os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON', '').strip()),
+            'smtp_email_set': bool(os.environ.get('SMTP_EMAIL', '').strip()),
+            'smtp_app_password_set': bool(os.environ.get('SMTP_APP_PASSWORD', '').strip()),
+            'destination_email': os.environ.get('BACKUP_EMAIL_TO', '').strip() or os.environ.get('SMTP_EMAIL', '').strip() or 'NOT SET',
         }
 
-        if not GDRIVE_AVAILABLE:
+        if not diagnostics['smtp_email_set'] or not diagnostics['smtp_app_password_set']:
             return jsonify({
                 'success': False,
-                'error': 'Google API packages not installed (google-api-python-client / google-auth missing from requirements.txt).',
-                'diagnostics': diagnostics,
-            }), 200
-
-        if not diagnostics['service_account_json_set']:
-            return jsonify({
-                'success': False,
-                'error': 'GOOGLE_SERVICE_ACCOUNT_JSON environment variable is not set on Render.',
-                'diagnostics': diagnostics,
-            }), 200
-
-        # Validate the JSON itself before attempting the upload — this is
-        # where "malformed / not minified" failures show up.
-        try:
-            parsed = json.loads(os.environ['GOOGLE_SERVICE_ACCOUNT_JSON'])
-            diagnostics['service_account_json_valid'] = True
-            diagnostics['service_account_email'] = parsed.get('client_email', 'MISSING client_email field')
-        except Exception as je:
-            return jsonify({
-                'success': False,
-                'error': f'GOOGLE_SERVICE_ACCOUNT_JSON is not valid JSON: {je}',
-                'hint': 'Copy the entire service account JSON file content, minify it to one line (no line breaks), and paste it as the env var value on Render.',
+                'error': 'SMTP_EMAIL or SMTP_APP_PASSWORD environment variable is not set on Render.',
+                'hint': 'Add both env vars: SMTP_EMAIL (your Gmail address) and SMTP_APP_PASSWORD (a 16-character App Password from myaccount.google.com/apppasswords — requires 2-Step Verification enabled first).',
                 'diagnostics': diagnostics,
             }), 200
 
         excel_bytes = generate_monthly_excel(year, month)
         filename = f"Axe_Finance_TEST_{calendar.month_name[month]}_{year}.xlsx"
-        gdrive_errors = []
-        link = upload_to_gdrive(excel_bytes, filename, error_out=gdrive_errors)
+        subject = f"Axe Finance — {calendar.month_name[month]} {year} Export (Test)"
+        body = f"This is a manual test of the monthly backup email.\n\nAttached: {filename}"
 
-        if link:
+        error = send_excel_email(excel_bytes, filename, subject, body)
+
+        if not error:
             return jsonify({
                 'success': True,
-                'message': f'Uploaded {filename} to Google Drive.',
-                'link': link,
+                'message': f'Emailed {filename} to {diagnostics["destination_email"]}.',
                 'diagnostics': diagnostics,
             })
         else:
-            real_error = gdrive_errors[0] if gdrive_errors else 'Unknown — no exception was raised, but Drive returned no link.'
             return jsonify({
                 'success': False,
-                'error': f'Google Drive rejected the upload: {real_error}',
-                'hint': 'If this mentions "insufficient permissions" or 403/404, the Drive folder is not shared with the service account email as Editor. If it mentions the Drive API being disabled, enable it in Google Cloud Console for this project.',
+                'error': f'Email send failed: {error}',
+                'hint': 'Most common cause: SMTP_APP_PASSWORD is your normal Gmail password instead of a generated App Password, or 2-Step Verification is not enabled on that Gmail account (required for App Passwords to work).',
                 'diagnostics': diagnostics,
             }), 200
 
     except Exception as e:
-        logging.error(f"test-gdrive-backup error: {e}")
+        logging.error(f"test-email-backup error: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -922,9 +904,9 @@ def _job_process_subscriptions():
     except Exception as e:
         logging.error(f"Subscription check job failed: {e}")
 
-def _job_monthly_gdrive_backup():
-    """Runs daily; only actually uploads on the 1st of the month, for the
-    previous month — same behaviour as the old Telegram job."""
+def _job_monthly_email_backup():
+    """Runs daily; only actually emails on the 1st of the month, for the
+    previous month — same cadence as the old Google Drive job."""
     try:
         now = now_bkk()
         if now.day != 1:
@@ -933,17 +915,19 @@ def _job_monthly_gdrive_backup():
         year = now.year if now.month > 1 else now.year - 1
         excel_bytes = generate_monthly_excel(year, month)
         filename = f"Axe_Finance_{calendar.month_name[month]}_{year}.xlsx"
-        link = upload_to_gdrive(excel_bytes, filename) if GDRIVE_AVAILABLE else ''
-        if link:
-            logging.info(f"Monthly Drive backup uploaded: {filename} -> {link}")
+        subject = f"Axe Finance — {calendar.month_name[month]} {year} Export"
+        body = f"Here's your monthly Axe Finance export.\n\nAttached: {filename}"
+        error = send_excel_email(excel_bytes, filename, subject, body)
+        if not error:
+            logging.info(f"Monthly email backup sent: {filename}")
         else:
-            logging.warning(f"Monthly Drive backup skipped/failed for {filename}")
+            logging.warning(f"Monthly email backup failed for {filename}: {error}")
     except Exception as e:
-        logging.error(f"Monthly Drive backup job failed: {e}")
+        logging.error(f"Monthly email backup job failed: {e}")
 
 scheduler = BackgroundScheduler(timezone=BANGKOK_TZ)
 scheduler.add_job(_job_process_subscriptions, 'cron', hour=8, minute=0, id='check_subs')
-scheduler.add_job(_job_monthly_gdrive_backup, 'cron', hour=9, minute=5, id='monthly_gdrive_backup')
+scheduler.add_job(_job_monthly_email_backup, 'cron', hour=9, minute=5, id='monthly_email_backup')
 
 # ── Flask runner ──────────────────────────────────────────────────────────────
 def run_flask():
@@ -970,7 +954,7 @@ if __name__ == '__main__':
     _job_process_subscriptions()
 
     scheduler.start()
-    logging.info("Scheduler started. Sub checks: daily 8AM, Drive backup: daily 9:05AM (Bangkok time)")
+    logging.info("Scheduler started. Sub checks: daily 8AM, Email backup: daily 9:05AM (Bangkok time)")
 
     keep_alive_thread = Thread(target=keep_alive, daemon=True)
     keep_alive_thread.start()

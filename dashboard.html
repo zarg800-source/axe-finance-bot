@@ -1202,10 +1202,10 @@ body::after {
             </div>
           </div>
           <input type="file" id="restoreFileInput" accept=".db" style="display:none">
-          <div class="avatar-menu-row" id="testDriveRow">
+          <div class="avatar-menu-row" id="testEmailRow">
             <div class="row-left">
-              <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
-              <span>Test Drive Backup</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              <span>Test Email Backup</span>
             </div>
           </div>
           <div class="avatar-menu-divider"></div>
@@ -1767,38 +1767,35 @@ if (restoreRow && restoreFileInput) {
   });
 }
 
-var testDriveRow = $("testDriveRow");
-if (testDriveRow) {
-  testDriveRow.addEventListener('click', async function(){
+var testEmailRow = $("testEmailRow");
+if (testEmailRow) {
+  testEmailRow.addEventListener('click', async function(){
     avatarMenu.classList.remove('open');
-    testDriveRow.style.opacity = '0.5';
+    testEmailRow.style.opacity = '0.5';
     try {
-      var res = await fetch('/api/test-gdrive-backup', { method: 'POST' });
+      var res = await fetch('/api/test-email-backup', { method: 'POST' });
       var data = await res.json();
       if (data.success) {
         alert(
-          '✅ Google Drive backup works!\n\n' +
+          '✅ Email backup works!\n\n' +
           data.message + '\n\n' +
-          'Service account: ' + (data.diagnostics.service_account_email || 'unknown') + '\n\n' +
-          'Check your Drive folder to confirm the file appeared.'
+          'Check your inbox to confirm it arrived.'
         );
       } else {
-        var msg = '❌ Drive backup failed:\n\n' + (data.error || 'Unknown error');
+        var msg = '❌ Email backup failed:\n\n' + (data.error || 'Unknown error');
         if (data.hint) msg += '\n\nFix: ' + data.hint;
         if (data.diagnostics) {
           msg += '\n\n— Diagnostics —\n' +
-            'Packages installed: ' + data.diagnostics.gdrive_available + '\n' +
-            'Env var set: ' + data.diagnostics.service_account_json_set;
-          if ('service_account_json_valid' in data.diagnostics) {
-            msg += '\nJSON valid: ' + data.diagnostics.service_account_json_valid;
-          }
+            'SMTP_EMAIL set: ' + data.diagnostics.smtp_email_set + '\n' +
+            'SMTP_APP_PASSWORD set: ' + data.diagnostics.smtp_app_password_set + '\n' +
+            'Would send to: ' + data.diagnostics.destination_email;
         }
         alert(msg);
       }
     } catch (err) {
       alert('❌ Test failed: ' + err.message);
     }
-    testDriveRow.style.opacity = '1';
+    testEmailRow.style.opacity = '1';
   });
 }
 

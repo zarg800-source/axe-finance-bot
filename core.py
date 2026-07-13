@@ -16,6 +16,11 @@ import io
 import json
 import sqlite3
 import logging
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email.mime.text import MIMEText
+from email import encoders
 from datetime import datetime, timedelta, date
 import pytz
 from openpyxl import Workbook
@@ -1093,6 +1098,48 @@ def upload_to_gdrive(file_bytes: bytes, filename: str, error_out: list = None) -
         if error_out is not None:
             error_out.append(str(e))
         return ''
+
+
+def send_excel_email(file_bytes: bytes, filename: str, subject: str, body: str) -> str:
+    """
+    Email an Excel file as an attachment via Gmail SMTP.
+    Returns '' (empty string) on success, or an error message string on failure.
+    Requires these Render env vars:
+      SMTP_EMAIL         — the Gmail address sending the backup (e.g. yourname@gmail.com)
+      SMTP_APP_PASSWORD  — a 16-character Gmail "App Password" (NOT your normal password)
+      BACKUP_EMAIL_TO    — optional; where to send it. Defaults to SMTP_EMAIL itself if unset.
+    """
+    smtp_email = os.environ.get('SMTP_EMAIL', '').strip()
+    smtp_password = os.environ.get('SMTP_APP_PASSWORD', '').strip().replace(' ', '')
+    to_email = os.environ.get('BACKUP_EMAIL_TO', '').strip() or smtp_email
+
+    if not smtp_email or not smtp_password:
+        return 'SMTP_EMAIL or SMTP_APP_PASSWORD environment variable is not set on Render.'
+    if not to_email:
+        return 'No destination email configured (set BACKUP_EMAIL_TO, or SMTP_EMAIL will be used as the recipient).'
+
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = smtp_email
+        msg['To'] = to_email
+        msg['Subject'] = subject
+        msg.attach(MIMEText(body, 'plain'))
+
+        part = MIMEBase('application', 'octet-stream')
+        part.set_payload(file_bytes)
+        encoders.encode_base64(part)
+        part.add_header('Content-Disposition', f'attachment; filename="{filename}"')
+        msg.attach(part)
+
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=30) as server:
+            server.login(smtp_email, smtp_password)
+            server.sendmail(smtp_email, [to_email], msg.as_string())
+
+        logger.info(f"Emailed backup '{filename}' to {to_email}")
+        return ''
+    except Exception as e:
+        logger.error(f"Email backup failed: {e}")
+        return str(e)
 
 
 def generate_monthly_excel(year: int, month: int) -> bytes:
