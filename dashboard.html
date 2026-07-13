@@ -1786,8 +1786,7 @@ if (testEmailRow) {
         if (data.hint) msg += '\n\nFix: ' + data.hint;
         if (data.diagnostics) {
           msg += '\n\n— Diagnostics —\n' +
-            'SMTP_EMAIL set: ' + data.diagnostics.smtp_email_set + '\n' +
-            'SMTP_APP_PASSWORD set: ' + data.diagnostics.smtp_app_password_set + '\n' +
+            'RESEND_API_KEY set: ' + data.diagnostics.resend_api_key_set + '\n' +
             'Would send to: ' + data.diagnostics.destination_email;
         }
         alert(msg);

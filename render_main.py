@@ -760,14 +760,14 @@ def download_backup():
     return send_file(DATABASE, as_attachment=True, download_name=filename, mimetype='application/x-sqlite3')
 
 
-# ── Manual email backup test (replaces the failed Google Drive approach) ────
+# ── Manual email backup test (now via Resend, since Render blocks SMTP) ─────
 @app.route('/api/test-email-backup', methods=['POST', 'GET'])
 @require_auth
 def api_test_email_backup():
     """
     Manually trigger a monthly Excel export via email right now, instead of
     waiting for the 1st-of-month scheduled job. Lets you verify the whole
-    pipeline (SMTP env vars -> Gmail login -> send) without waiting.
+    pipeline (Resend API key -> send) without waiting.
     Usage: GET or POST /api/test-email-backup?year=2026&month=6
     Defaults to last month if year/month aren't given.
     """
@@ -780,16 +780,15 @@ def api_test_email_backup():
             return jsonify({'success': False, 'error': 'year/month must be integers, e.g. ?year=2026&month=6'}), 400
 
         diagnostics = {
-            'smtp_email_set': bool(os.environ.get('SMTP_EMAIL', '').strip()),
-            'smtp_app_password_set': bool(os.environ.get('SMTP_APP_PASSWORD', '').strip()),
-            'destination_email': os.environ.get('BACKUP_EMAIL_TO', '').strip() or os.environ.get('SMTP_EMAIL', '').strip() or 'NOT SET',
+            'resend_api_key_set': bool(os.environ.get('RESEND_API_KEY', '').strip()),
+            'destination_email': os.environ.get('BACKUP_EMAIL_TO', '').strip() or 'NOT SET',
         }
 
-        if not diagnostics['smtp_email_set'] or not diagnostics['smtp_app_password_set']:
+        if not diagnostics['resend_api_key_set'] or diagnostics['destination_email'] == 'NOT SET':
             return jsonify({
                 'success': False,
-                'error': 'SMTP_EMAIL or SMTP_APP_PASSWORD environment variable is not set on Render.',
-                'hint': 'Add both env vars: SMTP_EMAIL (your Gmail address) and SMTP_APP_PASSWORD (a 16-character App Password from myaccount.google.com/apppasswords — requires 2-Step Verification enabled first).',
+                'error': 'RESEND_API_KEY or BACKUP_EMAIL_TO environment variable is not set on Render.',
+                'hint': 'Add RESEND_API_KEY (from resend.com → API Keys) and BACKUP_EMAIL_TO (the same email you signed up to Resend with, unless you have a verified custom domain).',
                 'diagnostics': diagnostics,
             }), 200
 
@@ -810,7 +809,7 @@ def api_test_email_backup():
             return jsonify({
                 'success': False,
                 'error': f'Email send failed: {error}',
-                'hint': 'Most common cause: SMTP_APP_PASSWORD is your normal Gmail password instead of a generated App Password, or 2-Step Verification is not enabled on that Gmail account (required for App Passwords to work).',
+                'hint': 'Most common cause on Resend\'s free tier: BACKUP_EMAIL_TO must exactly match the email address you used to sign up for Resend, unless you\'ve verified a custom domain.',
                 'diagnostics': diagnostics,
             }), 200
 

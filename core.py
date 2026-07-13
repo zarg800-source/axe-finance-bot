@@ -16,11 +16,8 @@ import io
 import json
 import sqlite3
 import logging
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.base import MIMEBase
-from email.mime.text import MIMEText
-from email import encoders
+import base64
+import requests
 from datetime import datetime, timedelta, date
 import pytz
 from openpyxl import Workbook
@@ -1102,41 +1099,54 @@ def upload_to_gdrive(file_bytes: bytes, filename: str, error_out: list = None) -
 
 def send_excel_email(file_bytes: bytes, filename: str, subject: str, body: str) -> str:
     """
-    Email an Excel file as an attachment via Gmail SMTP.
+    Email an Excel file as an attachment via the Resend HTTPS API.
+    (Switched from Gmail SMTP because Render blocks outbound SMTP ports
+    25/465/587 on free-tier web services — Resend uses HTTPS instead,
+    which is never blocked.)
     Returns '' (empty string) on success, or an error message string on failure.
     Requires these Render env vars:
-      SMTP_EMAIL         — the Gmail address sending the backup (e.g. yourname@gmail.com)
-      SMTP_APP_PASSWORD  — a 16-character Gmail "App Password" (NOT your normal password)
-      BACKUP_EMAIL_TO    — optional; where to send it. Defaults to SMTP_EMAIL itself if unset.
+      RESEND_API_KEY   — from resend.com → API Keys
+      BACKUP_EMAIL_TO  — the address to send the backup to. On Resend's free
+                          tier (no verified custom domain), this MUST be the
+                          same email address you used to sign up for Resend.
     """
-    smtp_email = os.environ.get('SMTP_EMAIL', '').strip()
-    smtp_password = os.environ.get('SMTP_APP_PASSWORD', '').strip().replace(' ', '')
-    to_email = os.environ.get('BACKUP_EMAIL_TO', '').strip() or smtp_email
+    api_key = os.environ.get('RESEND_API_KEY', '').strip()
+    to_email = os.environ.get('BACKUP_EMAIL_TO', '').strip()
 
-    if not smtp_email or not smtp_password:
-        return 'SMTP_EMAIL or SMTP_APP_PASSWORD environment variable is not set on Render.'
+    if not api_key:
+        return 'RESEND_API_KEY environment variable is not set on Render.'
     if not to_email:
-        return 'No destination email configured (set BACKUP_EMAIL_TO, or SMTP_EMAIL will be used as the recipient).'
+        return 'BACKUP_EMAIL_TO environment variable is not set on Render (this must be the same email you signed up to Resend with, unless you have a verified domain).'
 
     try:
-        msg = MIMEMultipart()
-        msg['From'] = smtp_email
-        msg['To'] = to_email
-        msg['Subject'] = subject
-        msg.attach(MIMEText(body, 'plain'))
-
-        part = MIMEBase('application', 'octet-stream')
-        part.set_payload(file_bytes)
-        encoders.encode_base64(part)
-        part.add_header('Content-Disposition', f'attachment; filename="{filename}"')
-        msg.attach(part)
-
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=30) as server:
-            server.login(smtp_email, smtp_password)
-            server.sendmail(smtp_email, [to_email], msg.as_string())
-
-        logger.info(f"Emailed backup '{filename}' to {to_email}")
-        return ''
+        payload = {
+            'from': 'Axe Finance <onboarding@resend.dev>',
+            'to': [to_email],
+            'subject': subject,
+            'text': body,
+            'attachments': [
+                {
+                    'filename': filename,
+                    'content': base64.b64encode(file_bytes).decode('ascii'),
+                }
+            ],
+        }
+        resp = requests.post(
+            'https://api.resend.com/emails',
+            headers={
+                'Authorization': f'Bearer {api_key}',
+                'Content-Type': 'application/json',
+            },
+            json=payload,
+            timeout=30,
+        )
+        if resp.status_code in (200, 201):
+            logger.info(f"Emailed backup '{filename}' to {to_email} via Resend")
+            return ''
+        else:
+            error_detail = resp.text
+            logger.error(f"Resend email failed ({resp.status_code}): {error_detail}")
+            return f"Resend API returned {resp.status_code}: {error_detail}"
     except Exception as e:
         logger.error(f"Email backup failed: {e}")
         return str(e)
