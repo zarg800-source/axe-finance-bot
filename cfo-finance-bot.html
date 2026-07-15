@@ -351,7 +351,11 @@ textarea{
   height:48px;min-height:48px;max-height:120px;
   line-height:48px;
   transition:border-color var(--transition),height var(--transition);
+  overflow-y:auto;
+  scrollbar-width:none;       /* Firefox */
+  -ms-overflow-style:none;    /* old Edge/IE */
 }
+textarea::-webkit-scrollbar{display:none;}  /* Chrome/Safari/mobile WebViews */
 textarea::placeholder{color:var(--text3)}
 textarea:focus{border-color:var(--gold-border);line-height:1.5;padding:12px 16px;}
 .send-btn{

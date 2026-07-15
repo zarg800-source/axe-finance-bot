@@ -1208,12 +1208,6 @@ body::after {
             </div>
           </div>
           <input type="file" id="restoreFileInput" accept=".db" style="display:none">
-          <div class="avatar-menu-row" id="testEmailRow">
-            <div class="row-left">
-              <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-              <span>Test Email Backup</span>
-            </div>
-          </div>
           <div class="avatar-menu-divider"></div>
           <a class="avatar-menu-row danger" href="/logout">
             <div class="row-left">
@@ -1780,37 +1774,6 @@ if (restoreRow && restoreFileInput) {
       alert('❌ Restore failed: ' + err.message);
     }
     e.target.value = '';
-  });
-}
-
-var testEmailRow = $("testEmailRow");
-if (testEmailRow) {
-  testEmailRow.addEventListener('click', async function(){
-    avatarMenu.classList.remove('open');
-    testEmailRow.style.opacity = '0.5';
-    try {
-      var res = await fetch('/api/test-email-backup', { method: 'POST' });
-      var data = await res.json();
-      if (data.success) {
-        alert(
-          '✅ Email backup works!\n\n' +
-          data.message + '\n\n' +
-          'Check your inbox to confirm it arrived.'
-        );
-      } else {
-        var msg = '❌ Email backup failed:\n\n' + (data.error || 'Unknown error');
-        if (data.hint) msg += '\n\nFix: ' + data.hint;
-        if (data.diagnostics) {
-          msg += '\n\n— Diagnostics —\n' +
-            'RESEND_API_KEY set: ' + data.diagnostics.resend_api_key_set + '\n' +
-            'Would send to: ' + data.diagnostics.destination_email;
-        }
-        alert(msg);
-      }
-    } catch (err) {
-      alert('❌ Test failed: ' + err.message);
-    }
-    testEmailRow.style.opacity = '1';
   });
 }
 
