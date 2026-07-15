@@ -1195,6 +1195,12 @@ body::after {
               <span>Backup</span>
             </div>
           </a>
+          <a class="avatar-menu-row" href="/export" id="exportRow" title="Download this month's report">
+            <div class="row-left">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="11"/><polyline points="9 15 12 18 15 15"/></svg>
+              <span>Export Report</span>
+            </div>
+          </a>
           <div class="avatar-menu-row" id="restoreRow">
             <div class="row-left">
               <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -1325,6 +1331,9 @@ body::after {
     <div class="card-header">
       <div><div class="card-title" id="hmonth"></div><div class="card-sub">Detailed breakdown for the month</div></div>
       <div class="chart-tabs">
+        <button class="chart-tab" id="hexport" title="Export this month's report">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </button>
         <button class="chart-tab" id="hprev"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
         <button class="chart-tab" id="hnext"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
       </div>
@@ -1725,6 +1734,13 @@ document.addEventListener('click', function(e){
 var backupRow = $("backupRow");
 if (backupRow) {
   backupRow.addEventListener('click', function(){
+    avatarMenu.classList.remove('open');
+  });
+}
+
+var exportRow = $("exportRow");
+if (exportRow) {
+  exportRow.addEventListener('click', function(){
     avatarMenu.classList.remove('open');
   });
 }
@@ -2248,6 +2264,9 @@ async function loadHistory() {
   $('htxns').innerHTML = buildRows(data.transactions || []);
 }
 
+$('hexport').addEventListener('click', function(){
+  window.location.href = '/export?year=' + histYear + '&month=' + histMonth;
+});
 $('hprev').addEventListener('click', function(){
   histMonth--;
   if (histMonth <= 0) { histMonth = 12; histYear--; }

@@ -6,6 +6,7 @@ import hashlib
 import secrets
 import json
 import shutil
+import io
 import base64 as _b64
 from datetime import datetime, timedelta
 from functools import wraps
@@ -406,7 +407,7 @@ def api_months():
     return jsonify(data)
 
 # ── PWA Assets ────────────────────────────────────────────────────────────────
-_ICON_192 = "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"
+_ICON_192 = "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"
 _ICON_512 = "iVBORw0KGgoAAAANSUhEUgAAAgAAAAIACAYAAAD0eNT6AAATh0lEQVR42u3deZAmdWHG8WdlWY4FaYWKghcgVyuoiIma4iqPmAptxBMPhMSLKFJ4kRIEDCamICoYIEaCBx6UBwmHdriMIiQaREEQpDmVQxBQoJF7Z5fNH/NaRVkp3Xd2Zmf6/X0+VV1DaTnLPlNOf99+37ffBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACjLIhPAwtW39YFJXjmP/wpXVk33Lj8JmDyLTQAL2tZJdpvHP39dPwKYTI8xAQAIAABAAAAAAgAAEAAAgAAAAAQAACAAAAABAAAIAABAAAAAAgAAEAAAgAAAAAQAACAAAAABAAAIAAAQAACAAAAABAAAIAAAAAEAAAgAAEAAAAACAAAQAACAAAAABAAAIAAAAAEAAAgAAEAAAAACAAAQAACAAAAABAAACAAAQAACAAAAABAAAIAAAAAEAAAgAAEAAAAACAAAQAACAAAAABAAAIAAAAAEAAAgAAEAAAAACAAAEAAAgAAAAAQAACAAAQAAAAAIAABAAAMDCs9gEsKAdmuTIefzzH/YjAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIBJ8H+i3Ojy0S5ZnQAAAABJRU5ErkJggg=="
 
 @app.route('/manifest.json')
@@ -758,6 +759,32 @@ def download_backup():
     now_str = now_bkk().strftime('%Y%m%d_%H%M')
     filename = f"finance_backup_{now_str}.db"
     return send_file(DATABASE, as_attachment=True, download_name=filename, mimetype='application/x-sqlite3')
+
+
+# ── Monthly Report Export (polished 3-sheet Excel — Summary/Transactions/By Category) ──
+@app.route('/export')
+@require_auth
+def download_export():
+    """Download the polished monthly Excel report straight from the browser.
+    Query params: ?year=YYYY&month=MM — defaults to the current Bangkok month."""
+    try:
+        now = now_bkk()
+        year = request.args.get('year', type=int) or now.year
+        month = request.args.get('month', type=int) or now.month
+        if not (1 <= month <= 12):
+            month = now.month
+
+        excel_bytes = generate_monthly_excel(year, month)
+        filename = f"Axe_Finance_{calendar.month_name[month]}_{year}.xlsx"
+        return send_file(
+            io.BytesIO(excel_bytes),
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+    except Exception as e:
+        logging.error(f"export error: {e}")
+        return jsonify({"error": "Could not generate the export. Please try again."}), 500
 
 
 # ── Manual email backup test (now via Resend, since Render blocks SMTP) ─────

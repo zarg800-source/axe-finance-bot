@@ -21,7 +21,9 @@ import requests
 from datetime import datetime, timedelta, date
 import pytz
 from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
+from openpyxl.formatting.rule import DataBarRule
 
 logger = logging.getLogger(__name__)
 
@@ -1153,8 +1155,12 @@ def send_excel_email(file_bytes: bytes, filename: str, subject: str, body: str) 
 
 
 def generate_monthly_excel(year: int, month: int) -> bytes:
-    """Generate Excel export for a given month. Returns bytes."""
+    """Generate a polished, multi-sheet Excel report for a given month,
+    styled to match the Axe Finance light-theme dashboard (white cards,
+    sapphire-blue accent, green/red semantic colors). Produces three sheets:
+    Summary, Transactions, and By Category. Returns raw .xlsx bytes."""
     import calendar as cal_mod
+
     month_start = f"{year}-{month:02d}-01"
     month_end   = f"{year+1}-01-01" if month == 12 else f"{year}-{month+1:02d}-01"
 
@@ -1171,50 +1177,268 @@ def generate_monthly_excel(year: int, month: int) -> bytes:
     accounts = c.fetchall()
     conn.close()
 
+    label   = f"{cal_mod.month_name[month]} {year}"
+    now_str = datetime.now(BANGKOK_TZ).strftime('%d %b %Y %H:%M')
+
+    # ── Palette — mirrors the Axe Finance light-theme dashboard exactly ────
+    INK      = "1D1D1F"   # --text / --nav-bg
+    INK_SOFT = "6E6E73"   # --text2
+    PANEL    = "F5F5F7"   # --bg / --badge-bg
+    PANEL2   = "FAFAFA"   # --bg3
+    WHITE    = "FFFFFF"
+    BORDER_C = "E5E5EA"
+    ACCENT   = "3763A8"   # --gold (sapphire accent)
+    GREEN    = "34C759"   # --up
+    GREEN_BG = "EBF9EE"   # --up-bg
+    RED      = "FF3B30"   # --down
+    RED_BG   = "FFEBEA"   # --down-bg
+
+    money_fmt = '#,##0.00'
+    pct_fmt   = '0.0%'
+    center    = Alignment(horizontal="center", vertical="center")
+    left_a    = Alignment(horizontal="left",   vertical="center")
+    right_a   = Alignment(horizontal="right",  vertical="center")
+
+    def fill(hexcolor):
+        return PatternFill("solid", fgColor=hexcolor)
+
+    def thin_border(color=BORDER_C):
+        s = Side(style="thin", color=color)
+        return Border(left=s, right=s, top=s, bottom=s)
+
+    def header_border():
+        s = Side(style="thin", color=BORDER_C)
+        return Border(left=s, right=s, top=s, bottom=Side(style="medium", color=ACCENT))
+
+    def f_cell(bold=False, color=INK, size=10.5):
+        return Font(name="Calibri", bold=bold, size=size, color=color)
+
+    def f_header():
+        return Font(name="Calibri", bold=True, size=10.5, color=ACCENT)
+
+    def title_banner(ws, text, subtitle, span_cols):
+        last_col = get_column_letter(span_cols)
+        ws.merge_cells(f"A1:{last_col}1")
+        t = ws["A1"]
+        t.value = text
+        t.font = Font(name="Calibri", bold=True, size=18, color=ACCENT)
+        t.alignment = Alignment(horizontal="left", vertical="center", indent=1)
+        ws.row_dimensions[1].height = 30
+
+        ws.merge_cells(f"A2:{last_col}2")
+        s = ws["A2"]
+        s.value = subtitle
+        s.font = Font(name="Calibri", size=9.5, color=INK_SOFT)
+        s.alignment = Alignment(horizontal="left", vertical="center", indent=1)
+        s.border = Border(bottom=Side(style="medium", color=ACCENT))
+        ws.row_dimensions[2].height = 20
+
+        ws.row_dimensions[3].height = 8
+
+    # Totals used across sheets
+    income_total = 0.0
+    expense_total = 0.0
+    for t in txns:
+        amt = float(t['amount'])
+        if t['type'] == 'income':
+            income_total += amt
+        elif t['type'] == 'expense':
+            expense_total += abs(amt)
+    net = income_total - expense_total
+    savings_rate = (net / income_total) if income_total > 0 else 0.0
+    total_balance = sum(float(a['balance']) for a in accounts)
+
     wb = Workbook()
-    ws = wb.active
-    ws.title = f"{cal_mod.month_name[month]} {year}"
 
-    header_font = Font(bold=True, color="FFFFFF")
-    header_fill = PatternFill(start_color="0052FF", end_color="0052FF", fill_type="solid")
-    money_fmt   = '#,##0.00'
+    # ═══════════════════════ Sheet 1 — Summary ════════════════════════════
+    ws1 = wb.active
+    ws1.title = "Summary"
+    ws1.sheet_view.showGridLines = False
+    ws1.sheet_properties.tabColor = ACCENT
+    title_banner(ws1, f"Axe Finance  —  {label}",
+                 f"Generated {now_str} (Bangkok Time)  ·  Amounts in Thai Baht (฿)", 2)
 
-    headers = ['Date', 'Type', 'Amount (฿)', 'Description', 'Category', 'Account']
+    r = 5
+    ws1.merge_cells(f"A{r}:B{r}")
+    hero_lbl = ws1.cell(r, 1, "NET WORTH (CURRENT)")
+    hero_lbl.font = Font(name="Calibri", bold=True, size=10, color=INK_SOFT)
+    hero_lbl.alignment = Alignment(horizontal="left", vertical="center", indent=1)
+    ws1.row_dimensions[r].height = 22
+    r += 1
+    ws1.merge_cells(f"A{r}:B{r}")
+    hero_val = ws1.cell(r, 1, total_balance)
+    hero_val.number_format = money_fmt
+    hero_val.font = Font(name="Calibri", bold=True, size=26, color=ACCENT)
+    hero_val.alignment = Alignment(horizontal="left", vertical="center", indent=1)
+    hero_val.border = Border(bottom=Side(style="medium", color=ACCENT))
+    ws1.row_dimensions[r].height = 40
+    r += 2
+
+    def kpi_row(row, label_text, value, color, value_bg, num_fmt):
+        lc = ws1.cell(row, 1, label_text)
+        lc.font = f_cell(color=INK_SOFT, size=10.5)
+        lc.fill = fill(PANEL)
+        lc.alignment = Alignment(horizontal="left", vertical="center", indent=1)
+        lc.border = Border(left=Side(style="thick", color=color),
+                            top=Side(style="thin", color=BORDER_C),
+                            bottom=Side(style="thin", color=BORDER_C))
+        vc = ws1.cell(row, 2, value)
+        vc.number_format = num_fmt
+        vc.font = f_cell(bold=True, color=color, size=13)
+        vc.fill = fill(value_bg)
+        vc.alignment = right_a
+        vc.border = Border(right=Side(style="thin", color=BORDER_C),
+                            top=Side(style="thin", color=BORDER_C),
+                            bottom=Side(style="thin", color=BORDER_C))
+        ws1.row_dimensions[row].height = 28
+
+    sec1 = ws1.cell(r, 1, f"FOR {cal_mod.month_name[month].upper()} {year}")
+    sec1.font = Font(name="Calibri", bold=True, size=9.5, color=INK_SOFT)
+    r += 1
+    kpi_row(r, "Total Income", income_total, GREEN, GREEN_BG, money_fmt); r += 1
+    kpi_row(r, "Total Expenses", expense_total, RED, RED_BG, money_fmt); r += 1
+    kpi_row(r, "Net Savings", net, GREEN if net >= 0 else RED,
+            GREEN_BG if net >= 0 else RED_BG, money_fmt); r += 1
+    kpi_row(r, "Savings Rate", savings_rate, GREEN if savings_rate >= 0 else RED,
+            GREEN_BG if savings_rate >= 0 else RED_BG, pct_fmt); r += 2
+
+    sec2 = ws1.cell(r, 1, "ACCOUNT BALANCES")
+    sec2.font = Font(name="Calibri", bold=True, size=9.5, color=INK_SOFT)
+    r += 1
+    for acc in accounts:
+        name, bal = acc['name'], float(acc['balance'])
+        nc = ws1.cell(r, 1, name)
+        nc.font = f_cell(color=INK)
+        nc.fill = fill(WHITE)
+        nc.alignment = Alignment(horizontal="left", vertical="center", indent=1)
+        nc.border = thin_border()
+        bc = ws1.cell(r, 2, bal)
+        bc.number_format = money_fmt
+        bc.font = f_cell(bold=True, color=ACCENT)
+        bc.fill = fill(WHITE)
+        bc.alignment = right_a
+        bc.border = thin_border()
+        ws1.row_dimensions[r].height = 22
+        r += 1
+
+    tc = ws1.cell(r, 1, "Total")
+    tc.font = f_cell(bold=True, color=INK)
+    tc.fill = fill(PANEL)
+    tc.alignment = Alignment(horizontal="left", vertical="center", indent=1)
+    tc.border = thin_border()
+    tbc = ws1.cell(r, 2, total_balance)
+    tbc.number_format = money_fmt
+    tbc.font = f_cell(bold=True, color=INK, size=12)
+    tbc.fill = fill(PANEL)
+    tbc.alignment = right_a
+    tbc.border = thin_border()
+    ws1.row_dimensions[r].height = 26
+
+    ws1.column_dimensions["A"].width = 26
+    ws1.column_dimensions["B"].width = 20
+
+    # ═══════════════════════ Sheet 2 — Transactions ════════════════════════
+    ws2 = wb.create_sheet("Transactions")
+    ws2.sheet_view.showGridLines = False
+    ws2.sheet_properties.tabColor = INK
+    title_banner(ws2, f"Transactions  —  {label}", f"{len(txns)} transactions this month", 7)
+
+    headers = ["Date & Time", "Type", "Amount (฿)", "Description", "Category", "Account", "Running Total (฿)"]
+    header_row = 4
     for ci, h in enumerate(headers, 1):
-        cell            = ws.cell(1, ci, h)
-        cell.font       = header_font
-        cell.fill       = header_fill
-        cell.alignment  = Alignment(horizontal='center')
+        cell = ws2.cell(header_row, ci, h)
+        cell.font = f_header()
+        cell.alignment = center
+        cell.border = header_border()
+    ws2.row_dimensions[header_row].height = 24
 
-    income_total = 0; expense_total = 0
-    for ri, txn in enumerate(txns, 2):
-        ts, typ, amt, desc, cat, acc = txn
-        val = abs(float(amt))
-        ws.cell(ri, 1, (ts or '')[:16])
-        ws.cell(ri, 2, typ.title())
-        amount_cell = ws.cell(ri, 3, val if typ == 'income' else -val)
-        amount_cell.number_format = money_fmt
-        ws.cell(ri, 4, desc or '')
-        ws.cell(ri, 5, cat or '')
-        ws.cell(ri, 6, acc or '')
-        if typ == 'income':   income_total  += val
-        elif typ == 'expense': expense_total += val
+    running = 0.0
+    for ri, t in enumerate(txns, header_row + 1):
+        ts, typ, amt = t['timestamp'], t['type'], float(t['amount'])
+        desc, cat, acc = t['description'], t['category'], t['account']
+        running += amt
+        is_inc, is_trans = typ == 'income', typ == 'transfer'
+        amt_color = GREEN if is_inc else (INK_SOFT if is_trans else RED)
+        row_bg = WHITE if ri % 2 else PANEL2
+        row_cells = [
+            ((ts or '')[:16].replace('T', ' '), left_a, f_cell(color=INK_SOFT), None),
+            (typ.title(), center, f_cell(bold=True, color=ACCENT), None),
+            (amt, right_a, f_cell(bold=True, color=amt_color), money_fmt),
+            (desc or '', left_a, f_cell(color=INK), None),
+            (cat or '', left_a, f_cell(color=INK_SOFT), None),
+            (acc or '', left_a, f_cell(color=INK_SOFT), None),
+            (running, right_a, f_cell(color=INK), money_fmt),
+        ]
+        for ci, (val, aln, fnt, fmt2) in enumerate(row_cells, 1):
+            cell = ws2.cell(ri, ci, val)
+            cell.font = fnt
+            cell.alignment = aln
+            cell.fill = fill(row_bg)
+            cell.border = thin_border()
+            if fmt2:
+                cell.number_format = fmt2
+        ws2.row_dimensions[ri].height = 19
 
-    # Summary rows
-    sr = len(txns) + 3
-    ws.cell(sr,   2, "Income:").font   = Font(bold=True)
-    ws.cell(sr,   3, income_total).number_format  = money_fmt
-    ws.cell(sr+1, 2, "Expenses:").font = Font(bold=True)
-    ws.cell(sr+1, 3, expense_total).number_format = money_fmt
-    ws.cell(sr+2, 2, "Net:").font      = Font(bold=True)
-    ws.cell(sr+2, 3, income_total - expense_total).number_format = money_fmt
+    for ci, w in enumerate([19, 10, 14, 32, 16, 18, 17], 1):
+        ws2.column_dimensions[get_column_letter(ci)].width = w
+    ws2.freeze_panes = f"A{header_row + 1}"
 
-    ws.column_dimensions['A'].width = 18
-    ws.column_dimensions['B'].width = 10
-    ws.column_dimensions['C'].width = 14
-    ws.column_dimensions['D'].width = 30
-    ws.column_dimensions['E'].width = 16
-    ws.column_dimensions['F'].width = 20
+    # ═══════════════════════ Sheet 3 — By Category ═════════════════════════
+    ws3 = wb.create_sheet("By Category")
+    ws3.sheet_view.showGridLines = False
+    ws3.sheet_properties.tabColor = RED
+    title_banner(ws3, f"Spending by Category  —  {label}", "Expense breakdown for the month", 3)
+
+    cat_totals = {}
+    for t in txns:
+        if t['type'] == 'expense':
+            cat_totals[t['category']] = cat_totals.get(t['category'], 0.0) + abs(float(t['amount']))
+    sorted_cats = sorted(cat_totals.items(), key=lambda x: x[1], reverse=True)
+
+    hrow = 4
+    for ci, h in enumerate(["Category", "Amount (฿)", "% of Total"], 1):
+        cell = ws3.cell(hrow, ci, h)
+        cell.font = f_header()
+        cell.alignment = center
+        cell.border = header_border()
+    ws3.row_dimensions[hrow].height = 24
+
+    start_row = hrow + 1
+    for idx, (cat, total) in enumerate(sorted_cats):
+        ri = start_row + idx
+        pct = (total / expense_total) if expense_total else 0
+        row_bg = WHITE if ri % 2 else PANEL2
+
+        cat_cell = ws3.cell(ri, 1, cat)
+        cat_cell.font = f_cell(color=INK)
+        cat_cell.fill = fill(row_bg)
+        cat_cell.alignment = left_a
+        cat_cell.border = thin_border()
+
+        amt_cell = ws3.cell(ri, 2, total)
+        amt_cell.number_format = money_fmt
+        amt_cell.font = f_cell(bold=True, color=ACCENT)
+        amt_cell.fill = fill(row_bg)
+        amt_cell.alignment = right_a
+        amt_cell.border = thin_border()
+
+        pct_cell = ws3.cell(ri, 3, pct)
+        pct_cell.number_format = pct_fmt
+        pct_cell.font = f_cell(color=INK_SOFT)
+        pct_cell.fill = fill(row_bg)
+        pct_cell.alignment = center
+        pct_cell.border = thin_border()
+    end_row = start_row + len(sorted_cats) - 1
+
+    if sorted_cats:
+        ws3.conditional_formatting.add(
+            f"B{start_row}:B{end_row}",
+            DataBarRule(start_type="num", start_value=0, end_type="max", color=ACCENT, showValue=True)
+        )
+
+    ws3.column_dimensions["A"].width = 24
+    ws3.column_dimensions["B"].width = 16
+    ws3.column_dimensions["C"].width = 14
 
     buf = io.BytesIO()
     wb.save(buf)
