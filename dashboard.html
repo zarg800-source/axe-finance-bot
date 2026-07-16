@@ -1051,6 +1051,24 @@ body::after {
 .qa-spinner.show { display: inline-block; }
 @keyframes qaSpin { to { transform: rotate(360deg); } }
 
+/* ── CONFIRMATION MODAL (shown before any add/transfer is actually submitted) ── */
+.confirm-rows { display: flex; flex-direction: column; gap: 0; margin: 4px 0 4px; border-top: 1px solid var(--divider); }
+.confirm-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 11px 2px; border-bottom: 1px solid var(--divider);
+  font-size: 13.5px;
+}
+.confirm-row .c-label { color: var(--text3); flex-shrink: 0; }
+.confirm-row .c-value { color: var(--text); font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+.confirm-row.amount .c-value { font-family: 'Anton', sans-serif; font-size: 20px; letter-spacing: .3px; }
+.confirm-row.amount.up .c-value { color: var(--up); }
+.confirm-row.amount.down .c-value { color: var(--down); }
+.confirm-btn-row { display: flex; gap: 10px; margin-top: 6px; }
+.confirm-btn-row .qa-submit-btn.secondary {
+  background: var(--glass-bg); color: var(--text2);
+  border: 1.5px solid var(--glass-border);
+}
+
 /* ── PROGRESS BARS ──────────────────────────────────── */
 .progress-list { display: flex; flex-direction: column; gap: 14px; margin-top: 16px; }
 .progress-item { }
@@ -1578,6 +1596,34 @@ body::after {
         <span class="qa-spinner" id="transferSpinner"></span>
       </button>
     </form>
+  </div>
+</div>
+
+<!-- CONFIRMATION MODAL — shown before ANY add/transfer actually hits the server -->
+<div class="qa-overlay" id="confirmModalOverlay">
+  <div class="qa-modal">
+    <div class="qa-modal-header">
+      <div class="qa-modal-title-wrap">
+        <div class="qa-modal-icon" id="confirmModalIcon" style="background:var(--gold-bg); color:var(--gold);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        </div>
+        <div class="qa-modal-title" id="confirmModalTitle">CONFIRM</div>
+      </div>
+      <button class="qa-modal-close" id="confirmModalCloseBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="qa-modal-body">
+      <div class="confirm-rows" id="confirmRows"></div>
+      <div class="qa-error" id="confirmError"></div>
+      <div class="confirm-btn-row">
+        <button class="qa-submit-btn secondary" type="button" id="confirmCancelBtn">Cancel</button>
+        <button class="qa-submit-btn" type="button" id="confirmGoBtn">
+          <span id="confirmGoLabel">Confirm</span>
+          <span class="qa-spinner" id="confirmSpinner"></span>
+        </button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -2286,6 +2332,71 @@ document.addEventListener('keydown', function(e){
   }
 });
 
+// ── CONFIRMATION MODAL (generic, reused by Add Income / Add Expense / Transfer) ──
+// Any place that wants to confirm-before-submit calls:
+//   qaConfirm({ title, icon, iconStyle, amountLabel, amountValue, amountClass, rows })
+//     .then(confirmed => { if (confirmed) { ...actually submit... } })
+var confirmOverlay, confirmRowsEl, confirmTitleEl, confirmIconEl, confirmErrorEl;
+var confirmGoBtn, confirmGoLabel, confirmSpinner, confirmCancelBtn, confirmCloseBtn;
+var _confirmResolver = null;
+
+function qaConfirm(opts) {
+  return new Promise(function(resolve){
+    _confirmResolver = resolve;
+
+    confirmTitleEl.textContent = opts.title || 'CONFIRM';
+    confirmIconEl.innerHTML = opts.icon || '';
+    confirmIconEl.style.background = opts.iconBg || 'var(--gold-bg)';
+    confirmIconEl.style.color = opts.iconColor || 'var(--gold)';
+
+    var rowsHtml = '';
+    if (opts.amountLabel) {
+      rowsHtml += `<div class="confirm-row amount ${opts.amountClass||''}">
+        <span class="c-label">${opts.amountLabel}</span>
+        <span class="c-value">${opts.amountValue}</span>
+      </div>`;
+    }
+    (opts.rows || []).forEach(function(r){
+      rowsHtml += `<div class="confirm-row"><span class="c-label">${r.label}</span><span class="c-value">${r.value}</span></div>`;
+    });
+    confirmRowsEl.innerHTML = rowsHtml;
+
+    qaHideError(confirmErrorEl);
+    confirmGoLabel.textContent = opts.confirmLabel || 'Confirm';
+    confirmGoBtn.disabled = false;
+    confirmSpinner.classList.remove('show');
+
+    qaOpenOverlay('confirmModalOverlay');
+  });
+}
+
+function _resolveConfirm(val) {
+  qaCloseOverlay('confirmModalOverlay');
+  if (_confirmResolver) {
+    var r = _confirmResolver;
+    _confirmResolver = null;
+    r(val);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+  confirmOverlay = $('confirmModalOverlay');
+  confirmRowsEl = $('confirmRows');
+  confirmTitleEl = $('confirmModalTitle');
+  confirmIconEl = $('confirmModalIcon');
+  confirmErrorEl = $('confirmError');
+  confirmGoBtn = $('confirmGoBtn');
+  confirmGoLabel = $('confirmGoLabel');
+  confirmSpinner = $('confirmSpinner');
+  confirmCancelBtn = $('confirmCancelBtn');
+  confirmCloseBtn = $('confirmModalCloseBtn');
+
+  confirmCancelBtn.addEventListener('click', function(){ _resolveConfirm(false); });
+  confirmCloseBtn.addEventListener('click', function(){ _resolveConfirm(false); });
+  confirmOverlay.addEventListener('click', function(e){ if (e.target === confirmOverlay) _resolveConfirm(false); });
+  confirmGoBtn.addEventListener('click', function(){ _resolveConfirm(true); });
+});
+
 // ── CUSTOM ICON PICKER (replaces native <select> so real line-icons can show) ─
 function csIconSvg(pathContent) {
   return '<svg viewBox="0 0 24 24">' + pathContent + '</svg>';
@@ -2403,6 +2514,21 @@ $('incomeForm').addEventListener('submit', async function(e){
   if (!category) { qaShowError(errEl, 'Please choose a category.'); return; }
   if (!account) { qaShowError(errEl, 'Please choose an account.'); return; }
 
+  // Ask for confirmation before touching the server.
+  const confirmed = await qaConfirm({
+    title: 'CONFIRM INCOME',
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+    iconBg: 'rgba(52,199,89,.1)', iconColor: '#34c759',
+    amountLabel: 'You will add', amountValue: '+' + fmt(amount), amountClass: 'up',
+    rows: [
+      { label: 'Description', value: description || category },
+      { label: 'Category', value: category },
+      { label: 'Account', value: account },
+    ],
+    confirmLabel: 'Add Income'
+  });
+  if (!confirmed) return;
+
   const btn = $('incomeSubmitBtn');
   btn.disabled = true;
   $('incomeSpinner').classList.add('show');
@@ -2448,6 +2574,21 @@ $('expenseForm').addEventListener('submit', async function(e){
   if (!category) { qaShowError(errEl, 'Please choose a category.'); return; }
   if (!account) { qaShowError(errEl, 'Please choose an account.'); return; }
 
+  // Ask for confirmation before touching the server.
+  const confirmed = await qaConfirm({
+    title: 'CONFIRM EXPENSE',
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+    iconBg: 'rgba(255,59,48,.1)', iconColor: '#ff3b30',
+    amountLabel: 'You will spend', amountValue: '-' + fmt(amount), amountClass: 'down',
+    rows: [
+      { label: 'Description', value: description || category },
+      { label: 'Category', value: category },
+      { label: 'Account', value: account },
+    ],
+    confirmLabel: 'Add Expense'
+  });
+  if (!confirmed) return;
+
   const btn = $('expenseSubmitBtn');
   btn.disabled = true;
   $('expenseSpinner').classList.add('show');
@@ -2491,6 +2632,20 @@ $('transferForm').addEventListener('submit', async function(e){
   if (!amount || amount <= 0) { qaShowError(errEl, 'Please enter an amount greater than zero.'); return; }
   if (!fromAccount || !toAccount) { qaShowError(errEl, 'Please choose both accounts.'); return; }
   if (fromAccount === toAccount) { qaShowError(errEl, "From and To accounts can't be the same."); return; }
+
+  // Ask for confirmation before touching the server.
+  const confirmed = await qaConfirm({
+    title: 'CONFIRM TRANSFER',
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="17 1 21 5 17 9"/><path d="M21 5H3"/><polyline points="7 23 3 19 7 15"/><path d="M3 19h18"/></svg>',
+    iconBg: 'rgba(0,122,255,.1)', iconColor: '#007aff',
+    amountLabel: 'Amount', amountValue: fmt(amount),
+    rows: [
+      { label: 'From', value: fromAccount },
+      { label: 'To', value: toAccount },
+    ],
+    confirmLabel: 'Transfer Funds'
+  });
+  if (!confirmed) return;
 
   const btn = $('transferSubmitBtn');
   btn.disabled = true;
