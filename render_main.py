@@ -84,6 +84,29 @@ def get_db():
 def now_bkk():
     return datetime.now(BANGKOK_TZ)
 
+def _months_for_range(range_key, c):
+    """Number of months to include for a given Analytics range-tab key
+    ('3m', '6m', '1y', 'all'). For 'all', looks at the earliest transaction
+    on record so the trend doesn't pad out empty months from before Mike
+    started using the app. Capped at 36 months as a sanity limit."""
+    if range_key == '3m':
+        return 3
+    if range_key == '1y':
+        return 12
+    if range_key == 'all':
+        c.execute("SELECT MIN(timestamp) as t FROM transactions")
+        row = c.fetchone()
+        if not row or not row['t']:
+            return 6
+        try:
+            first = datetime.strptime(row['t'][:7], '%Y-%m')
+        except ValueError:
+            return 6
+        now = now_bkk()
+        months = (now.year - first.year) * 12 + (now.month - first.month) + 1
+        return max(1, min(months, 36))
+    return 6  # '6m', or unrecognized — same as the old fixed behavior
+
 # ── Health ───────────────────────────────────────────────────────────────────
 @app.route('/')
 def health_check():
@@ -222,12 +245,24 @@ def api_summary():
         'last_month': {'income': li, 'expense': le, 'net': li - le}
     })
 
-# ── API: Categories (top categories used this month, for charts) ─────────────
+# ── API: Categories (top categories, for charts) ──────────────────────────────
+# No 'range' param: current month only — used by Overview's "Top Categories"
+# donut, which is meant to always show what's happening right now.
+# '?range=3m|6m|1y|all': used by Analytics' "Top Category Share" stat, which
+# tracks whichever window its chart tabs are set to.
 @app.route('/api/categories')
 @require_auth
 def api_categories():
     conn = get_db(); c = conn.cursor()
-    ms = now_bkk().replace(day=1, hour=0, minute=0, second=0).strftime('%Y-%m-%d')
+    range_key = request.args.get('range')
+    if range_key:
+        n_months = _months_for_range(range_key, c)
+        now = now_bkk()
+        m = now.month - (n_months - 1); y = now.year
+        while m <= 0: m += 12; y -= 1
+        ms = f"{y}-{m:02d}-01"
+    else:
+        ms = now_bkk().replace(day=1, hour=0, minute=0, second=0).strftime('%Y-%m-%d')
     c.execute(
         """SELECT category, SUM(ABS(amount)) as total FROM transactions
            WHERE type='expense' AND timestamp >= ?
@@ -248,12 +283,16 @@ def api_category_lists():
     })
 
 # ── API: Monthly trend ────────────────────────────────────────────────────────
+# Accepts ?range=3m|6m|1y|all (default '6m', matching the old fixed behavior
+# for any caller that doesn't pass one). Analytics' chart tabs drive this.
 @app.route('/api/monthly')
 @require_auth
 def api_monthly():
     conn = get_db(); c = conn.cursor()
+    range_key = request.args.get('range', '6m')
+    n_months = _months_for_range(range_key, c)
     now = now_bkk(); monthly = []
-    for i in range(5, -1, -1):
+    for i in range(n_months - 1, -1, -1):
         m = now.month - i; y = now.year
         while m <= 0: m += 12; y -= 1
         ms = f"{y}-{m:02d}-01"
@@ -263,7 +302,8 @@ def api_monthly():
                WHERE timestamp >= ? AND timestamp < ? AND type != 'transfer'
                GROUP BY type""", (ms, me))
         r = {row['type']: float(row['total'] or 0) for row in c.fetchall()}
-        monthly.append({'month': calendar.month_abbr[m], 'income': r.get('income', 0.0), 'expense': r.get('expense', 0.0)})
+        label = calendar.month_abbr[m] if n_months <= 12 else f"{calendar.month_abbr[m]} '{str(y)[2:]}"
+        monthly.append({'month': label, 'income': r.get('income', 0.0), 'expense': r.get('expense', 0.0)})
     conn.close()
     return jsonify(monthly)
 

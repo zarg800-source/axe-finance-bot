@@ -1051,24 +1051,6 @@ body::after {
 .qa-spinner.show { display: inline-block; }
 @keyframes qaSpin { to { transform: rotate(360deg); } }
 
-/* ── CONFIRMATION MODAL (shown before any add/transfer is actually submitted) ── */
-.confirm-rows { display: flex; flex-direction: column; gap: 0; margin: 4px 0 4px; border-top: 1px solid var(--divider); }
-.confirm-row {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; padding: 11px 2px; border-bottom: 1px solid var(--divider);
-  font-size: 13.5px;
-}
-.confirm-row .c-label { color: var(--text3); flex-shrink: 0; }
-.confirm-row .c-value { color: var(--text); font-weight: 600; text-align: right; overflow-wrap: anywhere; }
-.confirm-row.amount .c-value { font-family: 'Anton', sans-serif; font-size: 20px; letter-spacing: .3px; }
-.confirm-row.amount.up .c-value { color: var(--up); }
-.confirm-row.amount.down .c-value { color: var(--down); }
-.confirm-btn-row { display: flex; gap: 10px; margin-top: 6px; }
-.confirm-btn-row .qa-submit-btn.secondary {
-  background: var(--glass-bg); color: var(--text2);
-  border: 1.5px solid var(--glass-border);
-}
-
 /* ── PROGRESS BARS ──────────────────────────────────── */
 .progress-list { display: flex; flex-direction: column; gap: 14px; margin-top: 16px; }
 .progress-item { }
@@ -1246,49 +1228,27 @@ body::after {
   <!-- OVERVIEW PAGE -->
   <div class="page" id="page-ov">
     <div class="stats-row" id="sum-grid"></div>
-    <div class="table-card">
-      <div class="card-header">
-        <div><div class="card-title">TRANSACTIONS</div><div class="card-sub">Latest activity</div></div>
-        <div class="table-filter" id="fbrow">
-          <button class="filter-btn active" data-f="all">All</button>
-          <button class="filter-btn" data-f="expense">Expense</button>
-          <button class="filter-btn" data-f="income">Income</button>
-          <button class="filter-btn" data-f="transfer">Transfer</button>
-        </div>
-      </div>
-      <div class="txn-wrap">
-        <table class="data-table">
-          <thead><tr>
-            <th>Descr</th>
-            <th>Date</th>
-            <th style="text-align:right">Amount</th>
-          </tr></thead>
-          <tbody id="txns"></tbody>
-        </table>
-      </div>
-    </div>
     <div class="mid-row">
-      <div class="chart-card">
+      <div class="table-card">
         <div class="card-header">
-          <div><div class="card-title">MONTHLY SPENDING</div><div class="card-sub">Overview of your expenses</div></div>
-          <div class="chart-tabs" id="chart-tabs">
-            <button class="chart-tab active" data-timeframe="3m">3M</button>
-            <button class="chart-tab" data-timeframe="6m">6M</button>
-            <button class="chart-tab" data-timeframe="1y">1Y</button>
-            <button class="chart-tab" data-timeframe="all">ALL</button>
+          <div><div class="card-title">TRANSACTIONS</div><div class="card-sub">Latest activity</div></div>
+          <div class="table-filter" id="fbrow">
+            <button class="filter-btn active" data-f="all">All</button>
+            <button class="filter-btn" data-f="expense">Expense</button>
+            <button class="filter-btn" data-f="income">Income</button>
+            <button class="filter-btn" data-f="transfer">Transfer</button>
           </div>
         </div>
-        <div class="chart-summary">
-          <div class="chart-sum-item">
-            <div class="chart-sum-label">Total Spent</div>
-            <div class="chart-sum-val" id="total-spent">฿0.00</div>
-          </div>
-          <div class="chart-sum-item">
-            <div class="chart-sum-label">Avg. Monthly</div>
-            <div class="chart-sum-val" id="avg-spent">฿0.00</div>
-          </div>
+        <div class="txn-wrap">
+          <table class="data-table">
+            <thead><tr>
+              <th>Descr</th>
+              <th>Date</th>
+              <th style="text-align:right">Amount</th>
+            </tr></thead>
+            <tbody id="txns"></tbody>
+          </table>
         </div>
-        <div class="chart-wrap"><canvas id="line-chart"></canvas></div>
       </div>
       <div class="donut-card">
         <div class="card-header">
@@ -1309,32 +1269,17 @@ body::after {
   <!-- ANALYTICS PAGE -->
   <div class="page" id="page-an">
     <div class="stats-row" id="an-grid"></div>
-    <div class="mid-row">
-      <div class="chart-card">
-        <div class="card-header">
-          <div><div class="card-title">INCOME VS EXPENSE</div><div class="card-sub">Your financial flow</div></div>
-          <div class="chart-tabs" id="an-chart-tabs">
-            <button class="chart-tab active" data-timeframe="3m">3M</button>
-            <button class="chart-tab" data-timeframe="6m">6M</button>
-            <button class="chart-tab" data-timeframe="1y">1Y</button>
-            <button class="chart-tab" data-timeframe="all">ALL</button>
-          </div>
+    <div class="chart-card">
+      <div class="card-header">
+        <div><div class="card-title">INCOME VS EXPENSE</div><div class="card-sub" id="an-flow-sub">Last 3 months</div></div>
+        <div class="chart-tabs" id="an-chart-tabs">
+          <button class="chart-tab active" data-timeframe="3m">3M</button>
+          <button class="chart-tab" data-timeframe="6m">6M</button>
+          <button class="chart-tab" data-timeframe="1y">1Y</button>
+          <button class="chart-tab" data-timeframe="all">ALL</button>
         </div>
-        <div class="chart-wrap"><canvas id="an-line-chart"></canvas></div>
       </div>
-      <div class="donut-card">
-        <div class="card-header">
-          <div><div class="card-title">EXPENSE BREAKDOWN</div><div class="card-sub">Where your money goes</div></div>
-        </div>
-        <div class="donut-wrap">
-          <canvas id="an-donut-chart"></canvas>
-          <div class="donut-center">
-            <div class="donut-pct" id="an-donut-pct">0%</div>
-            <div class="donut-pct-sub">of total</div>
-          </div>
-        </div>
-        <div class="donut-legend" id="an-donut-legend"></div>
-      </div>
+      <div class="chart-wrap" style="height:280px;"><canvas id="an-line-chart"></canvas></div>
     </div>
   </div>
 
@@ -1599,34 +1544,6 @@ body::after {
   </div>
 </div>
 
-<!-- CONFIRMATION MODAL — shown before ANY add/transfer actually hits the server -->
-<div class="qa-overlay" id="confirmModalOverlay">
-  <div class="qa-modal">
-    <div class="qa-modal-header">
-      <div class="qa-modal-title-wrap">
-        <div class="qa-modal-icon" id="confirmModalIcon" style="background:var(--gold-bg); color:var(--gold);">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-        </div>
-        <div class="qa-modal-title" id="confirmModalTitle">CONFIRM</div>
-      </div>
-      <button class="qa-modal-close" id="confirmModalCloseBtn" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-    <div class="qa-modal-body">
-      <div class="confirm-rows" id="confirmRows"></div>
-      <div class="qa-error" id="confirmError"></div>
-      <div class="confirm-btn-row">
-        <button class="qa-submit-btn secondary" type="button" id="confirmCancelBtn">Cancel</button>
-        <button class="qa-submit-btn" type="button" id="confirmGoBtn">
-          <span id="confirmGoLabel">Confirm</span>
-          <span class="qa-spinner" id="confirmSpinner"></span>
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- SHARED ICON PICKER SHEET -->
 <div class="cs-picker-overlay" id="csPickerOverlay">
   <div class="cs-picker-sheet">
@@ -1691,6 +1608,18 @@ var ICONS={
 function fmt(n){return '฿'+Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}
 function getVar(v){return getComputedStyle(document.documentElement).getPropertyValue(v)}
 
+// ── ANALYTICS RANGE STATE + OVERVIEW FILTER STATE ──────────────────────────────
+var anRange = '3m';
+var ovAllTxns = [];
+var ovTxnFilter = 'all';
+var RANGE_META = {
+  '3m':  { short: '3mo',      display: 'Last 3 months' },
+  '6m':  { short: '6mo',      display: 'Last 6 months' },
+  '1y':  { short: '1yr',      display: 'Last year' },
+  'all': { short: 'all-time', display: 'All time' }
+};
+function rangeMeta(range) { return RANGE_META[range] || RANGE_META['6m']; }
+
 // ── THEME TOGGLE ──────────────────────────────────────────────────────────────
 function toggleTheme(e){
   if(e) e.stopPropagation();
@@ -1699,10 +1628,8 @@ function toggleTheme(e){
   document.documentElement.setAttribute('data-theme',newTheme);
   localStorage.setItem('mf-theme',newTheme);
   updateKnobIcon(newTheme);
-  if(window.lineChart)window.lineChart.destroy();
   if(window.donutChart)window.donutChart.destroy();
   if(window.anLineChart)window.anLineChart.destroy();
-  if(window.anDonutChart)window.anDonutChart.destroy();
   loadBalances();
   loadOverview();
   loadAnalytics();
@@ -1926,13 +1853,17 @@ async function loadBalances() {
 }
 
 // ── OVERVIEW PAGE ────────────────────────────────────────────────────────────
+function renderOverviewTransactions() {
+  var filtered = ovTxnFilter === 'all' ? ovAllTxns : ovAllTxns.filter(function(t){ return t.type === ovTxnFilter; });
+  $('txns').innerHTML = buildRows(filtered);
+}
+
 async function loadOverview() {
   const sumGrid = $('sum-grid');
   try {
-  const [summary, categories, monthly, balances, allTxns] = await Promise.all([
+  const [summary, categories, balances, allTxns] = await Promise.all([
     fetchData('/api/summary'),
     fetchData('/api/categories'),
-    fetchData('/api/monthly'),
     fetchData('/api/balances'),
     fetchData('/api/transactions')
   ]);
@@ -1971,75 +1902,8 @@ async function loadOverview() {
     </div>
   `;
 
-  function renderTransactions(filterType) {
-    var filtered = filterType === 'all' ? allTxns : allTxns.filter(t => t.type === filterType);
-    $('txns').innerHTML = buildRows(filtered);
-  }
-  renderTransactions('all');
-  document.querySelectorAll('#fbrow .filter-btn').forEach(button => {
-    button.addEventListener('click', function() {
-      document.querySelectorAll('#fbrow .filter-btn').forEach(btn => btn.classList.remove('active'));
-      this.classList.add('active');
-      renderTransactions(this.dataset.f);
-    });
-  });
-
-  // Line chart — 6-month expense trend (from /api/monthly)
-  var totalSpent = monthly.reduce((s,m)=>s+m.expense,0);
-  var avgSpent = monthly.length ? totalSpent / monthly.length : 0;
-  $('total-spent').textContent = fmt(totalSpent);
-  $('avg-spent').textContent = fmt(avgSpent);
-
-  var lineChartCtx = $('line-chart').getContext('2d');
-  if (window.lineChart) window.lineChart.destroy();
-  window.lineChart = new Chart(lineChartCtx, {
-    type: 'line',
-    data: {
-      labels: monthly.map(m => m.month),
-      datasets: [{
-        label: 'Expenses',
-        data: monthly.map(m => m.expense),
-        borderColor: getVar('--nav-bg'),
-        backgroundColor: getVar('--nav-bg'),
-        fill: false,
-        tension: 0.3,
-        pointRadius: 3,
-        pointBackgroundColor: getVar('--nav-bg')
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          mode: 'index',
-          intersect: false,
-          callbacks: { label: ctx => ' ' + ctx.dataset.label + ': ' + fmt(ctx.raw) },
-          backgroundColor: getVar('--card-bg'),
-          borderColor: getVar('--divider'),
-          borderWidth: 1,
-          titleColor: getVar('--text'),
-          bodyColor: getVar('--text2'),
-          padding: 10,
-          cornerRadius: 10
-        }
-      },
-      scales: {
-        x: { grid: { color: getVar('--chart-grid') }, ticks: { color: getVar('--text3') } },
-        y: { grid: { color: getVar('--chart-grid') }, ticks: { color: getVar('--text3'),
-          callback: (value) => '฿' + (value >= 1000 ? (value / 1000).toFixed(0) + 'k' : value)
-        } }
-      }
-    }
-  });
-
-  document.querySelectorAll('#chart-tabs .chart-tab').forEach(button => {
-    button.addEventListener('click', function() {
-      document.querySelectorAll('#chart-tabs .chart-tab').forEach(btn => btn.classList.remove('active'));
-      this.classList.add('active');
-    });
-  });
+  ovAllTxns = allTxns;
+  renderOverviewTransactions();
 
   // Donut chart — top categories
   var catTotal = categories.reduce((s,c)=>s+c.total, 0);
@@ -2094,52 +1958,7 @@ async function loadOverview() {
 }
 
 // ── ANALYTICS PAGE ───────────────────────────────────────────────────────────
-async function loadAnalytics() {
-  const anGrid = $('an-grid');
-  try {
-  const [summary, categories, monthly] = await Promise.all([
-    fetchData('/api/summary'),
-    fetchData('/api/categories'),
-    fetchData('/api/monthly')
-  ]);
-  const cur = summary.this_month, prev = summary.last_month;
-  const netChange = cur.income - cur.expense;
-  const prevNetChange = prev.income - prev.expense;
-  const avgIncome = monthly.length ? monthly.reduce((s,m)=>s+m.income,0) / monthly.length : 0;
-  const avgExpense = monthly.length ? monthly.reduce((s,m)=>s+m.expense,0) / monthly.length : 0;
-  const catTotal = categories.reduce((s,c)=>s+c.total, 0);
-  const topShare = categories.length && catTotal > 0 ? (categories[0].total / catTotal * 100) : 0;
-
-  $('an-grid').innerHTML = `
-    <div class="stat-card primary">
-      <div class="stat-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
-      <div class="stat-label">Net Change</div>
-      <div class="stat-value">${fmt(netChange)}</div>
-      <div class="stat-badge ${netChange >= prevNetChange ? 'up' : 'down'}">${netChange >= prevNetChange ? '+' : '-'}${fmt(Math.abs(netChange - prevNetChange))}</div>
-      <div class="stat-sub">vs last month</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon-wrap" style="background:var(--up-bg);"><svg viewBox="0 0 24 24" fill="none" stroke="var(--up)" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
-      <div class="stat-label">Avg. Income</div>
-      <div class="stat-value">${fmt(avgIncome)}</div>
-      <div class="stat-badge ${cur.income >= avgIncome ? 'up' : 'down'}">${cur.income >= avgIncome ? '+' : '-'}${fmt(Math.abs(cur.income - avgIncome))}</div>
-      <div class="stat-sub">this month vs 6mo avg</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon-wrap" style="background:var(--down-bg);"><svg viewBox="0 0 24 24" fill="none" stroke="var(--down)" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
-      <div class="stat-label">Avg. Expense</div>
-      <div class="stat-value">${fmt(avgExpense)}</div>
-      <div class="stat-badge ${cur.expense <= avgExpense ? 'up' : 'down'}">${cur.expense <= avgExpense ? '-' : '+'}${fmt(Math.abs(cur.expense - avgExpense))}</div>
-      <div class="stat-sub">this month vs 6mo avg</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon-wrap" style="background:var(--badge-bg);"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></div>
-      <div class="stat-label">Top Category Share</div>
-      <div class="stat-value">${topShare.toFixed(1)}%</div>
-      <div class="stat-sub">${categories.length ? categories[0].category : 'No data'} of monthly spend</div>
-    </div>
-  `;
-
+function renderAnalyticsChart(monthly) {
   var anLineChartCtx = $('an-line-chart').getContext('2d');
   if (window.anLineChart) window.anLineChart.destroy();
   window.anLineChart = new Chart(anLineChartCtx, {
@@ -2163,70 +1982,96 @@ async function loadAnalytics() {
         }
       },
       scales: {
-        x: { grid: { color: getVar('--chart-grid') }, ticks: { color: getVar('--text3') } },
+        x: { grid: { color: getVar('--chart-grid') }, ticks: { color: getVar('--text3'), autoSkip: true, maxRotation: 0 } },
         y: { grid: { color: getVar('--chart-grid') }, ticks: { color: getVar('--text3'),
           callback: (value) => '฿' + (value >= 1000 ? (value / 1000).toFixed(0) + 'k' : value)
         } }
       }
     }
   });
+}
 
-  document.querySelectorAll('#an-chart-tabs .chart-tab').forEach(button => {
-    button.addEventListener('click', function() {
-      document.querySelectorAll('#an-chart-tabs .chart-tab').forEach(btn => btn.classList.remove('active'));
-      this.classList.add('active');
-    });
-  });
+async function loadAnalyticsForRange(range) {
+  anRange = range;
+  const anGrid = $('an-grid');
+  try {
+    const [summary, monthly, categories] = await Promise.all([
+      fetchData('/api/summary'),
+      fetchData('/api/monthly?range=' + range),
+      fetchData('/api/categories?range=' + range)
+    ]);
+    const cur = summary.this_month, prev = summary.last_month;
+    const netChange = cur.income - cur.expense;
+    const prevNetChange = prev.income - prev.expense;
+    const avgIncome = monthly.length ? monthly.reduce((s,m)=>s+m.income,0) / monthly.length : 0;
+    const avgExpense = monthly.length ? monthly.reduce((s,m)=>s+m.expense,0) / monthly.length : 0;
+    const catTotal = categories.reduce((s,c)=>s+c.total, 0);
+    const topShare = categories.length && catTotal > 0 ? (categories[0].total / catTotal * 100) : 0;
+    const lbl = rangeMeta(range).short;
 
-  var anDonutChartCtx = $('an-donut-chart').getContext('2d');
-  if (window.anDonutChart) window.anDonutChart.destroy();
-  window.anDonutChart = new Chart(anDonutChartCtx, {
-    type: 'doughnut',
-    data: {
-      labels: categories.map(c => c.category),
-      datasets: [{ data: categories.map(c => c.total), backgroundColor: PAL.slice(0, categories.length), borderWidth: 0 }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false, cutout: '75%',
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: function(context) {
-              var label = context.label || '';
-              if (label) label += ': ';
-              if (context.parsed !== null) {
-                var pct = catTotal > 0 ? (context.raw / catTotal * 100).toFixed(1) : '0.0';
-                label += fmt(context.parsed) + ' (' + pct + '%)';
-              }
-              return label;
-            }
-          },
-          backgroundColor: getVar('--card-bg'), borderColor: getVar('--divider'), borderWidth: 1,
-          titleColor: getVar('--text'), bodyColor: getVar('--text2'), padding: 10, cornerRadius: 10
-        }
-      }
-    }
-  });
+    anGrid.innerHTML = `
+      <div class="stat-card primary">
+        <div class="stat-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
+        <div class="stat-label">Net Change</div>
+        <div class="stat-value">${fmt(netChange)}</div>
+        <div class="stat-badge ${netChange >= prevNetChange ? 'up' : 'down'}">${netChange >= prevNetChange ? '+' : '-'}${fmt(Math.abs(netChange - prevNetChange))}</div>
+        <div class="stat-sub">vs last month</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon-wrap" style="background:var(--up-bg);"><svg viewBox="0 0 24 24" fill="none" stroke="var(--up)" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+        <div class="stat-label">Avg. Income</div>
+        <div class="stat-value">${fmt(avgIncome)}</div>
+        <div class="stat-badge ${cur.income >= avgIncome ? 'up' : 'down'}">${cur.income >= avgIncome ? '+' : '-'}${fmt(Math.abs(cur.income - avgIncome))}</div>
+        <div class="stat-sub">this month vs ${lbl} avg</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon-wrap" style="background:var(--down-bg);"><svg viewBox="0 0 24 24" fill="none" stroke="var(--down)" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+        <div class="stat-label">Avg. Expense</div>
+        <div class="stat-value">${fmt(avgExpense)}</div>
+        <div class="stat-badge ${cur.expense <= avgExpense ? 'up' : 'down'}">${cur.expense <= avgExpense ? '-' : '+'}${fmt(Math.abs(cur.expense - avgExpense))}</div>
+        <div class="stat-sub">this month vs ${lbl} avg</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon-wrap" style="background:var(--badge-bg);"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></div>
+        <div class="stat-label">Top Category Share</div>
+        <div class="stat-value">${topShare.toFixed(1)}%</div>
+        <div class="stat-sub">${categories.length ? categories[0].category : 'No data'} — ${lbl} spend</div>
+      </div>
+    `;
 
-  $('an-donut-legend').innerHTML = categories.map((c, i) => `
-    <div class="legend-item">
-      <div class="legend-dot" style="background:${PAL[i % PAL.length]};"></div>
-      <div class="legend-label">${c.category}</div>
-      <div class="legend-val">${fmt(c.total)}</div>
-      <div class="legend-pct">${(catTotal > 0 ? (c.total / catTotal * 100) : 0).toFixed(1)}%</div>
-    </div>
-  `).join('');
+    var subEl = $('an-flow-sub');
+    if (subEl) subEl.textContent = rangeMeta(range).display;
 
-  $('an-donut-pct').textContent = (categories.length && catTotal > 0 ? (categories[0].total / catTotal * 100).toFixed(1) : 0) + '%';
+    renderAnalyticsChart(monthly);
   } catch (err) {
-    console.error('loadAnalytics failed:', err);
+    console.error('loadAnalyticsForRange failed:', err);
     anGrid.innerHTML = `<div class="stat-card" style="grid-column:1/-1;">
       <div class="stat-label" style="color:var(--down);">Couldn't load analytics</div>
       <div class="stat-sub">${err.message}</div>
     </div>`;
   }
 }
+
+async function loadAnalytics() {
+  await loadAnalyticsForRange(anRange);
+}
+
+// ── CHART / FILTER TAB WIRING (attached once — avoids listener stacking) ──────
+document.querySelectorAll('#an-chart-tabs .chart-tab').forEach(function(button){
+  button.addEventListener('click', function() {
+    document.querySelectorAll('#an-chart-tabs .chart-tab').forEach(function(btn){ btn.classList.remove('active'); });
+    this.classList.add('active');
+    loadAnalyticsForRange(this.dataset.timeframe);
+  });
+});
+document.querySelectorAll('#fbrow .filter-btn').forEach(function(button){
+  button.addEventListener('click', function() {
+    document.querySelectorAll('#fbrow .filter-btn').forEach(function(btn){ btn.classList.remove('active'); });
+    this.classList.add('active');
+    ovTxnFilter = this.dataset.f;
+    renderOverviewTransactions();
+  });
+});
 
 // ── MONTHLY HISTORY PAGE ─────────────────────────────────────────────────────
 var histNow = new Date();
@@ -2330,71 +2175,6 @@ document.addEventListener('keydown', function(e){
     document.querySelectorAll('.qa-overlay.open').forEach(function(o){ o.classList.remove('open'); });
     closeCsPicker();
   }
-});
-
-// ── CONFIRMATION MODAL (generic, reused by Add Income / Add Expense / Transfer) ──
-// Any place that wants to confirm-before-submit calls:
-//   qaConfirm({ title, icon, iconStyle, amountLabel, amountValue, amountClass, rows })
-//     .then(confirmed => { if (confirmed) { ...actually submit... } })
-var confirmOverlay, confirmRowsEl, confirmTitleEl, confirmIconEl, confirmErrorEl;
-var confirmGoBtn, confirmGoLabel, confirmSpinner, confirmCancelBtn, confirmCloseBtn;
-var _confirmResolver = null;
-
-function qaConfirm(opts) {
-  return new Promise(function(resolve){
-    _confirmResolver = resolve;
-
-    confirmTitleEl.textContent = opts.title || 'CONFIRM';
-    confirmIconEl.innerHTML = opts.icon || '';
-    confirmIconEl.style.background = opts.iconBg || 'var(--gold-bg)';
-    confirmIconEl.style.color = opts.iconColor || 'var(--gold)';
-
-    var rowsHtml = '';
-    if (opts.amountLabel) {
-      rowsHtml += `<div class="confirm-row amount ${opts.amountClass||''}">
-        <span class="c-label">${opts.amountLabel}</span>
-        <span class="c-value">${opts.amountValue}</span>
-      </div>`;
-    }
-    (opts.rows || []).forEach(function(r){
-      rowsHtml += `<div class="confirm-row"><span class="c-label">${r.label}</span><span class="c-value">${r.value}</span></div>`;
-    });
-    confirmRowsEl.innerHTML = rowsHtml;
-
-    qaHideError(confirmErrorEl);
-    confirmGoLabel.textContent = opts.confirmLabel || 'Confirm';
-    confirmGoBtn.disabled = false;
-    confirmSpinner.classList.remove('show');
-
-    qaOpenOverlay('confirmModalOverlay');
-  });
-}
-
-function _resolveConfirm(val) {
-  qaCloseOverlay('confirmModalOverlay');
-  if (_confirmResolver) {
-    var r = _confirmResolver;
-    _confirmResolver = null;
-    r(val);
-  }
-}
-
-document.addEventListener('DOMContentLoaded', function(){
-  confirmOverlay = $('confirmModalOverlay');
-  confirmRowsEl = $('confirmRows');
-  confirmTitleEl = $('confirmModalTitle');
-  confirmIconEl = $('confirmModalIcon');
-  confirmErrorEl = $('confirmError');
-  confirmGoBtn = $('confirmGoBtn');
-  confirmGoLabel = $('confirmGoLabel');
-  confirmSpinner = $('confirmSpinner');
-  confirmCancelBtn = $('confirmCancelBtn');
-  confirmCloseBtn = $('confirmModalCloseBtn');
-
-  confirmCancelBtn.addEventListener('click', function(){ _resolveConfirm(false); });
-  confirmCloseBtn.addEventListener('click', function(){ _resolveConfirm(false); });
-  confirmOverlay.addEventListener('click', function(e){ if (e.target === confirmOverlay) _resolveConfirm(false); });
-  confirmGoBtn.addEventListener('click', function(){ _resolveConfirm(true); });
 });
 
 // ── CUSTOM ICON PICKER (replaces native <select> so real line-icons can show) ─
@@ -2514,21 +2294,6 @@ $('incomeForm').addEventListener('submit', async function(e){
   if (!category) { qaShowError(errEl, 'Please choose a category.'); return; }
   if (!account) { qaShowError(errEl, 'Please choose an account.'); return; }
 
-  // Ask for confirmation before touching the server.
-  const confirmed = await qaConfirm({
-    title: 'CONFIRM INCOME',
-    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
-    iconBg: 'rgba(52,199,89,.1)', iconColor: '#34c759',
-    amountLabel: 'You will add', amountValue: '+' + fmt(amount), amountClass: 'up',
-    rows: [
-      { label: 'Description', value: description || category },
-      { label: 'Category', value: category },
-      { label: 'Account', value: account },
-    ],
-    confirmLabel: 'Add Income'
-  });
-  if (!confirmed) return;
-
   const btn = $('incomeSubmitBtn');
   btn.disabled = true;
   $('incomeSpinner').classList.add('show');
@@ -2574,21 +2339,6 @@ $('expenseForm').addEventListener('submit', async function(e){
   if (!category) { qaShowError(errEl, 'Please choose a category.'); return; }
   if (!account) { qaShowError(errEl, 'Please choose an account.'); return; }
 
-  // Ask for confirmation before touching the server.
-  const confirmed = await qaConfirm({
-    title: 'CONFIRM EXPENSE',
-    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><line x1="5" y1="12" x2="19" y2="12"/></svg>',
-    iconBg: 'rgba(255,59,48,.1)', iconColor: '#ff3b30',
-    amountLabel: 'You will spend', amountValue: '-' + fmt(amount), amountClass: 'down',
-    rows: [
-      { label: 'Description', value: description || category },
-      { label: 'Category', value: category },
-      { label: 'Account', value: account },
-    ],
-    confirmLabel: 'Add Expense'
-  });
-  if (!confirmed) return;
-
   const btn = $('expenseSubmitBtn');
   btn.disabled = true;
   $('expenseSpinner').classList.add('show');
@@ -2632,20 +2382,6 @@ $('transferForm').addEventListener('submit', async function(e){
   if (!amount || amount <= 0) { qaShowError(errEl, 'Please enter an amount greater than zero.'); return; }
   if (!fromAccount || !toAccount) { qaShowError(errEl, 'Please choose both accounts.'); return; }
   if (fromAccount === toAccount) { qaShowError(errEl, "From and To accounts can't be the same."); return; }
-
-  // Ask for confirmation before touching the server.
-  const confirmed = await qaConfirm({
-    title: 'CONFIRM TRANSFER',
-    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="17 1 21 5 17 9"/><path d="M21 5H3"/><polyline points="7 23 3 19 7 15"/><path d="M3 19h18"/></svg>',
-    iconBg: 'rgba(0,122,255,.1)', iconColor: '#007aff',
-    amountLabel: 'Amount', amountValue: fmt(amount),
-    rows: [
-      { label: 'From', value: fromAccount },
-      { label: 'To', value: toAccount },
-    ],
-    confirmLabel: 'Transfer Funds'
-  });
-  if (!confirmed) return;
 
   const btn = $('transferSubmitBtn');
   btn.disabled = true;
