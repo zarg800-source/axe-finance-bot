@@ -107,7 +107,32 @@ def save_profile(specialty, experience_level, location, remote_pref):
     conn.commit(); conn.close()
 
 
-# ─── Tavily search ────────────────────────────────────────────────────────────
+# This is a single-user app for Mike specifically — no point making him fill
+# out a form to tell the app what it already knows about him. These are my
+# best-guess defaults based on what he's told me directly; they're editable
+# any time via the same save_profile() call, just never forced upfront.
+# NOT invented with false confidence — specialty and remote_pref are
+# reasonable guesses, not verified facts, and worth him double-checking once.
+DEFAULT_PROFILE = {
+    'specialty': 'contemporary Southeast Asian art curating',
+    'experience_level': 'mid-career',
+    'location': 'Bangkok, Thailand',
+    'remote_pref': 'relocate',
+}
+
+
+def ensure_profile_seeded():
+    """Called once at startup. If no profile exists yet, seeds the
+    best-guess defaults above so Axe Career works immediately with zero
+    manual setup. Never overwrites a profile that already exists (e.g. one
+    Mike has since edited)."""
+    if get_profile() is not None:
+        return False
+    save_profile(**DEFAULT_PROFILE)
+    return True
+
+
+
 def _tavily_search(query, max_results=6):
     if not TAVILY_API_KEY:
         logger.warning("TAVILY_API_KEY not set — Axe Career search skipped.")
@@ -305,7 +330,7 @@ def list_opportunities(status=None, opp_type=None):
 
 
 def set_opportunity_status(opp_id, status):
-    if status not in ('new', 'saved', 'dismissed'):
+    if status not in ('new', 'saved', 'dismissed', 'applied'):
         return False
     conn = get_db(); c = conn.cursor()
     c.execute("UPDATE opportunities SET status = ? WHERE id = ?", (status, opp_id))
@@ -313,3 +338,48 @@ def set_opportunity_status(opp_id, status):
     ok = c.rowcount > 0
     conn.close()
     return ok
+
+
+def add_manual_opportunity(title, opp_type, org='', url='', description='', deadline=None):
+    """For opportunities Mike hears about outside the automatic search (a
+    tip from a friend, an email, etc.) — not scored by Gemini since he's
+    already vetted it himself; shown in the UI as 'Added manually' rather
+    than given a fake match score."""
+    conn = get_db(); c = conn.cursor()
+    if not url:
+        url = f"manual://{datetime.utcnow().isoformat()}"
+    c.execute("""
+        INSERT INTO opportunities
+            (type, title, org, url, description, deadline, match_score,
+             prep_hours_est, status, found_at, source_query)
+        VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, 'new', ?, 'manual')
+    """, (opp_type, title.strip(), org.strip(), url, description.strip(),
+          deadline or None, datetime.utcnow().isoformat()))
+    conn.commit()
+    new_id = c.lastrowid
+    conn.close()
+    return new_id
+
+
+def dashboard_summary():
+    """Deterministic, honest content for Career's Dashboard tab — no extra
+    Gemini call needed, everything here is computed straight from the DB.
+    'AI-ranked' suggestions are real: match_score was already set by Gemini
+    during the search itself, this just re-surfaces the top ones."""
+    active = [o for o in list_opportunities() if o['status'] in ('new', 'saved')]
+    with_deadline = sorted(
+        [o for o in active if o['deadline']],
+        key=lambda o: o['deadline']
+    )
+    top_matches = sorted(active, key=lambda o: o['match_score'] or 0, reverse=True)[:3]
+
+    profile = get_profile()
+    last_search = profile.get('last_search_at') if profile else None
+
+    return {
+        'total_active': len(active),
+        'upcoming_deadlines': with_deadline[:5],
+        'top_matches': top_matches,
+        'last_search_at': last_search,
+    }
+

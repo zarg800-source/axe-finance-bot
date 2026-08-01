@@ -453,16 +453,16 @@ def api_months():
 # styled "Nothing here yet" page until it's built — flipping a slug to 'live'
 # later is a one-row DB update, not a redeploy.
 SPACES_SEED = [
-    ('finance',  'Finance Agent',  '/dashboard',      'live', 'Your accounts & spending'),
-    ('career',   'Career Agent',   '/axe-career',     'live', ''),   # tagline overridden client-side with a real opportunity count
-    ('research', 'Research Agent', '/space/research', 'stub', 'Not set up yet'),
-    ('travel',   'Travel Agent',   '/space/travel',   'stub', 'Not set up yet'),
-    ('network',  'Network Agent',  '/space/network',  'stub', 'Not set up yet'),
-    ('vault',    'Vault Agent',    '/space/vault',    'stub', 'Not set up yet'),
-    # Ideas and Settings dropped per Mike's 6-agent home screen — easy to
+    ('finance',  'Finance',  '/dashboard',      'live', 'Your accounts & spending'),
+    ('career',   'Career',   '/axe-career',     'live', ''),   # tagline overridden client-side with a real opportunity count
+    ('research', 'Research', '/space/research', 'stub', 'Not set up yet'),
+    ('travel',   'Travel',   '/space/travel',   'stub', 'Not set up yet'),
+    ('network',  'Network',  '/space/network',  'stub', 'Not set up yet'),
+    ('vault',    'Vault',    '/space/vault',    'stub', 'Not set up yet'),
+    # Ideas and Settings dropped per Mike's 6-card home screen — easy to
     # bring back later, just uncomment and add an icon for them client-side:
-    # ('ideas',    'Ideas Agent', '/space/ideas',    'stub', 'Not set up yet'),
-    # ('settings', 'Settings',    '/space/settings', 'stub', 'Not set up yet'),
+    # ('ideas',    'Ideas',    '/space/ideas',    'stub', 'Not set up yet'),
+    # ('settings', 'Settings', '/space/settings', 'stub', 'Not set up yet'),
 ]
 
 def init_spaces_db():
@@ -563,57 +563,26 @@ def space_stub(slug):
 
 
 # ── Axe Career: Opportunity Radar ────────────────────────────────────────────
-CAREER_HOME_HTML = '/app/axe_career_home.html'
-CAREER_OPPS_HTML = '/app/axe_career_opportunities.html'
-CAREER_CHAT_HTML = '/app/axe_career_chat.html'
-
-# Career's own sub-agents. Only 'opportunities' has a real backend today —
-# the rest get an honest stub page (no fabricated numbers) until built.
-CAREER_SUBSPACES = {
-    'applications': 'Applications',
-    'ai-research':  'AI Research',
-    'network':      'Network',
-    'vault':        'Career Vault',
-    'timeline':     'Timeline',
-}
-
-CAREER_STUB_TEMPLATE = STUB_TEMPLATE.replace(
-    'href="/home">&larr; Back to Axe', 'href="/axe-career">&larr; Back to Axe Career'
-)
+CAREER_HTML = '/app/axe_career.html'
 
 @app.route('/axe-career')
 @require_auth
 def axe_career_page():
-    return send_file(CAREER_HOME_HTML)
-
-
-@app.route('/axe-career/opportunities')
-@require_auth
-def axe_career_opportunities_page():
-    return send_file(CAREER_OPPS_HTML)
-
-
-@app.route('/axe-career/<slug>')
-@require_auth
-def axe_career_subspace_stub(slug):
-    label = CAREER_SUBSPACES.get(slug)
-    if not label:
-        return redirect('/axe-career')
-    return CAREER_STUB_TEMPLATE.format(label=label, tagline='Not set up yet — on the roadmap.')
+    return send_file(CAREER_HTML)
 
 
 @app.route('/api/career/profile', methods=['GET'])
 @require_auth
 def api_career_profile_get():
-    profile = career.get_profile()
-    if not profile or not profile.get('specialty'):
-        return jsonify(None)
-    return jsonify(profile)
+    return jsonify(career.get_profile())
 
 
 @app.route('/api/career/profile', methods=['POST'])
 @require_auth
 def api_career_profile_post():
+    # Kept for the rare case Mike wants to correct his auto-seeded profile
+    # (e.g. narrow the specialty) — not required for the app to work,
+    # since ensure_profile_seeded() fills in sensible defaults at startup.
     data = request.get_json(silent=True) or {}
     specialty = (data.get('specialty') or '').strip()
     if not specialty:
@@ -627,14 +596,10 @@ def api_career_profile_post():
     return jsonify({'success': True})
 
 
-@app.route('/api/career/search', methods=['POST'])
+@app.route('/api/career/dashboard-summary')
 @require_auth
-def api_career_search():
-    allowed, seconds_remaining = career.can_run_manual_search()
-    if not allowed:
-        return jsonify({'throttled': True, 'seconds_remaining': seconds_remaining})
-    num_found, num_new = career.run_search()
-    return jsonify({'throttled': False, 'num_found': num_found, 'num_new': num_new})
+def api_career_dashboard_summary():
+    return jsonify(career.dashboard_summary())
 
 
 @app.route('/api/career/opportunities', methods=['GET'])
@@ -659,11 +624,27 @@ def api_career_opportunity_status(opp_id):
     return jsonify({'success': True})
 
 
-# ── Axe Career: Chatbot ──────────────────────────────────────────────────────
-@app.route('/axe-career-chat')
+@app.route('/api/career/opportunities/manual', methods=['POST'])
 @require_auth
-def axe_career_chat_page():
-    return send_file(CAREER_CHAT_HTML)
+def api_career_opportunity_manual():
+    # Backs the Career FAB — for opportunities Mike hears about outside the
+    # automatic search (a tip from a friend, an email, etc.)
+    data = request.get_json(silent=True) or {}
+    title = (data.get('title') or '').strip()
+    opp_type = (data.get('type') or 'open_call').strip()
+    if not title:
+        return jsonify({'error': 'Title is required'}), 400
+    if opp_type not in ('open_call', 'job', 'grant'):
+        opp_type = 'open_call'
+    new_id = career.add_manual_opportunity(
+        title=title,
+        opp_type=opp_type,
+        org=(data.get('org') or ''),
+        url=(data.get('url') or ''),
+        description=(data.get('description') or ''),
+        deadline=(data.get('deadline') or None),
+    )
+    return jsonify({'success': True, 'id': new_id})
 
 
 @app.route('/api/career-chat', methods=['POST'])
@@ -704,6 +685,8 @@ def api_career_chat():
     except Exception as e:
         logging.error(f"Axe Career chat error: {e}")
         return jsonify({'reply': f'Error: {str(e)}'}), 200
+
+
 
 
 # ── PWA Assets ────────────────────────────────────────────────────────────────
@@ -1285,6 +1268,23 @@ if __name__ == '__main__':
     career.init_career_db()
     init_spaces_db()
     logging.info("Database initialized.")
+
+    was_seeded = career.ensure_profile_seeded()
+    if was_seeded:
+        logging.info("Career profile auto-seeded with defaults — Mike can edit specialty later if it's off.")
+    # If there's no data yet (fresh deploy), don't make Mike wait for the
+    # 7 AM cron — run the first search now, in the background, so results
+    # are already there by the time he opens Career.
+    _existing_opps = (
+        career.list_opportunities(status='new') +
+        career.list_opportunities(status='saved') +
+        career.list_opportunities(status='dismissed') +
+        career.list_opportunities(status='applied')
+    )
+    if not _existing_opps:
+        Thread(target=career.run_search, daemon=True).start()
+        logging.info("No opportunities yet — kicked off the first Career search in the background.")
+
 
     # Catch any subscriptions that came due while the app was offline.
     _job_process_subscriptions()
