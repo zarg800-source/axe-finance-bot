@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Axe Career — Opportunity Radar</title>
+<script>
+(function(){
+  var s=localStorage.getItem('mf-theme');
+  var sys=window.matchMedia('(prefers-color-scheme:dark)').matches;
+  document.documentElement.setAttribute('data-theme', s||(sys?'dark':'light'));
+})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --radius-card:22px;--radius-pill:999px;--transition:.22s cubic-bezier(.4,0,.2,1);
+}
+[data-theme="light"]{
+  --bg:#f5f5f7;--bg2:#ffffff;--bg3:#fafafa;--nav-bg:#1d1d1f;--nav-text:#fff;
+  --text:#1d1d1f;--text2:#6e6e73;--text3:#aeaeb2;--divider:rgba(0,0,0,.06);
+  --badge-bg:#f5f5f7;--up:#34c759;--down:#ff3b30;--up-bg:rgba(52,199,89,.1);--down-bg:rgba(255,59,48,.1);
+  --glass-grad:linear-gradient(165deg, rgba(255,255,255,.62), rgba(255,255,255,.34));
+  --glass-bg:rgba(255,255,255,.44);--glass-border:rgba(255,255,255,.55);
+  --glass-shadow:inset 0 1px 0 rgba(255,255,255,.85),inset 0 0 0 1px rgba(255,255,255,.18),0 1px 2px rgba(30,32,60,.04),0 18px 40px -16px rgba(30,32,60,.16);
+  --glass-shadow-hover:inset 0 1px 0 rgba(255,255,255,.9),inset 0 0 0 1px rgba(255,255,255,.22),0 24px 48px -16px rgba(30,32,60,.22);
+  --blob-1:rgba(30,41,90,.08);--blob-2:rgba(70,130,200,.09);--blob-3:rgba(16,110,80,.06);
+  --gold:#3763a8;--gold-light:#6f97d6;--gold-deep:#2a4d85;--gold-border:rgba(55,99,168,.35);--gold-glow:rgba(55,99,168,.35);--gold-bg:rgba(55,99,168,.10);
+}
+[data-theme="dark"]{
+  --bg:#000000;--bg2:#1c1c1e;--bg3:#2c2c2e;--nav-bg:#f5f5f7;--nav-text:#1d1d1f;
+  --text:#f5f5f7;--text2:#aeaeb2;--text3:#636366;--divider:rgba(255,255,255,.08);
+  --badge-bg:rgba(255,255,255,.1);--up:#30d158;--down:#ff453a;--up-bg:rgba(48,209,88,.15);--down-bg:rgba(255,69,58,.15);
+  --glass-grad:linear-gradient(165deg, rgba(255,255,255,.10), rgba(255,255,255,.025));
+  --glass-bg:rgba(255,255,255,.055);--glass-border:rgba(255,255,255,.10);
+  --glass-shadow:inset 0 1px 0 rgba(255,255,255,.09),inset 0 0 0 1px rgba(255,255,255,.05),0 1px 2px rgba(0,0,0,.3),0 24px 48px -16px rgba(0,0,0,.55);
+  --glass-shadow-hover:inset 0 1px 0 rgba(255,255,255,.12),inset 0 0 0 1px rgba(255,255,255,.07),0 28px 56px -16px rgba(0,0,0,.65);
+  --blob-1:rgba(24,34,84,.55);--blob-2:rgba(70,150,220,.16);--blob-3:rgba(16,110,80,.16);
+  --gold:#7fa8e8;--gold-light:#a9c6f2;--gold-deep:#5683c9;--gold-border:rgba(127,168,232,.35);--gold-glow:rgba(127,168,232,.45);--gold-bg:rgba(127,168,232,.12);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{overflow-x:hidden;max-width:100vw}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;position:relative;transition:background var(--transition),color var(--transition);-webkit-font-smoothing:antialiased;}
+body::before{content:'';position:fixed;inset:-10%;z-index:0;pointer-events:none;
+  background-image:radial-gradient(1100px 900px at 12% -10%, var(--blob-1), transparent 60%),radial-gradient(1000px 800px at 108% 10%, var(--blob-2), transparent 62%),radial-gradient(900px 900px at 40% 115%, var(--blob-3), transparent 60%);
+  filter:blur(60px);}
+.main{position:relative;z-index:1;max-width:1000px;margin:0 auto;padding:20px 20px 60px;display:flex;flex-direction:column;gap:18px;}
+
+.topbar{display:flex;align-items:center;gap:12px;}
+.back-btn{width:38px;height:38px;border-radius:50%;background:var(--glass-grad);border:1px solid var(--glass-border);display:grid;place-items:center;color:var(--text2);text-decoration:none;transition:all var(--transition);flex-shrink:0;box-shadow:var(--glass-shadow);}
+.back-btn:hover{color:var(--gold);}
+.back-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.2;}
+.topbar-title{font-family:'Anton',sans-serif;font-size:17px;letter-spacing:1px;
+  background:linear-gradient(100deg, var(--text) 45%, var(--gold-light) 140%);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;}
+.topbar-sub{font-size:11.5px;color:var(--text3);}
+
+.card{background:var(--glass-grad);backdrop-filter:blur(20px) saturate(150%);-webkit-backdrop-filter:blur(20px) saturate(150%);border:1px solid var(--glass-border);border-radius:var(--radius-card);padding:22px;box-shadow:var(--glass-shadow);}
+
+/* Profile form */
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+.field label{font-size:11.5px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;}
+.field input, .field select{
+  width:100%;padding:12px 14px;border:1.5px solid var(--glass-border);border-radius:12px;
+  background:var(--glass-bg);color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;outline:none;
+  transition:border-color .18s,background .18s;
+}
+.field input:focus, .field select:focus{border-color:var(--gold-border);}
+.submit-btn{width:100%;padding:14px;border:none;border-radius:12px;background:var(--nav-bg);color:var(--nav-text);font-size:14px;font-weight:600;cursor:pointer;transition:opacity .18s;margin-top:4px;}
+.submit-btn:hover{opacity:.9;}
+.submit-btn:disabled{opacity:.5;cursor:not-allowed;}
+
+/* Stats row */
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+.stat{background:var(--glass-grad);border:1px solid var(--glass-border);border-radius:16px;padding:14px 16px;box-shadow:var(--glass-shadow);}
+.stat-num{font-family:'Anton',sans-serif;font-size:22px;color:var(--text);}
+.stat-lbl{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-top:2px;}
+
+/* Controls row */
+.controls{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+.pill-row{display:flex;gap:6px;flex-wrap:wrap;}
+.pill{padding:6px 13px;border-radius:var(--radius-pill);font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--divider);background:var(--bg3);color:var(--text2);transition:all var(--transition);}
+.pill.active{background:var(--badge-bg);color:var(--text);border-color:transparent;}
+.refresh-btn{padding:9px 16px;border-radius:var(--radius-pill);border:none;background:linear-gradient(150deg,var(--gold-light),var(--gold-deep));color:#f4f8ff;font-size:12.5px;font-weight:600;cursor:pointer;transition:opacity var(--transition);white-space:nowrap;}
+.refresh-btn:disabled{opacity:.45;cursor:not-allowed;}
+
+/* Opportunity cards */
+.opp-grid{display:flex;flex-direction:column;gap:12px;}
+.opp-card{background:var(--glass-grad);border:1px solid var(--glass-border);border-radius:18px;padding:18px 20px;box-shadow:var(--glass-shadow);display:flex;flex-direction:column;gap:10px;transition:transform var(--transition),box-shadow var(--transition);}
+.opp-card:hover{transform:translateY(-2px);box-shadow:var(--glass-shadow-hover);}
+.opp-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+.opp-title{font-size:15px;font-weight:700;color:var(--text);line-height:1.35;}
+.opp-org{font-size:12px;color:var(--text2);margin-top:2px;}
+.opp-score{flex-shrink:0;text-align:center;padding:6px 12px;border-radius:12px;background:var(--gold-bg);}
+.opp-score-num{font-family:'Anton',sans-serif;font-size:18px;color:var(--gold);}
+.opp-score-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;}
+.opp-meta{display:flex;gap:8px;flex-wrap:wrap;}
+.tag{font-size:11px;font-weight:600;padding:3px 10px;border-radius:var(--radius-pill);background:var(--badge-bg);color:var(--text2);}
+.tag.deadline-soon{background:var(--down-bg);color:var(--down);}
+.tag.deadline-ok{background:var(--up-bg);color:var(--up);}
+.opp-desc{font-size:12.5px;color:var(--text2);line-height:1.55;}
+.opp-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:8px;border-top:1px solid var(--divider);}
+.opp-link{font-size:12px;font-weight:600;color:var(--gold);text-decoration:none;}
+.opp-actions{display:flex;gap:8px;}
+.opp-actions button{font-size:11px;padding:6px 13px;border-radius:var(--radius-pill);border:1px solid var(--glass-border);background:transparent;color:var(--text2);cursor:pointer;transition:all var(--transition);}
+.opp-actions button.save:hover{color:var(--up);border-color:var(--up);}
+.opp-actions button.dismiss:hover{color:var(--down);border-color:var(--down);}
+
+.empty{text-align:center;padding:40px 20px;color:var(--text3);font-size:13px;}
+.note{font-size:11.5px;color:var(--text3);text-align:center;}
+</style>
+</head>
+<body>
+
+<div class="main">
+  <div class="topbar">
+    <a class="back-btn" href="/axe-career" title="Back to Career">
+      <svg viewBox="0 0 24 24"><polyline points="15,18 9,12 15,6"/></svg>
+    </a>
+    <div>
+      <div class="topbar-title">OPPORTUNITIES</div>
+      <div class="topbar-sub">Axe Career</div>
+    </div>
+    <a class="back-btn" href="/axe-career-chat" title="Chat with Axe" style="margin-left:auto;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+    </a>
+    <a class="back-btn" href="/home" title="Axe Home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </a>
+  </div>
+
+  <!-- PROFILE FORM (shown only until a profile exists) -->
+  <div class="card" id="profileCard" style="display:none;">
+    <div style="font-family:'Anton',sans-serif;font-size:15px;letter-spacing:.5px;margin-bottom:16px;">SET UP YOUR PROFILE</div>
+    <div class="field">
+      <label>Curatorial specialty</label>
+      <input type="text" id="pfSpecialty" placeholder="e.g. contemporary photography, textile art, Southeast Asian art">
+    </div>
+    <div class="field">
+      <label>Experience level</label>
+      <select id="pfExperience">
+        <option value="emerging">Emerging (0–3 yrs)</option>
+        <option value="mid-career">Mid-career (3–8 yrs)</option>
+        <option value="senior">Senior (8+ yrs)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Location</label>
+      <input type="text" id="pfLocation" placeholder="e.g. Bangkok, Thailand">
+    </div>
+    <div class="field">
+      <label>Remote / relocation preference</label>
+      <select id="pfRemote">
+        <option value="local_only">Local only</option>
+        <option value="remote">Remote / international</option>
+        <option value="relocate">Open to relocating</option>
+      </select>
+    </div>
+    <button class="submit-btn" id="pfSubmit">Save profile &amp; start radar</button>
+  </div>
+
+  <!-- RADAR DASHBOARD (shown once a profile exists) -->
+  <div id="radarView" style="display:none; flex-direction:column; gap:18px;">
+    <div class="stats-row" id="statsRow"></div>
+
+    <div class="controls">
+      <div class="pill-row" id="typeFilters">
+        <div class="pill active" data-type="">All</div>
+        <div class="pill" data-type="open_call">Open Calls</div>
+        <div class="pill" data-type="job">Jobs</div>
+        <div class="pill" data-type="grant">Grants</div>
+      </div>
+      <button class="refresh-btn" id="refreshBtn">Refresh now</button>
+    </div>
+    <div class="note" id="refreshNote"></div>
+
+    <div class="opp-grid" id="oppGrid"></div>
+  </div>
+</div>
+
+<script>
+var $ = function(id){ return document.getElementById(id); };
+var currentTypeFilter = '';
+
+async function fetchJSON(url, opts){
+  var res = await fetch(url, opts);
+  return res.json();
+}
+
+function fmtDeadline(d){
+  if(!d) return null;
+  var dt = new Date(d + 'T00:00:00');
+  var days = Math.round((dt - new Date()) / 86400000);
+  var label = dt.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+  return { label: label, days: days };
+}
+
+function oppCardHtml(o){
+  var deadlineInfo = fmtDeadline(o.deadline);
+  var deadlineTag = '';
+  if (deadlineInfo) {
+    var cls = deadlineInfo.days <= 7 ? 'deadline-soon' : 'deadline-ok';
+    var text = deadlineInfo.days < 0 ? 'Deadline passed' : ('Due ' + deadlineInfo.label + ' (' + deadlineInfo.days + 'd)');
+    deadlineTag = '<span class="tag ' + cls + '">' + text + '</span>';
+  } else {
+    deadlineTag = '<span class="tag">No deadline listed</span>';
+  }
+  var typeLabels = {open_call: 'Open Call', job: 'Job', grant: 'Grant'};
+  return `
+    <div class="opp-card" data-id="${o.id}">
+      <div class="opp-head">
+        <div>
+          <div class="opp-title">${o.title}</div>
+          ${o.org ? '<div class="opp-org">' + o.org + '</div>' : ''}
+        </div>
+        <div class="opp-score">
+          <div class="opp-score-num">${Math.round(o.match_score)}</div>
+          <div class="opp-score-lbl">match</div>
+        </div>
+      </div>
+      <div class="opp-meta">
+        <span class="tag">${typeLabels[o.type] || o.type}</span>
+        ${deadlineTag}
+        <span class="tag">~${Math.round(o.prep_hours_est || 0)}h prep</span>
+      </div>
+      ${o.description ? '<div class="opp-desc">' + o.description.slice(0, 220) + (o.description.length > 220 ? '…' : '') + '</div>' : ''}
+      <div class="opp-foot">
+        <a class="opp-link" href="${o.url}" target="_blank" rel="noopener">View source ↗</a>
+        <div class="opp-actions">
+          <button class="save" onclick="setStatus(${o.id}, 'saved', this)">Save</button>
+          <button class="dismiss" onclick="setStatus(${o.id}, 'dismissed', this)">Dismiss</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function loadOpportunities(){
+  var url = '/api/career/opportunities?status=new,saved' + (currentTypeFilter ? '&type=' + currentTypeFilter : '');
+  var data = await fetchJSON(url);
+  var grid = $('oppGrid');
+  if (!data.length) {
+    grid.innerHTML = '<div class="empty">No opportunities yet. Tap "Refresh now" to run the radar.</div>';
+  } else {
+    grid.innerHTML = data.map(oppCardHtml).join('');
+  }
+
+  var total = data.length;
+  var saved = data.filter(function(o){ return o.status === 'saved'; }).length;
+  var soon = data.filter(function(o){ var d = fmtDeadline(o.deadline); return d && d.days >= 0 && d.days <= 14; }).length;
+  $('statsRow').innerHTML = `
+    <div class="stat"><div class="stat-num">${total}</div><div class="stat-lbl">Active</div></div>
+    <div class="stat"><div class="stat-num">${saved}</div><div class="stat-lbl">Saved</div></div>
+    <div class="stat"><div class="stat-num">${soon}</div><div class="stat-lbl">Due in 14 days</div></div>
+  `;
+}
+
+async function setStatus(id, status, btn){
+  btn.closest('.opp-card').style.opacity = '0.4';
+  await fetchJSON('/api/career/opportunities/' + id + '/status', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({status: status})
+  });
+  loadOpportunities();
+}
+
+document.querySelectorAll('#typeFilters .pill').forEach(function(p){
+  p.addEventListener('click', function(){
+    document.querySelectorAll('#typeFilters .pill').forEach(function(x){ x.classList.remove('active'); });
+    this.classList.add('active');
+    currentTypeFilter = this.dataset.type;
+    loadOpportunities();
+  });
+});
+
+$('refreshBtn').addEventListener('click', async function(){
+  var btn = this;
+  btn.disabled = true;
+  btn.textContent = 'Searching…';
+  try {
+    var result = await fetchJSON('/api/career/search', { method: 'POST' });
+    if (result.throttled) {
+      $('refreshNote').textContent = 'Please wait ~' + Math.ceil(result.seconds_remaining / 60) + ' more minute(s) before refreshing again.';
+    } else {
+      $('refreshNote').textContent = `Found ${result.num_found} results, ${result.num_new} new.`;
+      loadOpportunities();
+    }
+  } catch (err) {
+    $('refreshNote').textContent = 'Search failed: ' + err.message;
+  }
+  btn.disabled = false;
+  btn.textContent = 'Refresh now';
+});
+
+$('pfSubmit').addEventListener('click', async function(){
+  var btn = this;
+  var specialty = $('pfSpecialty').value.trim();
+  if (!specialty) { alert('Specialty is required.'); return; }
+  btn.disabled = true; btn.textContent = 'Saving…';
+  await fetchJSON('/api/career/profile', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      specialty: specialty,
+      experience_level: $('pfExperience').value,
+      location: $('pfLocation').value.trim(),
+      remote_pref: $('pfRemote').value
+    })
+  });
+  btn.textContent = 'Running first search…';
+  await fetchJSON('/api/career/search', { method: 'POST' });
+  init();
+});
+
+async function init(){
+  var profile = await fetchJSON('/api/career/profile');
+  if (!profile) {
+    $('profileCard').style.display = 'block';
+    $('radarView').style.display = 'none';
+  } else {
+    $('profileCard').style.display = 'none';
+    $('radarView').style.display = 'flex';
+    loadOpportunities();
+  }
+}
+init();
+</script>
+</body>
+</html>

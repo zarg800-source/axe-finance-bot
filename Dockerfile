@@ -15,6 +15,11 @@ COPY finance.db .
 COPY entrypoint.sh .
 COPY dashboard.html .
 COPY cfo-finance-bot.html .
+COPY axe_home.html .
+COPY career.py .
+COPY axe_career_home.html .
+COPY axe_career_opportunities.html .
+COPY axe_career_chat.html .
 RUN chmod +x /app/entrypoint.sh
 
 # Create a directory for the database and ensure it's writable

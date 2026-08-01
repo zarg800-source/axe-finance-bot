@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Axe Career — Advisor</title>
+<script>
+(function(){
+  var s=localStorage.getItem('mf-theme');
+  var sys=window.matchMedia('(prefers-color-scheme:dark)').matches;
+  document.documentElement.setAttribute('data-theme', s||(sys?'dark':'light'));
+})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--radius-card:22px;--radius-pill:999px;--transition:.22s cubic-bezier(.4,0,.2,1);}
+[data-theme="light"]{
+  --bg:#f5f5f7;--bg2:#ffffff;--bg3:#fafafa;--nav-bg:#1d1d1f;--nav-text:#ffffff;
+  --card-bg:#ffffff;--card-border:rgba(0,0,0,.06);--text:#1d1d1f;--text2:#6e6e73;--text3:#aeaeb2;
+  --divider:rgba(0,0,0,.06);--badge-bg:#f5f5f7;--status-online:#34c759;--status-thinking:#ff9500;
+  --glass-grad:linear-gradient(165deg, rgba(255,255,255,.62), rgba(255,255,255,.34));
+  --glass-bg:rgba(255,255,255,.44);--glass-bg-strong:rgba(255,255,255,.78);--glass-border:rgba(255,255,255,.55);
+  --glass-shadow:inset 0 1px 0 rgba(255,255,255,.85),inset 0 0 0 1px rgba(255,255,255,.18),0 1px 2px rgba(30,32,60,.04),0 18px 40px -16px rgba(30,32,60,.16);
+  --blob-1:rgba(30,41,90,.08);--blob-2:rgba(70,130,200,.09);--blob-3:rgba(16,110,80,.06);
+  --gold:#3763a8;--gold-light:#6f97d6;--gold-deep:#2a4d85;--gold-border:rgba(55,99,168,.35);--gold-glow:rgba(55,99,168,.35);
+}
+[data-theme="dark"]{
+  --bg:#000000;--bg2:#1c1c1e;--bg3:#2c2c2e;--nav-bg:#f5f5f7;--nav-text:#1d1d1f;
+  --card-bg:#1c1c1e;--card-border:rgba(255,255,255,.08);--text:#f5f5f7;--text2:#aeaeb2;--text3:#636366;
+  --divider:rgba(255,255,255,.08);--badge-bg:rgba(255,255,255,.1);--status-online:#30d158;--status-thinking:#ff9f0a;
+  --glass-grad:linear-gradient(165deg, rgba(255,255,255,.10), rgba(255,255,255,.025));
+  --glass-bg:rgba(255,255,255,.055);--glass-bg-strong:rgba(35,35,40,.82);--glass-border:rgba(255,255,255,.10);
+  --glass-shadow:inset 0 1px 0 rgba(255,255,255,.09),inset 0 0 0 1px rgba(255,255,255,.05),0 1px 2px rgba(0,0,0,.3),0 24px 48px -16px rgba(0,0,0,.55);
+  --blob-1:rgba(24,34,84,.55);--blob-2:rgba(70,150,220,.16);--blob-3:rgba(16,110,80,.16);
+  --gold:#7fa8e8;--gold-light:#a9c6f2;--gold-deep:#5683c9;--gold-border:rgba(127,168,232,.35);--gold-glow:rgba(127,168,232,.45);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;height:100%;position:relative;-webkit-font-smoothing:antialiased;transition:background var(--transition),color var(--transition);}
+body::before{content:'';position:fixed;inset:-10%;z-index:0;pointer-events:none;
+  background-image:radial-gradient(900px 800px at 12% -10%, var(--blob-1), transparent 60%),radial-gradient(800px 700px at 108% 12%, var(--blob-2), transparent 62%),radial-gradient(750px 750px at 40% 115%, var(--blob-3), transparent 60%);
+  filter:blur(60px);}
+
+.header{display:flex;align-items:center;gap:12px;margin:14px 14px 0;padding:12px 16px;background:var(--glass-grad);backdrop-filter:blur(24px) saturate(150%);-webkit-backdrop-filter:blur(24px) saturate(150%);border:1px solid var(--glass-border);border-radius:20px;box-shadow:var(--glass-shadow);flex-shrink:0;position:relative;z-index:1;}
+.logo-icon{width:36px;height:36px;border-radius:11px;background:linear-gradient(150deg,var(--gold-light),var(--gold-deep));display:grid;place-items:center;flex-shrink:0;box-shadow:0 4px 14px -4px var(--gold-glow);}
+.logo-mark{font-family:'Anton',sans-serif;color:#f4f8ff;line-height:1;-webkit-text-fill-color:#f4f8ff;}
+.logo-icon .logo-mark{font-size:17px;}
+.back-btn{width:36px;height:36px;border-radius:50%;background:var(--glass-bg);border:1px solid var(--glass-border);display:grid;place-items:center;flex-shrink:0;color:var(--text2);text-decoration:none;transition:all var(--transition);}
+.back-btn:hover{color:var(--gold);transform:translateY(-1px);}
+.back-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.2;}
+.header-text{flex:1;min-width:0;}
+.header-title{font-family:'Anton',sans-serif;font-size:16px;letter-spacing:1px;
+  background:linear-gradient(100deg, var(--text) 45%, var(--gold-light) 140%);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.header-sub{font-size:11px;color:var(--text3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.status{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3);padding:6px 11px;background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:var(--radius-pill);flex-shrink:0;white-space:nowrap;}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--status-online);animation:pulse 2.4s ease-in-out infinite;}
+.status-dot.thinking{background:var(--status-thinking);animation:pulse .8s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+.chat-area{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px 16px;display:flex;flex-direction:column;gap:16px;scroll-behavior:smooth;position:relative;z-index:1;}
+.chat-area::-webkit-scrollbar{width:4px}
+.chat-area::-webkit-scrollbar-thumb{background:var(--text3);border-radius:2px}
+
+.msg{display:flex;gap:10px;animation:fadeUp .25s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.msg.user{flex-direction:row-reverse}
+.msg-avatar{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;flex-shrink:0;font-size:13px;font-weight:700;align-self:flex-end;}
+.msg.axe .msg-avatar{background:linear-gradient(150deg,var(--gold-light),var(--gold-deep));color:#f4f8ff;font-family:'Anton',sans-serif;font-size:15px;box-shadow:0 4px 12px -4px var(--gold-glow);}
+.msg.user .msg-avatar{background:var(--glass-grad);border:1px solid var(--glass-border);color:var(--text2);}
+.msg-bubble{max-width:78%;padding:10px 14px 8px;border-radius:16px;font-size:13.5px;line-height:1.6;display:flex;flex-direction:column;gap:2px;}
+.msg.axe .msg-bubble{background:var(--glass-grad);backdrop-filter:blur(20px) saturate(150%);-webkit-backdrop-filter:blur(20px) saturate(150%);border:1px solid var(--glass-border);color:var(--text);border-bottom-left-radius:4px;box-shadow:var(--glass-shadow);}
+.msg.user .msg-bubble{background:linear-gradient(150deg,var(--gold-light),var(--gold-deep));color:#f4f8ff;border-bottom-right-radius:4px;box-shadow:0 10px 24px -10px var(--gold-glow);}
+.bubble-time{align-self:flex-end;font-size:10px;line-height:1;flex-shrink:0;user-select:none;padding-top:2px;}
+.msg.axe .msg-bubble .bubble-time{color:var(--text3);}
+.msg.user .msg-bubble .bubble-time{color:rgba(244,248,255,.7);}
+.msg.axe .msg-bubble strong{color:var(--text);font-weight:600}
+
+.thinking-bubble{display:flex;align-items:center;gap:8px;padding:12px 16px;background:var(--glass-grad);backdrop-filter:blur(20px) saturate(150%);-webkit-backdrop-filter:blur(20px) saturate(150%);border:1px solid var(--glass-border);border-radius:16px;border-bottom-left-radius:4px;font-size:12px;color:var(--text3);max-width:78%;box-shadow:var(--glass-shadow);}
+.thinking-dots{display:flex;gap:4px}
+.thinking-dots span{width:5px;height:5px;border-radius:50%;background:var(--text3);opacity:.5;animation:dot 1.2s ease-in-out infinite;}
+.thinking-dots span:nth-child(2){animation-delay:.2s}
+.thinking-dots span:nth-child(3){animation-delay:.4s}
+@keyframes dot{0%,80%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+
+.input-area{margin:0 14px 14px;padding:14px 16px 16px;background:var(--glass-grad);backdrop-filter:blur(26px) saturate(150%);-webkit-backdrop-filter:blur(26px) saturate(150%);border:1px solid var(--glass-border);border-radius:22px;box-shadow:var(--glass-shadow);flex-shrink:0;position:relative;z-index:1;}
+.input-row{display:flex;gap:10px;align-items:center;}
+.input-wrap{flex:1;position:relative;display:flex;}
+textarea{width:100%;background:var(--glass-bg);border:1.5px solid var(--glass-border);border-radius:14px;padding:0 16px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;resize:none;outline:none;height:48px;min-height:48px;max-height:120px;line-height:48px;transition:border-color var(--transition),height var(--transition);overflow-y:auto;scrollbar-width:none;}
+textarea::-webkit-scrollbar{display:none;}
+textarea::placeholder{color:var(--text3)}
+textarea:focus{border-color:var(--gold-border);line-height:1.5;padding:12px 16px;}
+.send-btn{width:48px;height:48px;border-radius:14px;background:linear-gradient(150deg,var(--gold-light),var(--gold-deep));border:none;cursor:pointer;display:grid;place-items:center;flex-shrink:0;transition:opacity var(--transition),transform .15s;box-shadow:0 10px 24px -8px var(--gold-glow), inset 0 1px 0 rgba(255,255,255,.4);}
+.send-btn:hover{opacity:.9;transform:translateY(-1px)}
+.send-btn:disabled{opacity:.35;cursor:not-allowed;transform:none}
+.send-btn svg{width:18px;height:18px;stroke:#f4f8ff;fill:none;stroke-width:2}
+
+.welcome{text-align:center;padding:30px 20px;display:flex;flex-direction:column;align-items:center;gap:10px;}
+.welcome-icon{width:56px;height:56px;border-radius:16px;background:linear-gradient(150deg,var(--gold-light),var(--gold-deep));display:grid;place-items:center;box-shadow:0 12px 28px -8px var(--gold-glow);margin-bottom:4px;}
+.welcome-icon .logo-mark{font-size:26px;}
+.welcome h2{font-family:'Anton',sans-serif;font-size:20px;letter-spacing:.5px;color:var(--text);}
+.welcome p{font-size:13px;color:var(--text2);max-width:320px;line-height:1.6}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <a href="/axe-career" class="back-btn" title="Back to Axe Career">
+    <svg viewBox="0 0 24 24"><polyline points="15,18 9,12 15,6"/></svg>
+  </a>
+  <div class="logo-icon"><span class="logo-mark">🪓</span></div>
+  <div class="header-text">
+    <div class="header-title">AXE CAREER</div>
+    <div class="header-sub">Your curatorial career advisor</div>
+  </div>
+  <div class="status">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">Ready</span>
+  </div>
+</div>
+
+<div class="chat-area" id="chatArea">
+  <div class="welcome">
+    <div class="welcome-icon"><span class="logo-mark">🪓</span></div>
+    <h2>AXE IS READY</h2>
+    <p>Ask about your opportunities, a curatorial statement, an application strategy, or where to focus next.</p>
+  </div>
+</div>
+
+<div class="input-area">
+  <div class="input-row">
+    <div class="input-wrap">
+      <textarea id="userInput" placeholder="Ask your career advisor…" rows="1"></textarea>
+    </div>
+    <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+      <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9"/></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+const CAREER_CHAT_ENDPOINT = '/api/career-chat';
+let conversationHistory = [];
+const MAX_HISTORY = 10;
+
+function getTime(){ return new Date().toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' }); }
+function formatText(text){
+  text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  text = text.replace(/\n/g, '<br>');
+  return text;
+}
+function scrollToBottom(){ const a=document.getElementById('chatArea'); a.scrollTop=a.scrollHeight; }
+function setStatus(thinking){
+  const dot=document.getElementById('statusDot'), text=document.getElementById('statusText');
+  if(thinking){ dot.className='status-dot thinking'; text.textContent='Thinking…'; }
+  else{ dot.className='status-dot'; text.textContent='Ready'; }
+}
+function appendMessage(role, text){
+  const area=document.getElementById('chatArea');
+  const welcome=area.querySelector('.welcome'); if(welcome) welcome.remove();
+  const div=document.createElement('div');
+  div.className = `msg ${role === 'axe' ? 'axe' : 'user'}`;
+  if(role === 'axe'){
+    div.innerHTML = `<div class="msg-avatar">🪓</div><div class="msg-bubble">${formatText(text)}<span class="bubble-time">${getTime()}</span></div>`;
+  } else {
+    div.innerHTML = `<div class="msg-avatar">M</div><div class="msg-bubble">${text}<span class="bubble-time">${getTime()}</span></div>`;
+  }
+  area.appendChild(div); scrollToBottom();
+}
+function showThinking(){
+  const area=document.getElementById('chatArea');
+  const welcome=area.querySelector('.welcome'); if(welcome) welcome.remove();
+  const div=document.createElement('div');
+  div.className='msg axe'; div.id='thinkingMsg';
+  div.innerHTML = `<div class="msg-avatar">🪓</div><div class="thinking-bubble"><div class="thinking-dots"><span></span><span></span><span></span></div><span>Thinking…</span></div>`;
+  area.appendChild(div); scrollToBottom();
+}
+function removeThinking(){ const el=document.getElementById('thinkingMsg'); if(el) el.remove(); }
+
+async function sendMessage(){
+  const input=document.getElementById('userInput');
+  const sendBtn=document.getElementById('sendBtn');
+  const text=input.value.trim();
+  if(!text) return;
+  input.value=''; input.style.height='auto';
+  appendMessage('user', text);
+  conversationHistory.push({role:'user', content:text});
+  if(conversationHistory.length > MAX_HISTORY) conversationHistory = conversationHistory.slice(-MAX_HISTORY);
+
+  sendBtn.disabled=true; setStatus(true); showThinking();
+  try {
+    const response = await fetch(CAREER_CHAT_ENDPOINT, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({messages: conversationHistory})
+    });
+    const data = await response.json();
+    if(!response.ok) throw new Error(data.error || data.reply || `Server error: ${response.status}`);
+    const reply = data.reply || 'Sorry, I hit an error. Try again.';
+    conversationHistory.push({role:'assistant', content:reply});
+    if(conversationHistory.length > MAX_HISTORY) conversationHistory = conversationHistory.slice(-MAX_HISTORY);
+    removeThinking(); setStatus(false); appendMessage('axe', reply);
+  } catch(err){
+    removeThinking(); setStatus(false); appendMessage('axe', `Error: ${err.message}`);
+  }
+  sendBtn.disabled=false; input.focus();
+}
+
+document.getElementById('userInput').addEventListener('input', function(){
+  this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,120)+'px';
+});
+document.getElementById('userInput').addEventListener('keydown', function(e){
+  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); }
+});
+</script>
+</body>
+</html>

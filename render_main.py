@@ -26,6 +26,7 @@ from core import (
     send_excel_email,
 )
 from receipt_parser import create_parser
+import career
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -49,6 +50,7 @@ receipt_parser = create_parser(openai_client=_ai_client)
 DATABASE   = '/data/finance.db'
 BANGKOK_TZ = pytz.timezone('Asia/Bangkok')
 DASHBOARD_HTML = '/app/dashboard.html'
+AXE_HOME_HTML = '/app/axe_home.html'
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', secrets.token_hex(32))
@@ -189,7 +191,7 @@ def login():
         if _check_auth(password):
             session['authenticated'] = True
             session.permanent = True
-            return redirect('/dashboard')
+            return redirect('/home')
         error = 'Wrong password. Try again.'
     error_html = f'<div class="er">{error}</div>' if error else ''
     resp = make_response(LOGIN_HTML.replace('{error_html}', error_html))
@@ -445,6 +447,264 @@ def api_months():
     data = [{'year': int(r['year']), 'month': int(r['month'])} for r in c.fetchall()]
     conn.close()
     return jsonify(data)
+
+# ── Axe: Home screen Spaces registry ─────────────────────────────────────────
+# Finance and Career are the two real Spaces today. Everything else gets a
+# styled "Nothing here yet" page until it's built — flipping a slug to 'live'
+# later is a one-row DB update, not a redeploy.
+SPACES_SEED = [
+    ('finance',  'Finance Agent',  '/dashboard',      'live', 'Your accounts & spending'),
+    ('career',   'Career Agent',   '/axe-career',     'live', ''),   # tagline overridden client-side with a real opportunity count
+    ('research', 'Research Agent', '/space/research', 'stub', 'Not set up yet'),
+    ('travel',   'Travel Agent',   '/space/travel',   'stub', 'Not set up yet'),
+    ('network',  'Network Agent',  '/space/network',  'stub', 'Not set up yet'),
+    ('vault',    'Vault Agent',    '/space/vault',    'stub', 'Not set up yet'),
+    # Ideas and Settings dropped per Mike's 6-agent home screen — easy to
+    # bring back later, just uncomment and add an icon for them client-side:
+    # ('ideas',    'Ideas Agent', '/space/ideas',    'stub', 'Not set up yet'),
+    # ('settings', 'Settings',    '/space/settings', 'stub', 'Not set up yet'),
+]
+
+def init_spaces_db():
+    conn = get_db(); c = conn.cursor()
+    c.executescript("""
+    CREATE TABLE IF NOT EXISTS spaces (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        slug TEXT UNIQUE NOT NULL,
+        label TEXT NOT NULL,
+        route TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'stub',
+        tagline TEXT DEFAULT ''
+    );
+    """)
+    for slug, label, route, status, tagline in SPACES_SEED:
+        c.execute(
+            "INSERT OR IGNORE INTO spaces (slug, label, route, status, tagline) VALUES (?, ?, ?, ?, ?)",
+            (slug, label, route, status, tagline)
+        )
+    # Keep existing rows in sync with route/status changes above (but never
+    # clobber a tagline you might hand-edit later).
+    for slug, label, route, status, tagline in SPACES_SEED:
+        c.execute(
+            "UPDATE spaces SET label = ?, route = ?, status = ? WHERE slug = ?",
+            (label, route, status, slug)
+        )
+    conn.commit(); conn.close()
+
+
+@app.route('/home')
+@require_auth
+def axe_home():
+    return send_file(AXE_HOME_HTML)
+
+
+@app.route('/api/spaces')
+@require_auth
+def api_spaces():
+    conn = get_db(); c = conn.cursor()
+    c.execute("SELECT slug, label, route, status, tagline FROM spaces ORDER BY id")
+    data = [dict(r) for r in c.fetchall()]
+    conn.close()
+    return jsonify(data)
+
+
+STUB_TEMPLATE = '''<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>{label} — Axe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+(function(){{
+  var s=localStorage.getItem('mf-theme');
+  var sys=window.matchMedia('(prefers-color-scheme:dark)').matches;
+  document.documentElement.setAttribute('data-theme', s||(sys?'dark':'light'));
+}})();
+</script>
+<style>
+*,*::before,*::after{{box-sizing:border-box;margin:0;padding:0}}
+html,body{{height:100%;-webkit-font-smoothing:antialiased}}
+body{{font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;
+  background:#f5f5f7;color:#1d1d1f;transition:background .2s,color .2s;}}
+[data-theme="dark"] body{{background:#000;color:#f5f5f7;}}
+.w{{text-align:center;max-width:360px;padding:0 24px;}}
+.icon{{width:64px;height:64px;border-radius:18px;background:linear-gradient(150deg,#6f97d6,#2a4d85);
+  display:grid;place-items:center;margin:0 auto 20px;box-shadow:0 12px 28px -8px rgba(55,99,168,.35);}}
+.t{{font-family:'Anton',sans-serif;font-size:20px;letter-spacing:.8px;margin-bottom:8px;}}
+.s{{font-size:13.5px;color:#6e6e73;line-height:1.6;margin-bottom:28px;}}
+[data-theme="dark"] .s{{color:#aeaeb2;}}
+.back{{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:999px;
+  background:#1d1d1f;color:#fff;text-decoration:none;font-size:13.5px;font-weight:600;}}
+[data-theme="dark"] .back{{background:#f5f5f7;color:#1d1d1f;}}
+</style></head>
+<body>
+<div class="w">
+  <div class="icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></div>
+  <div class="t">NOTHING HERE YET</div>
+  <div class="s">{tagline}</div>
+  <a class="back" href="/home">&larr; Back to Axe</a>
+</div>
+</body></html>'''
+
+
+@app.route('/space/<slug>')
+@require_auth
+def space_stub(slug):
+    conn = get_db(); c = conn.cursor()
+    c.execute("SELECT label, route, status, tagline FROM spaces WHERE slug = ?", (slug,))
+    row = c.fetchone()
+    conn.close()
+    if not row:
+        return redirect('/home')
+    if row['status'] == 'live':
+        return redirect(row['route'])
+    tagline = row['tagline'] or f"{row['label']} isn't built yet \u2014 it's on the roadmap."
+    return STUB_TEMPLATE.format(label=row['label'], tagline=tagline)
+
+
+# ── Axe Career: Opportunity Radar ────────────────────────────────────────────
+CAREER_HOME_HTML = '/app/axe_career_home.html'
+CAREER_OPPS_HTML = '/app/axe_career_opportunities.html'
+CAREER_CHAT_HTML = '/app/axe_career_chat.html'
+
+# Career's own sub-agents. Only 'opportunities' has a real backend today —
+# the rest get an honest stub page (no fabricated numbers) until built.
+CAREER_SUBSPACES = {
+    'applications': 'Applications',
+    'ai-research':  'AI Research',
+    'network':      'Network',
+    'vault':        'Career Vault',
+    'timeline':     'Timeline',
+}
+
+CAREER_STUB_TEMPLATE = STUB_TEMPLATE.replace(
+    'href="/home">&larr; Back to Axe', 'href="/axe-career">&larr; Back to Axe Career'
+)
+
+@app.route('/axe-career')
+@require_auth
+def axe_career_page():
+    return send_file(CAREER_HOME_HTML)
+
+
+@app.route('/axe-career/opportunities')
+@require_auth
+def axe_career_opportunities_page():
+    return send_file(CAREER_OPPS_HTML)
+
+
+@app.route('/axe-career/<slug>')
+@require_auth
+def axe_career_subspace_stub(slug):
+    label = CAREER_SUBSPACES.get(slug)
+    if not label:
+        return redirect('/axe-career')
+    return CAREER_STUB_TEMPLATE.format(label=label, tagline='Not set up yet — on the roadmap.')
+
+
+@app.route('/api/career/profile', methods=['GET'])
+@require_auth
+def api_career_profile_get():
+    profile = career.get_profile()
+    if not profile or not profile.get('specialty'):
+        return jsonify(None)
+    return jsonify(profile)
+
+
+@app.route('/api/career/profile', methods=['POST'])
+@require_auth
+def api_career_profile_post():
+    data = request.get_json(silent=True) or {}
+    specialty = (data.get('specialty') or '').strip()
+    if not specialty:
+        return jsonify({'error': 'Specialty is required'}), 400
+    career.save_profile(
+        specialty=specialty,
+        experience_level=(data.get('experience_level') or '').strip(),
+        location=(data.get('location') or '').strip(),
+        remote_pref=(data.get('remote_pref') or 'local_only').strip(),
+    )
+    return jsonify({'success': True})
+
+
+@app.route('/api/career/search', methods=['POST'])
+@require_auth
+def api_career_search():
+    allowed, seconds_remaining = career.can_run_manual_search()
+    if not allowed:
+        return jsonify({'throttled': True, 'seconds_remaining': seconds_remaining})
+    num_found, num_new = career.run_search()
+    return jsonify({'throttled': False, 'num_found': num_found, 'num_new': num_new})
+
+
+@app.route('/api/career/opportunities', methods=['GET'])
+@require_auth
+def api_career_opportunities():
+    opp_type = request.args.get('type') or None
+    status_param = request.args.get('status', 'new,saved')
+    statuses = set(s.strip() for s in status_param.split(',') if s.strip())
+    rows = career.list_opportunities(opp_type=opp_type)
+    rows = [r for r in rows if r['status'] in statuses]
+    return jsonify(rows)
+
+
+@app.route('/api/career/opportunities/<int:opp_id>/status', methods=['POST'])
+@require_auth
+def api_career_opportunity_status(opp_id):
+    data = request.get_json(silent=True) or {}
+    status = (data.get('status') or '').strip()
+    ok = career.set_opportunity_status(opp_id, status)
+    if not ok:
+        return jsonify({'success': False, 'error': 'Invalid id or status'}), 400
+    return jsonify({'success': True})
+
+
+# ── Axe Career: Chatbot ──────────────────────────────────────────────────────
+@app.route('/axe-career-chat')
+@require_auth
+def axe_career_chat_page():
+    return send_file(CAREER_CHAT_HTML)
+
+
+@app.route('/api/career-chat', methods=['POST'])
+@require_auth
+def api_career_chat():
+    try:
+        if not GEMINI_API_KEY:
+            return jsonify({'reply': 'Axe Career chat needs GEMINI_API_KEY set on Render.'}), 200
+
+        data = request.get_json()
+        messages = data.get('messages', [])
+        if not messages:
+            return jsonify({'reply': 'Hey Mike, ask me anything about your opportunities or career strategy.'}), 200
+
+        system_prompt = career.build_career_chat_system_prompt()
+        gemini_contents = []
+        for msg in messages:
+            role = 'user' if msg['role'] == 'user' else 'model'
+            gemini_contents.append({'role': role, 'parts': [{'text': msg['content']}]})
+
+        payload = {
+            'system_instruction': {'parts': [{'text': system_prompt}]},
+            'contents': gemini_contents,
+            'generationConfig': {'maxOutputTokens': 1200, 'temperature': 0.6}
+        }
+        resp = requests.post(GEMINI_URL, json=payload, headers={'Content-Type': 'application/json'}, timeout=30)
+
+        if resp.status_code != 200:
+            logging.error(f"Gemini API error (career chat): {resp.status_code} {resp.text}")
+            return jsonify({'reply': 'Sorry, had trouble thinking. Please try again.'}), 200
+
+        result = resp.json()
+        reply_text = result.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+        if not reply_text:
+            return jsonify({'reply': "Couldn't generate a response. Please rephrase."}), 200
+        return jsonify({'reply': reply_text})
+
+    except Exception as e:
+        logging.error(f"Axe Career chat error: {e}")
+        return jsonify({'reply': f'Error: {str(e)}'}), 200
+
 
 # ── PWA Assets ────────────────────────────────────────────────────────────────
 _ICON_192 = "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"
@@ -948,9 +1208,9 @@ def api_restore():
 # ── Error handlers ────────────────────────────────────────────────────────────
 @app.errorhandler(404)
 def not_found(e):
-    # If request wants HTML (browser), redirect to dashboard
+    # If request wants HTML (browser), redirect to the Axe home screen
     if request.accept_mimetypes.accept_html:
-        return redirect('/dashboard')
+        return redirect('/home')
     return jsonify({"error": "Not found"}), 404
 
 @app.errorhandler(500)
@@ -991,9 +1251,17 @@ def _job_monthly_email_backup():
     except Exception as e:
         logging.error(f"Monthly email backup job failed: {e}")
 
+def _job_career_search():
+    try:
+        num_found, num_new = career.run_search()
+        logging.info(f"Axe Career daily search: {num_found} found, {num_new} new")
+    except Exception as e:
+        logging.error(f"Axe Career daily search failed: {e}")
+
 scheduler = BackgroundScheduler(timezone=BANGKOK_TZ)
 scheduler.add_job(_job_process_subscriptions, 'cron', hour=8, minute=0, id='check_subs')
 scheduler.add_job(_job_monthly_email_backup, 'cron', hour=9, minute=5, id='monthly_email_backup')
+scheduler.add_job(_job_career_search, 'cron', hour=7, minute=0, id='career_search')
 
 # ── Flask runner ──────────────────────────────────────────────────────────────
 def run_flask():
@@ -1014,6 +1282,8 @@ def keep_alive():
 # ── Entry point ───────────────────────────────────────────────────────────────
 if __name__ == '__main__':
     core_init_db()
+    career.init_career_db()
+    init_spaces_db()
     logging.info("Database initialized.")
 
     # Catch any subscriptions that came due while the app was offline.
