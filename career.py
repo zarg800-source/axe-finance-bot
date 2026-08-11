@@ -1,9 +1,14 @@
 """
-career.py — Axe Career: Opportunity Radar (Phase 1)
-=====================================================
+career.py — Axe Career: Opportunity Radar (Phase 1) + Applications workflow
+=============================================================================
 Searches the web (via Tavily) for curatorial opportunities — open calls,
 museum/gallery jobs, and curatorial grants & fellowships — scores them
 against a minimal profile, and stores them for the Axe Career dashboard.
+
+Also holds the Applications tracking workflow: once Mike marks an
+opportunity as "Applied", a deeper application record is created here,
+with its own 8-stage pipeline, a checklist, drafted content fields, and an
+auto-generated status-change history (used as the application's timeline).
 
 No Flask here, same pattern as core.py / receipt_parser.py: pure functions
 + direct SQLite access, imported by render_main.py.
@@ -45,6 +50,16 @@ QUERY_TEMPLATES = {
 
 MIN_SECONDS_BETWEEN_MANUAL_RUNS = 15 * 60  # throttle the "Refresh now" button
 
+# ─── Applications workflow ──────────────────────────────────────────────────
+# 8-stage pipeline. Order matters — used for simple "is this further along"
+# comparisons in the UI (e.g. sort order), though the DB itself doesn't
+# enforce sequential transitions; Mike can jump stages freely (e.g. straight
+# to 'rejected' if a call closes early).
+APPLICATION_STATUSES = [
+    'draft', 'preparing', 'ready', 'submitted',
+    'interview', 'accepted', 'rejected', 'archived',
+]
+
 
 # ─── DB ───────────────────────────────────────────────────────────────────────
 def get_db():
@@ -79,7 +94,62 @@ def init_career_db():
         found_at DATETIME,
         source_query TEXT
     );
+    CREATE TABLE IF NOT EXISTS applications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        opportunity_id INTEGER NOT NULL UNIQUE,
+        status TEXT NOT NULL DEFAULT 'draft',
+        cover_letter TEXT DEFAULT '',
+        proposal TEXT DEFAULT '',
+        email_draft TEXT DEFAULT '',
+        notes TEXT DEFAULT '',
+        created_at DATETIME,
+        updated_at DATETIME,
+        FOREIGN KEY (opportunity_id) REFERENCES opportunities(id)
+    );
+    CREATE TABLE IF NOT EXISTS application_checklist_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        application_id INTEGER NOT NULL,
+        label TEXT NOT NULL,
+        done INTEGER NOT NULL DEFAULT 0,
+        created_at DATETIME,
+        FOREIGN KEY (application_id) REFERENCES applications(id)
+    );
+    CREATE TABLE IF NOT EXISTS application_status_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        application_id INTEGER NOT NULL,
+        status TEXT NOT NULL,
+        changed_at DATETIME,
+        FOREIGN KEY (application_id) REFERENCES applications(id)
+    );
     """)
+    conn.commit()
+
+    # ── Idempotent backfill ──────────────────────────────────────────────
+    # An earlier session already added 'applied' as an opportunity status
+    # before the applications table existed. Any opportunity sitting at
+    # status='applied' with no matching application row gets one created
+    # now, seeded at the 'submitted' stage (the closest honest mapping —
+    # "applied" meant "I sent it in").
+    c.execute("""
+        SELECT o.id FROM opportunities o
+        LEFT JOIN applications a ON a.opportunity_id = o.id
+        WHERE o.status = 'applied' AND a.id IS NULL
+    """)
+    orphaned = [r['id'] for r in c.fetchall()]
+    now = datetime.utcnow().isoformat()
+    for opp_id in orphaned:
+        c.execute("""
+            INSERT INTO applications (opportunity_id, status, created_at, updated_at)
+            VALUES (?, 'submitted', ?, ?)
+        """, (opp_id, now, now))
+        new_app_id = c.lastrowid
+        c.execute("""
+            INSERT INTO application_status_history (application_id, status, changed_at)
+            VALUES (?, 'submitted', ?)
+        """, (new_app_id, now))
+    if orphaned:
+        logger.info(f"Backfilled {len(orphaned)} application record(s) from legacy 'applied' opportunities.")
+
     conn.commit(); conn.close()
 
 
@@ -383,3 +453,273 @@ def dashboard_summary():
         'last_search_at': last_search,
     }
 
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ── Applications workflow ────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _row_to_dict(row):
+    return dict(row) if row else None
+
+
+def create_application(opportunity_id):
+    """Creates an application record for an opportunity, idempotently — if
+    one already exists for this opportunity, returns the existing one
+    instead of erroring or duplicating. Also flips the parent opportunity's
+    coarse status to 'applied' so Opportunities/Applications tabs agree.
+    Returns the full application dict, or None if the opportunity_id is
+    invalid."""
+    conn = get_db(); c = conn.cursor()
+
+    c.execute("SELECT id FROM opportunities WHERE id = ?", (opportunity_id,))
+    if not c.fetchone():
+        conn.close()
+        return None
+
+    c.execute("SELECT * FROM applications WHERE opportunity_id = ?", (opportunity_id,))
+    existing = c.fetchone()
+    if existing:
+        conn.close()
+        return _row_to_dict(existing)
+
+    now = datetime.utcnow().isoformat()
+    c.execute("""
+        INSERT INTO applications (opportunity_id, status, created_at, updated_at)
+        VALUES (?, 'draft', ?, ?)
+    """, (opportunity_id, now, now))
+    new_id = c.lastrowid
+    c.execute("""
+        INSERT INTO application_status_history (application_id, status, changed_at)
+        VALUES (?, 'draft', ?)
+    """, (new_id, now))
+    c.execute("UPDATE opportunities SET status = 'applied' WHERE id = ?", (opportunity_id,))
+    conn.commit()
+
+    c.execute("SELECT * FROM applications WHERE id = ?", (new_id,))
+    result = _row_to_dict(c.fetchone())
+    conn.close()
+    return result
+
+
+def list_applications(status=None):
+    """Returns applications joined with their parent opportunity's display
+    fields (title/org/url/deadline/type), sorted newest-updated first."""
+    conn = get_db(); c = conn.cursor()
+    q = """
+        SELECT a.*, o.title AS opp_title, o.org AS opp_org, o.url AS opp_url,
+               o.deadline AS opp_deadline, o.type AS opp_type
+        FROM applications a
+        JOIN opportunities o ON o.id = a.opportunity_id
+        WHERE 1=1
+    """
+    params = []
+    if status:
+        q += " AND a.status = ?"; params.append(status)
+    q += " ORDER BY a.updated_at DESC"
+    c.execute(q, params)
+    rows = [dict(r) for r in c.fetchall()]
+    conn.close()
+    return rows
+
+
+def get_application(app_id):
+    """Full detail for one application: parent opportunity fields,
+    checklist items, and status history — everything the detail modal
+    needs in one call."""
+    conn = get_db(); c = conn.cursor()
+    c.execute("""
+        SELECT a.*, o.title AS opp_title, o.org AS opp_org, o.url AS opp_url,
+               o.deadline AS opp_deadline, o.type AS opp_type, o.description AS opp_description
+        FROM applications a
+        JOIN opportunities o ON o.id = a.opportunity_id
+        WHERE a.id = ?
+    """, (app_id,))
+    row = c.fetchone()
+    if not row:
+        conn.close()
+        return None
+    result = dict(row)
+
+    c.execute("SELECT * FROM application_checklist_items WHERE application_id = ? ORDER BY id", (app_id,))
+    result['checklist'] = [dict(r) for r in c.fetchall()]
+
+    c.execute("SELECT status, changed_at FROM application_status_history WHERE application_id = ? ORDER BY changed_at", (app_id,))
+    result['history'] = [dict(r) for r in c.fetchall()]
+
+    conn.close()
+    return result
+
+
+def update_application_status(app_id, status):
+    if status not in APPLICATION_STATUSES:
+        return False
+    conn = get_db(); c = conn.cursor()
+    c.execute("SELECT id FROM applications WHERE id = ?", (app_id,))
+    if not c.fetchone():
+        conn.close()
+        return False
+    now = datetime.utcnow().isoformat()
+    c.execute("UPDATE applications SET status = ?, updated_at = ? WHERE id = ?", (status, now, app_id))
+    c.execute("""
+        INSERT INTO application_status_history (application_id, status, changed_at)
+        VALUES (?, ?, ?)
+    """, (app_id, status, now))
+    conn.commit()
+    conn.close()
+    return True
+
+
+def update_application_fields(app_id, cover_letter=None, proposal=None, email_draft=None, notes=None):
+    """Partial update — only touches fields that were actually passed
+    (None means 'leave unchanged', not 'clear it'). Used by the detail
+    modal's autosave-on-blur for each textarea."""
+    conn = get_db(); c = conn.cursor()
+    c.execute("SELECT id FROM applications WHERE id = ?", (app_id,))
+    if not c.fetchone():
+        conn.close()
+        return False
+
+    fields = []
+    params = []
+    if cover_letter is not None:
+        fields.append("cover_letter = ?"); params.append(cover_letter)
+    if proposal is not None:
+        fields.append("proposal = ?"); params.append(proposal)
+    if email_draft is not None:
+        fields.append("email_draft = ?"); params.append(email_draft)
+    if notes is not None:
+        fields.append("notes = ?"); params.append(notes)
+
+    if not fields:
+        conn.close()
+        return True  # nothing to do, not an error
+
+    fields.append("updated_at = ?")
+    params.append(datetime.utcnow().isoformat())
+    params.append(app_id)
+
+    c.execute(f"UPDATE applications SET {', '.join(fields)} WHERE id = ?", params)
+    conn.commit()
+    conn.close()
+    return True
+
+
+def add_checklist_item(app_id, label):
+    label = (label or '').strip()
+    if not label:
+        return None
+    conn = get_db(); c = conn.cursor()
+    c.execute("SELECT id FROM applications WHERE id = ?", (app_id,))
+    if not c.fetchone():
+        conn.close()
+        return None
+    now = datetime.utcnow().isoformat()
+    c.execute("""
+        INSERT INTO application_checklist_items (application_id, label, done, created_at)
+        VALUES (?, ?, 0, ?)
+    """, (app_id, label, now))
+    new_id = c.lastrowid
+    conn.commit()
+    conn.close()
+    return new_id
+
+
+def toggle_checklist_item(item_id, done=None):
+    """Flips done/not-done, or sets it explicitly if `done` (bool) is
+    given. Returns the new done value, or None if the item doesn't exist."""
+    conn = get_db(); c = conn.cursor()
+    c.execute("SELECT done, application_id FROM application_checklist_items WHERE id = ?", (item_id,))
+    row = c.fetchone()
+    if not row:
+        conn.close()
+        return None
+    new_done = (1 if done else 0) if done is not None else (0 if row['done'] else 1)
+    c.execute("UPDATE application_checklist_items SET done = ? WHERE id = ?", (new_done, item_id))
+    c.execute("UPDATE applications SET updated_at = ? WHERE id = ?",
+              (datetime.utcnow().isoformat(), row['application_id']))
+    conn.commit()
+    conn.close()
+    return bool(new_done)
+
+
+def delete_checklist_item(item_id):
+    conn = get_db(); c = conn.cursor()
+    c.execute("DELETE FROM application_checklist_items WHERE id = ?", (item_id,))
+    conn.commit()
+    ok = c.rowcount > 0
+    conn.close()
+    return ok
+
+
+def delete_application(app_id):
+    """Deletes the application + its checklist/history, and reverts the
+    parent opportunity back to 'saved' (not 'new' — Mike already looked at
+    it once, that shouldn't be forgotten) so it reappears in Opportunities
+    rather than vanishing."""
+    conn = get_db(); c = conn.cursor()
+    c.execute("SELECT opportunity_id FROM applications WHERE id = ?", (app_id,))
+    row = c.fetchone()
+    if not row:
+        conn.close()
+        return False
+    opp_id = row['opportunity_id']
+    c.execute("DELETE FROM application_checklist_items WHERE application_id = ?", (app_id,))
+    c.execute("DELETE FROM application_status_history WHERE application_id = ?", (app_id,))
+    c.execute("DELETE FROM applications WHERE id = ?", (app_id,))
+    c.execute("UPDATE opportunities SET status = 'saved' WHERE id = ?", (opp_id,))
+    conn.commit()
+    conn.close()
+    return True
+
+
+def build_career_chat_system_prompt():
+    """Builds Career chat's system prompt fresh each turn from live profile
+    + opportunity + application data. Persona: calm, concise, warm — never
+    flatters, challenges weak ideas respectfully, never invents facts."""
+    profile = get_profile() or {}
+    summary = dashboard_summary()
+    apps = list_applications()
+    active_apps = [a for a in apps if a['status'] not in ('accepted', 'rejected', 'archived')]
+
+    deadlines_str = '\n'.join(
+        f"- {o['title']} ({o.get('org') or 'org unknown'}) — due {o['deadline']}"
+        for o in summary['upcoming_deadlines']
+    ) or 'None on file.'
+
+    matches_str = '\n'.join(
+        f"- {o['title']} — match {round(o.get('match_score') or 0)}/100"
+        for o in summary['top_matches']
+    ) or 'None scored yet.'
+
+    apps_str = '\n'.join(
+        f"- {a['opp_title']} — stage: {a['status']}"
+        for a in active_apps
+    ) or 'No applications in progress.'
+
+    return f"""You are Axe, Mike's career advisor for curatorial work, based in Bangkok, Thailand.
+
+MIKE'S PROFILE:
+- Specialty: {profile.get('specialty', 'not set')}
+- Experience level: {profile.get('experience_level', 'not set')}
+- Location / preference: {profile.get('location', 'not set')} ({profile.get('remote_pref', 'not set')})
+
+YOUR PERSONALITY:
+- Calm, concise, warm — never flatters
+- Challenges weak ideas respectfully rather than agreeing by default
+- Never invents facts; says "I don't know" when uncertain
+- Presents trade-offs before recommending one option
+- Max ~200 words unless a full strategy is requested
+
+LIVE DATA:
+
+ACTIVE OPPORTUNITIES: {summary['total_active']}
+
+UPCOMING DEADLINES:
+{deadlines_str}
+
+TOP-SCORED MATCHES:
+{matches_str}
+
+APPLICATIONS IN PROGRESS:
+{apps_str}
+"""

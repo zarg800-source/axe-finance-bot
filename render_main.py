@@ -118,7 +118,7 @@ def health_check():
 @app.route('/d')
 @require_auth
 def dashboard_short():
-    return redirect('/dashboard', code=302)
+    return redirect('/axefinance', code=302)
 
 # ── Login / Logout ────────────────────────────────────────────────────────────
 LOGIN_HTML = '''<!DOCTYPE html>
@@ -204,10 +204,14 @@ def logout():
     return redirect('/login')
 
 # ── Dashboard ────────────────────────────────────────────────────────────────
-@app.route('/dashboard')
+@app.route('/axefinance')
 @require_auth
 def dashboard():
     return send_file(DASHBOARD_HTML)
+
+@app.route('/dashboard')
+def dashboard_legacy():
+    return redirect('/axefinance', code=302)
 
 # ── API: Balances ─────────────────────────────────────────────────────────────
 @app.route('/api/balances')
@@ -453,16 +457,16 @@ def api_months():
 # styled "Nothing here yet" page until it's built — flipping a slug to 'live'
 # later is a one-row DB update, not a redeploy.
 SPACES_SEED = [
-    ('finance',  'Finance',  '/dashboard',      'live', 'Your accounts & spending'),
-    ('career',   'Career',   '/axe-career',     'live', ''),   # tagline overridden client-side with a real opportunity count
-    ('research', 'Research', '/space/research', 'stub', 'Not set up yet'),
-    ('travel',   'Travel',   '/space/travel',   'stub', 'Not set up yet'),
-    ('network',  'Network',  '/space/network',  'stub', 'Not set up yet'),
-    ('vault',    'Vault',    '/space/vault',    'stub', 'Not set up yet'),
+    ('finance',  'Finance',  '/axefinance',    'live', 'Your accounts & spending'),
+    ('career',   'Career',   '/axecareer',     'live', ''),   # tagline overridden client-side with a real opportunity count
+    ('research', 'Research', '/axeresearch',   'stub', 'Not set up yet'),
+    ('travel',   'Travel',   '/axetravel',     'stub', 'Not set up yet'),
+    ('network',  'Network',  '/axenetwork',    'stub', 'Not set up yet'),
+    ('vault',    'Vault',    '/axevault',      'stub', 'Not set up yet'),
     # Ideas and Settings dropped per Mike's 6-card home screen — easy to
     # bring back later, just uncomment and add an icon for them client-side:
-    # ('ideas',    'Ideas',    '/space/ideas',    'stub', 'Not set up yet'),
-    # ('settings', 'Settings', '/space/settings', 'stub', 'Not set up yet'),
+    # ('ideas',    'Ideas',    '/axeideas',    'stub', 'Not set up yet'),
+    # ('settings', 'Settings', '/axesettings', 'stub', 'Not set up yet'),
 ]
 
 def init_spaces_db():
@@ -547,9 +551,7 @@ body{{font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-c
 </body></html>'''
 
 
-@app.route('/space/<slug>')
-@require_auth
-def space_stub(slug):
+def _render_space_stub(slug):
     conn = get_db(); c = conn.cursor()
     c.execute("SELECT label, route, status, tagline FROM spaces WHERE slug = ?", (slug,))
     row = c.fetchone()
@@ -562,13 +564,41 @@ def space_stub(slug):
     return STUB_TEMPLATE.format(label=row['label'], tagline=tagline)
 
 
+@app.route('/axeresearch')
+@require_auth
+def axe_research_page():
+    return _render_space_stub('research')
+
+
+@app.route('/axetravel')
+@require_auth
+def axe_travel_page():
+    return _render_space_stub('travel')
+
+
+@app.route('/axenetwork')
+@require_auth
+def axe_network_page():
+    return _render_space_stub('network')
+
+
+@app.route('/axevault')
+@require_auth
+def axe_vault_page():
+    return _render_space_stub('vault')
+
+
 # ── Axe Career: Opportunity Radar ────────────────────────────────────────────
 CAREER_HTML = '/app/axe_career.html'
 
-@app.route('/axe-career')
+@app.route('/axecareer')
 @require_auth
 def axe_career_page():
     return send_file(CAREER_HTML)
+
+@app.route('/axe-career')
+def axe_career_page_legacy():
+    return redirect('/axecareer', code=302)
 
 
 @app.route('/api/career/profile', methods=['GET'])
@@ -647,6 +677,117 @@ def api_career_opportunity_manual():
     return jsonify({'success': True, 'id': new_id})
 
 
+@app.route('/api/career/search', methods=['POST'])
+@require_auth
+def api_career_search():
+    allowed, seconds_remaining = career.can_run_manual_search()
+    if not allowed:
+        return jsonify({'throttled': True, 'seconds_remaining': seconds_remaining}), 200
+    num_found, num_new = career.run_search()
+    return jsonify({'throttled': False, 'num_found': num_found, 'num_new': num_new})
+
+
+# ── Axe Career: Applications workflow ────────────────────────────────────────
+@app.route('/api/career/applications', methods=['GET'])
+@require_auth
+def api_career_applications_list():
+    status = request.args.get('status') or None
+    rows = career.list_applications(status=status)
+    return jsonify(rows)
+
+
+@app.route('/api/career/applications', methods=['POST'])
+@require_auth
+def api_career_applications_create():
+    data = request.get_json(silent=True) or {}
+    try:
+        opportunity_id = int(data.get('opportunity_id'))
+    except (TypeError, ValueError):
+        return jsonify({'error': 'opportunity_id is required'}), 400
+    result = career.create_application(opportunity_id)
+    if result is None:
+        return jsonify({'error': f"Opportunity {opportunity_id} not found"}), 404
+    return jsonify({'success': True, 'application': result})
+
+
+@app.route('/api/career/applications/<int:app_id>', methods=['GET'])
+@require_auth
+def api_career_application_detail(app_id):
+    result = career.get_application(app_id)
+    if result is None:
+        return jsonify({'error': 'Application not found'}), 404
+    return jsonify(result)
+
+
+@app.route('/api/career/applications/<int:app_id>', methods=['DELETE'])
+@require_auth
+def api_career_application_delete(app_id):
+    ok = career.delete_application(app_id)
+    if not ok:
+        return jsonify({'error': 'Application not found'}), 404
+    return jsonify({'success': True})
+
+
+@app.route('/api/career/applications/<int:app_id>/status', methods=['POST'])
+@require_auth
+def api_career_application_status(app_id):
+    data = request.get_json(silent=True) or {}
+    status = (data.get('status') or '').strip()
+    ok = career.update_application_status(app_id, status)
+    if not ok:
+        return jsonify({'error': 'Invalid application id or status'}), 400
+    return jsonify({'success': True})
+
+
+@app.route('/api/career/applications/<int:app_id>/fields', methods=['POST'])
+@require_auth
+def api_career_application_fields(app_id):
+    data = request.get_json(silent=True) or {}
+    ok = career.update_application_fields(
+        app_id,
+        cover_letter=data.get('cover_letter'),
+        proposal=data.get('proposal'),
+        email_draft=data.get('email_draft'),
+        notes=data.get('notes'),
+    )
+    if not ok:
+        return jsonify({'error': 'Application not found'}), 404
+    return jsonify({'success': True})
+
+
+@app.route('/api/career/applications/<int:app_id>/checklist', methods=['POST'])
+@require_auth
+def api_career_checklist_add(app_id):
+    data = request.get_json(silent=True) or {}
+    label = (data.get('label') or '').strip()
+    if not label:
+        return jsonify({'error': 'Label is required'}), 400
+    item_id = career.add_checklist_item(app_id, label)
+    if item_id is None:
+        return jsonify({'error': 'Application not found'}), 404
+    return jsonify({'success': True, 'id': item_id})
+
+
+@app.route('/api/career/checklist/<int:item_id>/toggle', methods=['POST'])
+@require_auth
+def api_career_checklist_toggle(item_id):
+    data = request.get_json(silent=True) or {}
+    done = data.get('done')  # optional explicit bool; None -> flip
+    new_done = career.toggle_checklist_item(item_id, done=done)
+    if new_done is None:
+        return jsonify({'error': 'Checklist item not found'}), 404
+    return jsonify({'success': True, 'done': new_done})
+
+
+@app.route('/api/career/checklist/<int:item_id>', methods=['DELETE'])
+@require_auth
+def api_career_checklist_delete(item_id):
+    ok = career.delete_checklist_item(item_id)
+    if not ok:
+        return jsonify({'error': 'Checklist item not found'}), 404
+    return jsonify({'success': True})
+
+
 @app.route('/api/career-chat', methods=['POST'])
 @require_auth
 def api_career_chat():
@@ -696,7 +837,7 @@ _ICON_512 = "iVBORw0KGgoAAAANSUhEUgAAAgAAAAIACAYAAAD0eNT6AAAq20lEQVR42u3dZ5Bc13X
 @app.route('/manifest.json')
 def pwa_manifest():
     m = {"name":"Mike Finance","short_name":"Finance","description":"Personal finance tracker",
-         "start_url":"/dashboard","display":"standalone","background_color":"#000000",
+         "start_url":"/home","display":"standalone","background_color":"#000000",
          "theme_color":"#1d1d1f","orientation":"portrait",
          "icons":[{"src":"/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
                   {"src":"/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}]}
@@ -715,8 +856,8 @@ def icon_512():
 @app.route('/sw.js')
 def service_worker():
     sw = """
-const C='mf-v7';
-self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['/dashboard','/icon-192.png'])));self.skipWaiting();});
+const C='mf-v8';
+self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['/home','/icon-192.png'])));self.skipWaiting();});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});
 self.addEventListener('fetch',e=>{
   if(e.request.url.includes('/api/')||e.request.url.includes('/login')||e.request.url.includes('/logout')){

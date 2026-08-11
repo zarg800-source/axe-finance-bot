@@ -95,6 +95,68 @@ body::before{content:'';position:fixed;inset:-10%;z-index:0;pointer-events:none;
 .opp-actions button.dismiss:hover{color:var(--down);border-color:var(--down);}
 .empty{text-align:center;padding:40px 20px;color:var(--text3);font-size:13px;}
 
+/* ── Application status badges — reuses only existing tokens ─────────── */
+.status-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:var(--radius-pill);white-space:nowrap;flex-shrink:0;}
+.status-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;}
+.status-badge.st-draft,.status-badge.st-preparing,.status-badge.st-archived{background:var(--badge-bg);color:var(--text2);}
+.status-badge.st-ready,.status-badge.st-submitted,.status-badge.st-interview{background:var(--gold-bg);color:var(--gold);}
+.status-badge.st-accepted{background:var(--up-bg);color:var(--up);}
+.status-badge.st-rejected{background:var(--down-bg);color:var(--down);}
+
+/* ── Application cards (Applications tab) ─────────────────────────────── */
+.app-card{background:var(--glass-grad);border:1px solid var(--glass-border);border-radius:18px;padding:18px 20px;box-shadow:var(--glass-shadow);display:flex;flex-direction:column;gap:10px;cursor:pointer;transition:transform var(--transition),box-shadow var(--transition);-webkit-tap-highlight-color:transparent;}
+.app-card:hover{transform:translateY(-2px);box-shadow:var(--glass-shadow-hover);}
+.app-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+.app-title{font-size:15px;font-weight:700;color:var(--text);line-height:1.35;}
+.app-org{font-size:12px;color:var(--text2);margin-top:2px;}
+.app-meta{display:flex;gap:8px;flex-wrap:wrap;}
+.app-progress{font-size:11px;color:var(--text3);}
+
+/* ── Stage picker (inside detail modal) ───────────────────────────────── */
+.stage-picker{display:flex;gap:6px;overflow-x:auto;padding:2px 2px 6px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.stage-picker::-webkit-scrollbar{display:none;}
+.stage-pill{flex-shrink:0;padding:7px 14px;border-radius:var(--radius-pill);font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--divider);background:var(--bg3);color:var(--text2);white-space:nowrap;transition:all var(--transition);-webkit-tap-highlight-color:transparent;}
+.stage-pill.active{border-color:transparent;}
+.stage-pill.active.st-draft,.stage-pill.active.st-preparing,.stage-pill.active.st-archived{background:var(--badge-bg);color:var(--text);}
+.stage-pill.active.st-ready,.stage-pill.active.st-submitted,.stage-pill.active.st-interview{background:var(--gold);color:#f4f8ff;}
+.stage-pill.active.st-accepted{background:var(--up);color:#fff;}
+.stage-pill.active.st-rejected{background:var(--down);color:#fff;}
+
+/* ── Checklist ─────────────────────────────────────────────────────────── */
+.checklist{display:flex;flex-direction:column;}
+.checklist-item{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid var(--divider);}
+.checklist-item:last-child{border-bottom:none;}
+.check-circle{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--divider);flex-shrink:0;display:grid;place-items:center;cursor:pointer;transition:all var(--transition);-webkit-tap-highlight-color:transparent;}
+.check-circle svg{width:11px;height:11px;stroke:#fff;fill:none;stroke-width:3;opacity:0;transition:opacity var(--transition);}
+.checklist-item.done .check-circle{background:var(--up);border-color:var(--up);}
+.checklist-item.done .check-circle svg{opacity:1;}
+.checklist-label{flex:1;font-size:13.5px;color:var(--text);cursor:pointer;line-height:1.4;}
+.checklist-item.done .checklist-label{color:var(--text3);text-decoration:line-through;}
+.checklist-del{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;color:var(--text3);cursor:pointer;flex-shrink:0;background:transparent;border:none;transition:all var(--transition);}
+.checklist-del:hover{color:var(--down);background:var(--down-bg);}
+.checklist-del svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;}
+.checklist-add-row{display:flex;gap:8px;margin-top:8px;}
+.checklist-add-row input{flex:1;padding:9px 12px;border:1.5px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .18s;}
+.checklist-add-row input:focus{border-color:var(--gold-border);}
+.checklist-add-btn{padding:9px 16px;border-radius:10px;border:none;background:var(--badge-bg);color:var(--text);font-size:12.5px;font-weight:600;cursor:pointer;flex-shrink:0;}
+
+/* ── Detail modal sections ────────────────────────────────────────────── */
+.detail-section{display:flex;flex-direction:column;gap:6px;}
+.detail-section-label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;}
+.detail-textarea{width:100%;padding:11px 13px;border:1.5px solid var(--glass-border);border-radius:12px;background:var(--glass-bg);color:var(--text);font-size:13.5px;font-family:'DM Sans',sans-serif;outline:none;resize:vertical;min-height:70px;line-height:1.55;transition:border-color .18s;}
+.detail-textarea:focus{border-color:var(--gold-border);}
+.save-hint{font-size:10.5px;color:var(--up);opacity:0;transition:opacity .3s;height:12px;}
+.save-hint.show{opacity:1;}
+
+.history-list{display:flex;flex-direction:column;}
+.history-item{display:flex;align-items:center;gap:10px;padding:7px 0;font-size:12px;}
+.history-dot{width:7px;height:7px;border-radius:50%;background:var(--gold);flex-shrink:0;}
+.history-status{color:var(--text);font-weight:600;text-transform:capitalize;}
+.history-date{color:var(--text3);margin-left:auto;white-space:nowrap;}
+
+.detail-delete-btn{font-size:12px;padding:9px 16px;border-radius:var(--radius-pill);background:transparent;border:1px solid var(--glass-border);color:var(--down);cursor:pointer;transition:all var(--transition);align-self:flex-start;}
+.detail-delete-btn:hover{background:var(--down-bg);border-color:var(--down);}
+
 /* Bottom tab bar — same pattern as Axe Finance */
 .bottom-nav{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);display:flex;align-items:center;gap:2px;padding:6px;background:var(--glass-grad);backdrop-filter:blur(26px) saturate(150%);-webkit-backdrop-filter:blur(26px) saturate(150%);border:1px solid var(--glass-border);border-radius:var(--radius-pill);box-shadow:var(--glass-shadow);z-index:150;}
 .bnav-item{width:50px;height:50px;border-radius:50%;display:grid;place-items:center;color:var(--text3);cursor:pointer;text-decoration:none;transition:all var(--transition);-webkit-tap-highlight-color:transparent;position:relative;}
@@ -104,7 +166,7 @@ body::before{content:'';position:fixed;inset:-10%;z-index:0;pointer-events:none;
 .bnav-item.active{background:linear-gradient(150deg,var(--gold-light),var(--gold-deep));color:#f4f8ff;box-shadow:0 6px 18px -4px var(--gold-glow);}
 .bnav-item.active svg{transform:scale(1.06);stroke-width:2;}
 
-/* FAB — log an opportunity manually */
+/* FAB — log an opportunity manually (context-aware: also starts an application when opened from the Applications tab) */
 .fab-add{position:fixed;right:18px;bottom:22px;width:58px;height:58px;border-radius:50%;border:none;cursor:pointer;display:grid;place-items:center;background:linear-gradient(150deg,var(--gold-light),var(--gold-deep));box-shadow:0 12px 30px -8px var(--gold-glow), inset 0 1px 0 rgba(255,255,255,.45);z-index:155;-webkit-tap-highlight-color:transparent;}
 .fab-add svg{width:24px;height:24px;stroke:#f4f8ff;fill:none;stroke-width:2.3;}
 
@@ -112,9 +174,9 @@ body::before{content:'';position:fixed;inset:-10%;z-index:0;pointer-events:none;
 .qa-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;align-items:center;justify-content:center;padding:20px;}
 .qa-overlay.open{display:flex;}
 .qa-modal{background:var(--glass-bg-strong);backdrop-filter:blur(30px) saturate(150%);-webkit-backdrop-filter:blur(30px) saturate(150%);border:1px solid var(--glass-border);border-radius:var(--radius-card);box-shadow:var(--glass-shadow-hover);width:100%;max-width:400px;max-height:90vh;overflow-y:auto;}
-.qa-modal-header{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--divider);}
-.qa-modal-title{font-family:'Anton',sans-serif;font-size:15px;letter-spacing:.5px;color:var(--text);}
-.qa-modal-close{width:28px;height:28px;border-radius:50%;border:1px solid var(--divider);background:transparent;color:var(--text2);display:grid;place-items:center;cursor:pointer;}
+.qa-modal-header{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--divider);gap:10px;}
+.qa-modal-title{font-family:'Anton',sans-serif;font-size:15px;letter-spacing:.5px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.qa-modal-close{width:28px;height:28px;border-radius:50%;border:1px solid var(--divider);background:transparent;color:var(--text2);display:grid;place-items:center;cursor:pointer;flex-shrink:0;}
 .qa-modal-close svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8;}
 .qa-modal-body{padding:18px 20px 20px;display:flex;flex-direction:column;gap:14px;}
 .qa-field label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px;}
@@ -182,6 +244,17 @@ body::before{content:'';position:fixed;inset:-10%;z-index:0;pointer-events:none;
 
   <!-- APPLICATIONS -->
   <div class="page" id="page-applications">
+    <div class="pill-row" id="appStatusFilters">
+      <div class="pill active" data-status="">All</div>
+      <div class="pill" data-status="draft">Draft</div>
+      <div class="pill" data-status="preparing">Preparing</div>
+      <div class="pill" data-status="ready">Ready</div>
+      <div class="pill" data-status="submitted">Submitted</div>
+      <div class="pill" data-status="interview">Interview</div>
+      <div class="pill" data-status="accepted">Accepted</div>
+      <div class="pill" data-status="rejected">Rejected</div>
+      <div class="pill" data-status="archived">Archived</div>
+    </div>
     <div class="opp-grid" id="applicationsGrid"></div>
   </div>
 
@@ -221,7 +294,7 @@ body::before{content:'';position:fixed;inset:-10%;z-index:0;pointer-events:none;
 <div class="qa-overlay" id="manualOverlay">
   <div class="qa-modal">
     <div class="qa-modal-header">
-      <div class="qa-modal-title">LOG AN OPPORTUNITY</div>
+      <div class="qa-modal-title" id="manualModalTitle">LOG AN OPPORTUNITY</div>
       <button class="qa-modal-close" id="manualCloseBtn"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="qa-modal-body">
@@ -238,18 +311,82 @@ body::before{content:'';position:fixed;inset:-10%;z-index:0;pointer-events:none;
   </div>
 </div>
 
+<!-- APPLICATION DETAIL MODAL -->
+<div class="qa-overlay" id="appDetailOverlay">
+  <div class="qa-modal" style="max-width:460px;">
+    <div class="qa-modal-header">
+      <div class="qa-modal-title" id="appDetailTitle">APPLICATION</div>
+      <button class="qa-modal-close" id="appDetailCloseBtn"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="qa-modal-body">
+      <div id="appDetailOrg" style="font-size:12px;color:var(--text2);margin-top:-8px;"></div>
+
+      <div class="detail-section">
+        <div class="detail-section-label">Stage</div>
+        <div class="stage-picker" id="stagePicker"></div>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-section-label">Checklist</div>
+        <div class="checklist" id="appChecklist"></div>
+        <div class="checklist-add-row">
+          <input type="text" id="checklistNewInput" placeholder="Add a checklist item…">
+          <button class="checklist-add-btn" id="checklistAddBtn">Add</button>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-section-label">Cover Letter</div>
+        <textarea class="detail-textarea" id="fieldCoverLetter" data-field="cover_letter" placeholder="Draft your cover letter…"></textarea>
+        <div class="save-hint" id="hintCoverLetter">Saved</div>
+      </div>
+      <div class="detail-section">
+        <div class="detail-section-label">Proposal</div>
+        <textarea class="detail-textarea" id="fieldProposal" data-field="proposal" placeholder="Draft your proposal…"></textarea>
+        <div class="save-hint" id="hintProposal">Saved</div>
+      </div>
+      <div class="detail-section">
+        <div class="detail-section-label">Email Draft</div>
+        <textarea class="detail-textarea" id="fieldEmailDraft" data-field="email_draft" placeholder="Draft a follow-up or submission email…"></textarea>
+        <div class="save-hint" id="hintEmailDraft">Saved</div>
+      </div>
+      <div class="detail-section">
+        <div class="detail-section-label">Notes</div>
+        <textarea class="detail-textarea" id="fieldNotes" data-field="notes" placeholder="Private notes to yourself…"></textarea>
+        <div class="save-hint" id="hintNotes">Saved</div>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-section-label">History</div>
+        <div class="history-list" id="appHistory"></div>
+      </div>
+
+      <button class="detail-delete-btn" id="appDeleteBtn">Delete application</button>
+    </div>
+  </div>
+</div>
+
 <script>
 var $ = function(id){ return document.getElementById(id); };
 async function fetchJSON(url, opts){ var res = await fetch(url, opts); return res.json(); }
 
+var APPLICATION_STAGES = ['draft','preparing','ready','submitted','interview','accepted','rejected','archived'];
+var STAGE_LABELS = {draft:'Draft',preparing:'Preparing',ready:'Ready',submitted:'Submitted',interview:'Interview',accepted:'Accepted',rejected:'Rejected',archived:'Archived'};
+function stageClass(status){ return 'st-' + status; }
+function statusBadgeHtml(status){
+  return '<span class="status-badge ' + stageClass(status) + '">' + (STAGE_LABELS[status] || status) + '</span>';
+}
+
 // ── TAB NAVIGATION ────────────────────────────────────────────────────────
 var TITLES = {'page-dashboard':'DASHBOARD','page-opportunities':'OPPORTUNITIES','page-applications':'APPLICATIONS','page-ai':'AI'};
+var currentPage = 'page-dashboard';
 function navigate(pageId){
   document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
   $(pageId).classList.add('active');
   document.querySelectorAll('.bnav-item').forEach(function(i){ i.classList.remove('active'); });
   document.querySelector('.bnav-item[data-page="'+pageId+'"]').classList.add('active');
   $('pgtitle').textContent = TITLES[pageId];
+  currentPage = pageId;
   if (pageId === 'page-dashboard') loadDashboard();
   else if (pageId === 'page-opportunities') loadOpportunities();
   else if (pageId === 'page-applications') loadApplications();
@@ -325,7 +462,7 @@ function oppCardHtml(o, showApply){
       <div class="opp-foot">
         ${o.url && !o.url.startsWith('manual://') ? `<a class="opp-link" href="${o.url}" target="_blank" rel="noopener">View source ↗</a>` : '<span></span>'}
         <div class="opp-actions">
-          ${showApply ? '<button class="apply" onclick="setStatus(' + o.id + ', \\'applied\\')">Applied</button>' : ''}
+          ${showApply ? '<button class="apply" onclick="markApplied(' + o.id + ')">Applied</button>' : ''}
           <button class="save" onclick="setStatus(${o.id}, 'saved')">Save</button>
           <button class="dismiss" onclick="setStatus(${o.id}, 'dismissed')">Dismiss</button>
         </div>
@@ -356,20 +493,206 @@ async function setStatus(id, status){
   loadDashboard();
 }
 
-// ── APPLICATIONS ──────────────────────────────────────────────────────────
-async function loadApplications(){
-  var data = await fetchJSON('/api/career/opportunities?status=applied');
-  $('applicationsGrid').innerHTML = data.length ? data.map(function(o){ return oppCardHtml(o, false); }).join('') : '<div class="empty">Nothing marked as applied yet — tap "Applied" on an opportunity to track it here.</div>';
+// Rewired: creating an application is now a first-class step (POST
+// /api/career/applications), not just flipping the opportunity's coarse
+// status — then jump straight into the new application's detail modal.
+async function markApplied(oppId){
+  var result = await fetchJSON('/api/career/applications', {
+    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({opportunity_id: oppId})
+  });
+  loadOpportunities();
+  loadApplications();
+  loadDashboard();
+  if (result && result.application) {
+    openAppDetail(result.application.id);
+  }
 }
 
-// ── MANUAL ADD (FAB) ──────────────────────────────────────────────────────
-$('fabAddBtn').addEventListener('click', function(){ $('manualOverlay').classList.add('open'); });
+// ── APPLICATIONS ──────────────────────────────────────────────────────────
+var currentAppStatusFilter = '';
+
+function appCardHtml(a){
+  var deadlineInfo = fmtDeadline(a.opp_deadline);
+  var deadlineTag = deadlineInfo
+    ? `<span class="tag ${deadlineInfo.days <= 7 ? 'deadline-soon' : 'deadline-ok'}">${deadlineInfo.days < 0 ? 'Deadline passed' : ('Due ' + deadlineInfo.label + ' (' + deadlineInfo.days + 'd)')}</span>`
+    : '';
+  return `
+    <div class="app-card" data-id="${a.id}" onclick="openAppDetail(${a.id})">
+      <div class="app-head">
+        <div><div class="app-title">${a.opp_title}</div>${a.opp_org ? '<div class="app-org">' + a.opp_org + '</div>' : ''}</div>
+        ${statusBadgeHtml(a.status)}
+      </div>
+      ${deadlineTag ? '<div class="app-meta">' + deadlineTag + '</div>' : ''}
+    </div>`;
+}
+
+async function loadApplications(){
+  var url = '/api/career/applications' + (currentAppStatusFilter ? '?status=' + currentAppStatusFilter : '');
+  var data = await fetchJSON(url);
+  $('applicationsGrid').innerHTML = data.length
+    ? data.map(appCardHtml).join('')
+    : '<div class="empty">No applications yet — tap "Applied" on an opportunity, or use + to log one directly.</div>';
+}
+document.querySelectorAll('#appStatusFilters .pill').forEach(function(p){
+  p.addEventListener('click', function(){
+    document.querySelectorAll('#appStatusFilters .pill').forEach(function(x){ x.classList.remove('active'); });
+    this.classList.add('active');
+    currentAppStatusFilter = this.dataset.status;
+    loadApplications();
+  });
+});
+
+// ── APPLICATION DETAIL MODAL ─────────────────────────────────────────────
+var currentOpenAppId = null;
+
+function renderStagePicker(current){
+  $('stagePicker').innerHTML = APPLICATION_STAGES.map(function(s){
+    var active = s === current ? ' active' : '';
+    return '<div class="stage-pill' + active + ' ' + stageClass(s) + '" data-stage="' + s + '" onclick="setAppStage(\'' + s + '\')">' + STAGE_LABELS[s] + '</div>';
+  }).join('');
+}
+
+async function setAppStage(status){
+  if (!currentOpenAppId) return;
+  await fetchJSON('/api/career/applications/' + currentOpenAppId + '/status', {
+    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({status: status})
+  });
+  renderStagePicker(status);
+  loadApplications();
+}
+
+function renderChecklist(items){
+  var list = $('appChecklist');
+  if (!items || !items.length) {
+    list.innerHTML = '<div class="empty-line">No checklist items yet.</div>';
+    return;
+  }
+  list.innerHTML = items.map(function(it){
+    return `
+      <div class="checklist-item ${it.done ? 'done' : ''}" data-id="${it.id}">
+        <div class="check-circle" onclick="toggleChecklistItem(${it.id})">
+          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div class="checklist-label" onclick="toggleChecklistItem(${it.id})">${it.label}</div>
+        <button class="checklist-del" onclick="deleteChecklistItem(${it.id})" title="Remove">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>`;
+  }).join('');
+}
+
+async function toggleChecklistItem(itemId){
+  await fetchJSON('/api/career/checklist/' + itemId + '/toggle', {
+    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({})
+  });
+  refreshAppDetail();
+}
+async function deleteChecklistItem(itemId){
+  await fetch('/api/career/checklist/' + itemId, { method: 'DELETE' });
+  refreshAppDetail();
+}
+$('checklistAddBtn').addEventListener('click', async function(){
+  var input = $('checklistNewInput');
+  var label = input.value.trim();
+  if (!label || !currentOpenAppId) return;
+  input.value = '';
+  await fetchJSON('/api/career/applications/' + currentOpenAppId + '/checklist', {
+    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({label: label})
+  });
+  refreshAppDetail();
+});
+$('checklistNewInput').addEventListener('keydown', function(e){
+  if (e.key === 'Enter') { e.preventDefault(); $('checklistAddBtn').click(); }
+});
+
+function renderHistory(history){
+  if (!history || !history.length) {
+    $('appHistory').innerHTML = '<div class="empty-line">No history yet.</div>';
+    return;
+  }
+  $('appHistory').innerHTML = history.map(function(h){
+    var d = new Date(h.changed_at + 'Z');
+    var label = d.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+    return '<div class="history-item"><div class="history-dot"></div><div class="history-status">' +
+      (STAGE_LABELS[h.status] || h.status) + '</div><div class="history-date">' + label + '</div></div>';
+  }).join('');
+}
+
+var HINT_MAP = {cover_letter:'hintCoverLetter', proposal:'hintProposal', email_draft:'hintEmailDraft', notes:'hintNotes'};
+
+async function openAppDetail(appId){
+  var a = await fetchJSON('/api/career/applications/' + appId);
+  if (!a || a.error) { alert(a && a.error ? a.error : "Couldn't load that application."); return; }
+  currentOpenAppId = appId;
+  $('appDetailTitle').textContent = a.opp_title || 'Application';
+  $('appDetailOrg').textContent = a.opp_org || '';
+  renderStagePicker(a.status);
+  renderChecklist(a.checklist);
+  renderHistory(a.history);
+  $('fieldCoverLetter').value = a.cover_letter || '';
+  $('fieldProposal').value = a.proposal || '';
+  $('fieldEmailDraft').value = a.email_draft || '';
+  $('fieldNotes').value = a.notes || '';
+  $('appDetailOverlay').classList.add('open');
+}
+
+async function refreshAppDetail(){
+  if (!currentOpenAppId) return;
+  var a = await fetchJSON('/api/career/applications/' + currentOpenAppId);
+  if (!a || a.error) return;
+  renderChecklist(a.checklist);
+  renderHistory(a.history);
+}
+
+function closeAppDetail(){
+  $('appDetailOverlay').classList.remove('open');
+  currentOpenAppId = null;
+}
+$('appDetailCloseBtn').addEventListener('click', closeAppDetail);
+$('appDetailOverlay').addEventListener('click', function(e){ if (e.target === this) closeAppDetail(); });
+
+document.querySelectorAll('.detail-textarea').forEach(function(ta){
+  ta.addEventListener('blur', async function(){
+    if (!currentOpenAppId) return;
+    var field = this.dataset.field;
+    var payload = {};
+    payload[field] = this.value;
+    await fetchJSON('/api/career/applications/' + currentOpenAppId + '/fields', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+    });
+    var hint = $(HINT_MAP[field]);
+    if (hint) {
+      hint.classList.add('show');
+      setTimeout(function(){ hint.classList.remove('show'); }, 1400);
+    }
+    loadApplications();
+  });
+});
+
+$('appDeleteBtn').addEventListener('click', async function(){
+  if (!currentOpenAppId) return;
+  var ok = confirm('Delete this application? Its checklist, drafts, and history will be permanently removed. The opportunity itself moves back to Saved, not lost.');
+  if (!ok) return;
+  await fetch('/api/career/applications/' + currentOpenAppId, { method: 'DELETE' });
+  closeAppDetail();
+  loadApplications();
+  loadOpportunities();
+  loadDashboard();
+});
+
+// ── MANUAL ADD (FAB) — context-aware: on the Applications tab, also
+// immediately starts an application from the newly-logged opportunity ────
+$('fabAddBtn').addEventListener('click', function(){
+  $('manualModalTitle').textContent = currentPage === 'page-applications' ? 'LOG & START APPLICATION' : 'LOG AN OPPORTUNITY';
+  $('manualOverlay').classList.add('open');
+});
 $('manualCloseBtn').addEventListener('click', function(){ $('manualOverlay').classList.remove('open'); });
 $('manualOverlay').addEventListener('click', function(e){ if (e.target === this) this.classList.remove('open'); });
 $('manSubmitBtn').addEventListener('click', async function(){
   var title = $('manTitle').value.trim();
   if (!title) { alert('Title is required.'); return; }
-  await fetchJSON('/api/career/opportunities/manual', {
+  var openedFromApplications = currentPage === 'page-applications';
+  var result = await fetchJSON('/api/career/opportunities/manual', {
     method: 'POST', headers: {'Content-Type':'application/json'},
     body: JSON.stringify({
       title: title, type: $('manType').value, org: $('manOrg').value,
@@ -378,8 +701,19 @@ $('manSubmitBtn').addEventListener('click', async function(){
   });
   $('manualOverlay').classList.remove('open');
   $('manTitle').value=''; $('manOrg').value=''; $('manUrl').value=''; $('manDeadline').value=''; $('manDesc').value='';
-  loadOpportunities();
-  loadDashboard();
+
+  if (openedFromApplications && result && result.id) {
+    var appResult = await fetchJSON('/api/career/applications', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({opportunity_id: result.id})
+    });
+    loadApplications();
+    loadDashboard();
+    if (appResult && appResult.application) openAppDetail(appResult.application.id);
+  } else {
+    loadOpportunities();
+    loadDashboard();
+  }
 });
 
 // ── AI CHAT ───────────────────────────────────────────────────────────────
