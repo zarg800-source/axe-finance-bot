@@ -1157,13 +1157,21 @@ body::after {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
+/* Embedded AI workspace */
+.ai-shell-card{min-height:620px;display:flex;flex-direction:column;gap:18px;padding:24px;border:1px solid var(--glass-border);border-radius:var(--radius-card);background:var(--glass-grad);box-shadow:var(--glass-shadow);backdrop-filter:blur(24px) saturate(140%)}
+.ai-shell-head{display:flex;align-items:center;gap:12px}.ai-brand-mark{width:44px;height:44px;border-radius:15px;display:grid;place-items:center;background:linear-gradient(150deg,var(--gold-light),var(--gold-deep));box-shadow:0 10px 24px -8px var(--gold-glow);font-size:22px}.ai-status{margin-left:auto;color:var(--text3);font-size:11px;display:flex;align-items:center;gap:6px}.ai-status span{width:7px;height:7px;border-radius:50%;background:var(--up);box-shadow:0 0 0 4px var(--up-bg)}
+.ai-suggestions{display:flex;flex-wrap:wrap;gap:8px}.ai-suggestions button{border:1px solid var(--gold-border);background:var(--gold-bg);color:var(--gold);border-radius:var(--radius-pill);padding:9px 13px;font:500 12px 'DM Sans',sans-serif;cursor:pointer;transition:transform .18s ease,background .18s ease}.ai-suggestions button:hover{transform:translateY(-1px);background:var(--glass-bg-strong)}
+.ai-chat-log{flex:1;min-height:320px;overflow:auto;display:flex;flex-direction:column;gap:12px;padding:4px 2px}.ai-welcome{min-height:260px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:7px;text-align:center;color:var(--text2);font-size:13px}.ai-welcome strong{color:var(--text);font-size:16px}.ai-msg{display:flex;align-items:flex-start;gap:9px;max-width:88%}.ai-msg.user{margin-left:auto;flex-direction:row-reverse}.ai-msg-avatar{width:28px;height:28px;border-radius:10px;display:grid;place-items:center;flex:0 0 auto;font-size:13px;background:var(--badge-bg);color:var(--text2)}.ai-msg.assistant .ai-msg-avatar{background:linear-gradient(150deg,var(--gold-light),var(--gold-deep));color:#fff}.ai-msg-bubble{padding:11px 13px;border-radius:15px;background:var(--glass-bg-strong);border:1px solid var(--glass-border);color:var(--text);font-size:13px;line-height:1.55}.ai-msg.user .ai-msg-bubble{background:var(--gold-bg);border-color:var(--gold-border)}.ai-thinking .ai-msg-bubble{color:var(--text3);font-style:italic}
+.ai-composer{display:flex;align-items:flex-end;gap:8px;padding:8px;border:1px solid var(--glass-border);border-radius:17px;background:var(--glass-bg-strong)}.ai-composer textarea{flex:1;min-height:38px;max-height:120px;resize:none;border:0;outline:0;background:transparent;color:var(--text);font:13px/1.45 'DM Sans',sans-serif;padding:9px 8px}.ai-composer textarea::placeholder{color:var(--text3)}.ai-composer button{border:0;border-radius:12px;padding:10px 15px;background:linear-gradient(150deg,var(--gold-light),var(--gold-deep));color:#fff;font:600 12px 'DM Sans',sans-serif;cursor:pointer}.ai-composer button:disabled{opacity:.55;cursor:wait}.ai-disclaimer{text-align:center;color:var(--text3);font-size:10px}
+.ai-nav-item{position:relative;width:58px;height:58px;margin:-15px 5px 0;background:linear-gradient(150deg,var(--gold-light),var(--gold-deep));color:#fff!important;box-shadow:0 10px 24px -7px var(--gold-glow);border:3px solid var(--bg)}.ai-nav-item.active{transform:translateY(-2px)}.ai-nav-mark{font-size:22px;line-height:1}@media(max-width:620px){.ai-shell-card{padding:18px;min-height:560px}.ai-msg{max-width:94%}.ai-nav-item{margin-left:1px;margin-right:1px}}
 </style>
 </head>
 <body>
 
 <main class="main">
   <nav class="topnav">
-    <span class="topnav-title" id="pgtitle">BALANCES</span>
+    <span class="topnav-title" id="pgtitle">ACCOUNTS</span>
     <div class="topnav-actions">
       <a class="nav-circle-btn" href="/home" title="Axe Home">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
@@ -1348,20 +1356,40 @@ body::after {
       </div>
     </div>
   </div>
+
+  <div class="page" id="page-ai">
+    <div class="ai-shell-card">
+      <div class="ai-shell-head">
+        <div class="ai-brand-mark">🪓</div>
+        <div><div class="card-title">AXE AI</div><div class="card-sub">Your finance copilot, grounded in this dashboard</div></div>
+        <div class="ai-status"><span></span> Ready</div>
+      </div>
+      <div class="ai-suggestions" id="aiSuggestions">
+        <button type="button" data-prompt="Give me a concise snapshot of my financial health this month.">Financial snapshot</button>
+        <button type="button" data-prompt="Where am I spending the most, and what should I watch next month?">Spending insights</button>
+        <button type="button" data-prompt="Help me make a realistic plan to save more next month.">Savings plan</button>
+      </div>
+      <div class="ai-chat-log" id="aiChatLog"><div class="ai-welcome"><strong>Ask Axe anything about your money.</strong><span>Try a suggestion above, or ask about spending, savings, accounts, and trade-offs.</span></div></div>
+      <form class="ai-composer" id="aiForm"><textarea id="aiInput" rows="1" maxlength="1200" placeholder="Ask your finance copilot…"></textarea><button type="submit" id="aiSend">Send</button></form>
+      <div class="ai-disclaimer">Axe provides planning context from your recorded finances, not regulated financial advice.</div>
+    </div>
+  </div>
 </main>
 
 <!-- FLOATING BOTTOM NAV -->
 <nav class="bottom-nav" id="bottomNav">
-  <a class="bnav-item active" href="#" data-page="page-bal" title="Balances">
+  <a class="bnav-item active" href="#" data-page="page-bal" title="Accounts">
     <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
   </a>
-  <a class="bnav-item" href="#" data-page="page-ov" title="Overview">
+  <a class="bnav-item" href="#" data-page="page-ov" title="Dashboard">
     <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
   </a>
   <a class="bnav-item" href="#" data-page="page-an" title="Analytics">
     <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><line x1="18" y1="20" x2="18" y2="4"/><line x1="12" y1="20" x2="12" y2="10"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
   </a>
-  <a class="bnav-item" href="#" data-page="page-hi" title="Monthly History">
+
+  <a class="bnav-item ai-nav-item" href="#" data-page="page-ai" title="Axe AI" aria-label="Open Axe AI"><span class="ai-nav-mark">🪓</span></a>
+  <a class="bnav-item" href="#" data-page="page-hi" title="Transactions">
     <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><line x1="12" y1="7" x2="12" y2="12"/><line x1="12" y1="12" x2="15" y2="14"/></svg>
   </a>
 </nav>
@@ -1651,7 +1679,7 @@ function updateKnobIcon(theme) {
 updateKnobIcon(document.documentElement.getAttribute('data-theme'));
 
 // ── PAGE NAVIGATION ───────────────────────────────────────────────────────────
-var TITLES={'page-bal':'BALANCES','page-ov':'OVERVIEW','page-an':'ANALYTICS','page-hi':'MONTHLY HISTORY'};
+var TITLES={'page-bal':'ACCOUNTS','page-ov':'DASHBOARD','page-an':'ANALYTICS','page-hi':'TRANSACTIONS','page-ai':'AXE AI'};
 var currentPage='page-bal';
 
 function navigate(pageId){
@@ -1671,6 +1699,7 @@ function navigate(pageId){
   else if(pageId==='page-ov')loadOverview();
   else if(pageId==='page-an')loadAnalytics();
   else if(pageId==='page-hi')loadHistory();
+  else if(pageId==='page-ai')focusAiInput();
 }
 
 document.addEventListener('DOMContentLoaded',function(){
@@ -2404,6 +2433,15 @@ $('transferForm').addEventListener('submit', async function(e){
     $('transferSpinner').classList.remove('show');
   }
 });
+
+// Embedded Axe AI
+var aiHistory=[];var aiBusy=false;
+function escapeAiHtml(v){return String(v||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c];});}
+function renderAiText(v){return escapeAiHtml(v).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');}
+function focusAiInput(){var i=$('aiInput');if(i)setTimeout(function(){i.focus();},80);}
+function appendAiMessage(role,value){var log=$('aiChatLog');var w=log.querySelector('.ai-welcome');if(w)w.remove();var row=document.createElement('div');row.className='ai-msg '+role;row.innerHTML='<div class="ai-msg-avatar">'+(role==='assistant'?'🪓':'M')+'</div><div class="ai-msg-bubble">'+renderAiText(value)+'</div>';log.appendChild(row);log.scrollTop=log.scrollHeight;return row;}
+async function submitAiPrompt(prompt){if(!prompt||aiBusy)return;var input=$('aiInput'),send=$('aiSend');input.value='';appendAiMessage('user',prompt);aiHistory.push({role:'user',content:prompt});aiHistory=aiHistory.slice(-10);aiBusy=true;send.disabled=true;send.textContent='…';var thinking=appendAiMessage('assistant','Thinking through your numbers…');thinking.classList.add('ai-thinking');try{var r=await fetch('/api/cfo-chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:aiHistory})});var d=await r.json();if(!r.ok)throw new Error(d.error||d.reply||'Server error');thinking.remove();var reply=d.reply||'I could not generate a response yet.';appendAiMessage('assistant',reply);aiHistory.push({role:'assistant',content:reply});aiHistory=aiHistory.slice(-10);}catch(e){thinking.remove();appendAiMessage('assistant','I could not reach Axe right now. Please try again.');console.error('Embedded Axe AI error:',e);}finally{aiBusy=false;send.disabled=false;send.textContent='Send';input.focus();}}
+var aiForm=$('aiForm');if(aiForm)aiForm.addEventListener('submit',function(e){e.preventDefault();submitAiPrompt($('aiInput').value.trim());});document.querySelectorAll('#aiSuggestions button').forEach(function(b){b.addEventListener('click',function(){submitAiPrompt(b.dataset.prompt);});});var aiInput=$('aiInput');if(aiInput)aiInput.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();submitAiPrompt(aiInput.value.trim());}});
 
 </script>
 </body>
