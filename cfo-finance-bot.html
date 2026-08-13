@@ -470,12 +470,6 @@ textarea:focus{border-color:var(--gold-border);line-height:1.5;padding:12px 16px
 
 /* Shared Axe shell controls */
 .axe-global-actions{position:fixed;right:24px;top:20px;display:flex;align-items:center;gap:9px;z-index:300}.axe-global-actions a{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;text-decoration:none;color:var(--text2,#6e6e73);background:var(--glass-bg,rgba(255,255,255,.7));border:1px solid var(--glass-border,rgba(255,255,255,.8));box-shadow:var(--glass-shadow,0 12px 28px -16px rgba(30,34,45,.3));font-size:16px}.axe-global-actions a:hover{color:var(--gold,#315f9f);transform:translateY(-1px)}.axe-global-actions .axe-profile{background:linear-gradient(150deg,var(--gold-light,#6f97d6),var(--gold-deep,#2a4d85));color:#fff;border-color:transparent;font-size:13px;font-weight:600}.axe-global-nav{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);display:flex;align-items:center;gap:7px;padding:6px;border-radius:999px;background:rgba(255,255,255,.72);border:1px solid var(--glass-border,rgba(255,255,255,.8));box-shadow:0 14px 35px -18px rgba(30,34,45,.4);backdrop-filter:blur(20px);z-index:290}.axe-global-nav a{width:46px;height:46px;display:grid;place-items:center;border-radius:50%;text-decoration:none;color:var(--text3,#aeaeb2);font-size:18px;transition:all .18s ease}.axe-global-nav a:hover,.axe-global-nav a.active{background:linear-gradient(150deg,var(--gold-light,#6f97d6),var(--gold-deep,#2a4d85));color:#fff;box-shadow:0 7px 18px -7px var(--gold,#315f9f)}@media(max-width:620px){.axe-global-actions{right:14px;top:14px}.axe-global-actions a{width:34px;height:34px}.axe-global-nav{bottom:14px}.axe-global-nav a{width:42px;height:42px}}
-
-/* Interactive Axe space selector */
-.axe-global-nav,.bottom-nav{transition:box-shadow .18s ease,background .18s ease}.axe-global-nav.axe-selector-open,.bottom-nav.axe-selector-open{box-shadow:0 18px 40px -18px rgba(30,34,45,.55)}
-.axe-selector-toggle{width:46px;height:46px;border:0;border-radius:50%;display:grid;place-items:center;background:linear-gradient(150deg,var(--gold-light,#6f97d6),var(--gold-deep,#2a4d85));color:#fff;font-size:18px;cursor:pointer;box-shadow:0 7px 18px -7px var(--gold,#315f9f);transition:transform .18s ease}.axe-selector-toggle:active{transform:scale(.96)}.axe-selector-toggle:focus-visible,.axe-selector-link:focus-visible{outline:3px solid rgba(111,151,214,.45);outline-offset:3px}.axe-selector-link{position:relative}.axe-selector-link::after{content:attr(data-label);position:absolute;left:50%;bottom:calc(100% + 10px);transform:translate(-50%,4px);opacity:0;pointer-events:none;white-space:nowrap;padding:6px 9px;border-radius:8px;background:var(--text,#1d1d1f);color:var(--bg,#f5f5f7);font:600 10px 'DM Sans',sans-serif;letter-spacing:.2px;transition:opacity .16s ease,transform .16s ease}.axe-selector-link:hover::after,.axe-selector-link:focus-visible::after{opacity:1;transform:translate(-50%,0)}
-.axe-global-nav:not(.axe-selector-open) .axe-selector-link,.bottom-nav:not(.axe-selector-open) .axe-selector-link{display:none}.axe-global-nav.axe-selector-open .axe-selector-link,.bottom-nav.axe-selector-open .axe-selector-link{display:grid}.axe-selector-helper{position:fixed;left:50%;bottom:86px;transform:translate(-50%,4px);opacity:0;pointer-events:none;padding:7px 10px;border-radius:9px;background:var(--text,#1d1d1f);color:var(--bg,#f5f5f7);font:500 10px 'DM Sans',sans-serif;transition:opacity .16s ease,transform .16s ease;z-index:301}.axe-selector-helper.show{opacity:1;transform:translate(-50%,0)}
-@media(prefers-reduced-motion:reduce){.axe-selector-toggle,.axe-selector-link::after,.axe-selector-helper{transition:none}}
 </style>
 </head>
 <body>
@@ -829,31 +823,5 @@ document.getElementById('receiptInput').addEventListener('change', function (e) 
 
 <div class="axe-global-actions" aria-label="Global Axe navigation"><a href="/home" title="Home">⌂</a><a href="/cfo" title="Axe chat">🪓</a><a class="axe-profile" href="/logout" title="Profile / sign out">M</a></div>
 <nav class="axe-global-nav" aria-label="Axe spaces"><a href="/axefinance" title="Finance">💼</a><a href="/axecareer" title="Career">📈</a><a href="/axeresearch" title="Research">⌕</a><a href="/home" title="All spaces">⌂</a></nav>
-<script>
-/* Interactive Axe space selector */
-(function(){
-  var nav=document.querySelector('.axe-global-nav')||document.querySelector('.bottom-nav');
-  if(!nav||nav.dataset.selectorReady==='1')return;
-  nav.dataset.selectorReady='1';
-  nav.classList.add('axe-selector-nav');
-  var links=[].slice.call(nav.querySelectorAll('a'));
-  var current=location.pathname.replace(/\/$/,'')||'/home';
-  var active=links.find(function(link){var href=new URL(link.href,location.origin).pathname.replace(/\/$/,'');return href===current|| (current.startsWith('/axe-career')&&href==='/axecareer');});
-  links.forEach(function(link){
-    link.classList.add('axe-selector-link');
-    var label=link.getAttribute('title')||link.textContent.trim()||'Axe space';
-    link.dataset.label=label;link.setAttribute('aria-label',label);
-    if(link===active)link.setAttribute('aria-current','page');
-  });
-  var toggle=document.createElement('button');toggle.type='button';toggle.className='axe-selector-toggle';toggle.setAttribute('aria-label','Open Axe space selector');toggle.setAttribute('aria-expanded','false');toggle.innerHTML=active?active.innerHTML:'⌂';
-  nav.insertBefore(toggle,nav.firstChild);
-  var helper=document.createElement('div');helper.className='axe-selector-helper';helper.textContent='Select an Axe space';document.body.appendChild(helper);
-  function setOpen(open){nav.classList.toggle('axe-selector-open',open);toggle.setAttribute('aria-expanded',String(open));toggle.innerHTML=open?'×':(active?active.innerHTML:'⌂');if(open){helper.classList.add('show');setTimeout(function(){helper.classList.remove('show');},1100);}else helper.classList.remove('show');}
-  toggle.addEventListener('click',function(){setOpen(!nav.classList.contains('axe-selector-open'));});
-  document.addEventListener('click',function(e){if(!nav.contains(e.target))setOpen(false);});
-  document.addEventListener('keydown',function(e){if(e.key==='Escape')setOpen(false);});
-  links.forEach(function(link){link.addEventListener('click',function(){setOpen(false);});});
-})();
-</script>
 </body>
 </html>
