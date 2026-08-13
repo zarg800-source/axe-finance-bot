@@ -67,6 +67,9 @@ body::before{content:'';position:fixed;inset:-10%;z-index:0;pointer-events:none;
   .bento{grid-template-columns:repeat(2, 1fr);}
   .main{padding:16px 14px 50px;}
 }
+
+/* Shared Axe shell controls */
+.axe-global-actions{position:fixed;right:24px;top:20px;display:flex;align-items:center;gap:9px;z-index:300}.axe-global-actions a{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;text-decoration:none;color:var(--text2,#6e6e73);background:var(--glass-bg,rgba(255,255,255,.7));border:1px solid var(--glass-border,rgba(255,255,255,.8));box-shadow:var(--glass-shadow,0 12px 28px -16px rgba(30,34,45,.3));font-size:16px}.axe-global-actions a:hover{color:var(--gold,#315f9f);transform:translateY(-1px)}.axe-global-actions .axe-profile{background:linear-gradient(150deg,var(--gold-light,#6f97d6),var(--gold-deep,#2a4d85));color:#fff;border-color:transparent;font-size:13px;font-weight:600}.axe-global-nav{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);display:flex;align-items:center;gap:7px;padding:6px;border-radius:999px;background:rgba(255,255,255,.72);border:1px solid var(--glass-border,rgba(255,255,255,.8));box-shadow:0 14px 35px -18px rgba(30,34,45,.4);backdrop-filter:blur(20px);z-index:290}.axe-global-nav a{width:46px;height:46px;display:grid;place-items:center;border-radius:50%;text-decoration:none;color:var(--text3,#aeaeb2);font-size:18px;transition:all .18s ease}.axe-global-nav a:hover,.axe-global-nav a.active{background:linear-gradient(150deg,var(--gold-light,#6f97d6),var(--gold-deep,#2a4d85));color:#fff;box-shadow:0 7px 18px -7px var(--gold,#315f9f)}@media(max-width:620px){.axe-global-actions{right:14px;top:14px}.axe-global-actions a{width:34px;height:34px}.axe-global-nav{bottom:14px}.axe-global-nav a{width:42px;height:42px}}
 </style>
 </head>
 <body>
@@ -95,11 +98,11 @@ var $ = function(id){ return document.getElementById(id); };
 
 var TILES = [
   { emoji: '🚀', label: 'OPPORTUNITIES', route: '/axe-career/opportunities', live: true },
-  { emoji: '📄', label: 'APPLICATIONS',  route: '/axe-career/applications',  live: false, status: 'Not set up yet' },
-  { emoji: '🧠', label: 'AI RESEARCH',   route: '/axe-career/ai-research',   live: false, status: 'Not set up yet' },
-  { emoji: '👤', label: 'NETWORK',       route: '/axe-career/network',       live: false, status: 'Not set up yet' },
-  { emoji: '📂', label: 'CAREER VAULT',  route: '/axe-career/vault',         live: false, status: 'Not set up yet' },
-  { emoji: '📈', label: 'TIMELINE',      route: '/axe-career/timeline',      live: false, status: 'Not set up yet' },
+  { emoji: '📄', label: 'APPLICATIONS',  route: '/axe-career/applications',  live: true, status: 'Workspace ready' },
+  { emoji: '🧠', label: 'AI RESEARCH',   route: '/axe-career/ai-research',   live: true, status: 'Workspace ready' },
+  { emoji: '👤', label: 'NETWORK',       route: '/axe-career/network',       live: true, status: 'Workspace ready' },
+  { emoji: '📂', label: 'CAREER VAULT',  route: '/axe-career/vault',         live: true, status: 'Workspace ready' },
+  { emoji: '📈', label: 'TIMELINE',      route: '/axe-career/timeline',      live: true, status: 'Workspace ready' },
 ];
 
 function tileHtml(t){
@@ -129,5 +132,8 @@ async function init(){
 }
 init();
 </script>
+
+<div class="axe-global-actions" aria-label="Global Axe navigation"><a href="/home" title="Home">⌂</a><a href="/cfo" title="Axe chat">🪓</a><a class="axe-profile" href="/logout" title="Profile / sign out">M</a></div>
+<nav class="axe-global-nav" aria-label="Axe spaces"><a href="/axefinance" title="Finance">💼</a><a href="/axecareer" title="Career">📈</a><a href="/axeresearch" title="Research">⌕</a><a href="/home" title="All spaces">⌂</a></nav>
 </body>
 </html>

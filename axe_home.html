@@ -287,6 +287,9 @@ body::after{
 .skeleton{opacity:.5;}
 
 .ai-command-center{display:flex;flex-direction:column;gap:10px}.ai-prompt-row{display:flex;flex-wrap:wrap;gap:8px}.ai-prompt-row button{border:1px solid var(--glass-border);background:var(--glass-bg);color:var(--text2);border-radius:999px;padding:8px 12px;font:500 12px 'DM Sans',sans-serif;cursor:pointer;transition:transform .18s ease,background .18s ease,color .18s ease}.ai-prompt-row button:hover{transform:translateY(-1px);background:var(--glass-bg-strong);color:var(--text)}.ai-response{display:none;padding:14px 16px;border:1px solid var(--glass-border);border-radius:16px;background:var(--glass-bg-strong);color:var(--text2);font-size:13px;line-height:1.55;box-shadow:var(--glass-shadow)}.ai-response.open{display:block}.ai-response strong{color:var(--text)}.ai-response .ai-response-label{display:flex;align-items:center;gap:8px;color:var(--gold);font-size:11px;font-weight:700;letter-spacing:.4px;margin-bottom:6px}.ai-response .ai-response-label span{width:6px;height:6px;border-radius:50%;background:var(--up)}
+
+/* Shared Axe shell controls */
+.axe-global-actions{position:fixed;right:24px;top:20px;display:flex;align-items:center;gap:9px;z-index:300}.axe-global-actions a{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;text-decoration:none;color:var(--text2,#6e6e73);background:var(--glass-bg,rgba(255,255,255,.7));border:1px solid var(--glass-border,rgba(255,255,255,.8));box-shadow:var(--glass-shadow,0 12px 28px -16px rgba(30,34,45,.3));font-size:16px}.axe-global-actions a:hover{color:var(--gold,#315f9f);transform:translateY(-1px)}.axe-global-actions .axe-profile{background:linear-gradient(150deg,var(--gold-light,#6f97d6),var(--gold-deep,#2a4d85));color:#fff;border-color:transparent;font-size:13px;font-weight:600}.axe-global-nav{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);display:flex;align-items:center;gap:7px;padding:6px;border-radius:999px;background:rgba(255,255,255,.72);border:1px solid var(--glass-border,rgba(255,255,255,.8));box-shadow:0 14px 35px -18px rgba(30,34,45,.4);backdrop-filter:blur(20px);z-index:290}.axe-global-nav a{width:46px;height:46px;display:grid;place-items:center;border-radius:50%;text-decoration:none;color:var(--text3,#aeaeb2);font-size:18px;transition:all .18s ease}.axe-global-nav a:hover,.axe-global-nav a.active{background:linear-gradient(150deg,var(--gold-light,#6f97d6),var(--gold-deep,#2a4d85));color:#fff;box-shadow:0 7px 18px -7px var(--gold,#315f9f)}@media(max-width:620px){.axe-global-actions{right:14px;top:14px}.axe-global-actions a{width:34px;height:34px}.axe-global-nav{bottom:14px}.axe-global-nav a{width:42px;height:42px}}
 </style>
 </head>
 <body>
@@ -406,5 +409,8 @@ async function loadSpaces(){
 }
 loadSpaces();
 </script>
+
+<div class="axe-global-actions" aria-label="Global Axe navigation"><a href="/home" title="Home">⌂</a><a href="/cfo" title="Axe chat">🪓</a><a class="axe-profile" href="/logout" title="Profile / sign out">M</a></div>
+<nav class="axe-global-nav" aria-label="Axe spaces"><a href="/axefinance" title="Finance">💼</a><a href="/axecareer" title="Career">📈</a><a href="/axeresearch" title="Research">⌕</a><a href="/home" title="All spaces">⌂</a></nav>
 </body>
 </html>

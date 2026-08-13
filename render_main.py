@@ -453,16 +453,16 @@ def api_months():
     return jsonify(data)
 
 # ── Axe: Home screen Spaces registry ─────────────────────────────────────────
-# Finance and Career are the two real Spaces today. Everything else gets a
-# styled "Nothing here yet" page until it's built — flipping a slug to 'live'
-# later is a one-row DB update, not a redeploy.
+# All core Spaces now open into a usable Axe workspace. Finance and Career
+# retain their existing dedicated experiences; the other Spaces use the shared
+# workspace shell until their specialized data integrations are added.
 SPACES_SEED = [
     ('finance',  'Finance',  '/axefinance',    'live', 'Your accounts & spending'),
     ('career',   'Career',   '/axecareer',     'live', ''),   # tagline overridden client-side with a real opportunity count
-    ('research', 'Research', '/axeresearch',   'stub', 'Not set up yet'),
-    ('travel',   'Travel',   '/axetravel',     'stub', 'Not set up yet'),
-    ('network',  'Network',  '/axenetwork',    'stub', 'Not set up yet'),
-    ('vault',    'Vault',    '/axevault',      'stub', 'Not set up yet'),
+    ('research', 'Research', '/axeresearch',   'live', 'Briefs & synthesis workspace'),
+    ('travel',   'Travel',   '/axetravel',     'live', 'Plans & logistics workspace'),
+    ('network',  'Network',  '/axenetwork',    'live', 'Relationships workspace'),
+    ('vault',    'Vault',    '/axevault',      'live', 'Secure organization workspace'),
     # Ideas and Settings dropped per Mike's 6-card home screen — easy to
     # bring back later, just uncomment and add an icon for them client-side:
     # ('ideas',    'Ideas',    '/axeideas',    'stub', 'Not set up yet'),
@@ -512,43 +512,34 @@ def api_spaces():
     return jsonify(data)
 
 
-STUB_TEMPLATE = '''<!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<title>{label} — Axe</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<script>
-(function(){{
-  var s=localStorage.getItem('mf-theme');
-  var sys=window.matchMedia('(prefers-color-scheme:dark)').matches;
-  document.documentElement.setAttribute('data-theme', s||(sys?'dark':'light'));
-}})();
-</script>
+STUB_TEMPLATE = r"""<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>__LABEL__ — Axe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Anton&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script>(function(){var s=localStorage.getItem('mf-theme');var sys=window.matchMedia('(prefers-color-scheme:dark)').matches;document.documentElement.setAttribute('data-theme',s||(sys?'dark':'light'));})();</script>
 <style>
-*,*::before,*::after{{box-sizing:border-box;margin:0;padding:0}}
-html,body{{height:100%;-webkit-font-smoothing:antialiased}}
-body{{font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;
-  background:#f5f5f7;color:#1d1d1f;transition:background .2s,color .2s;}}
-[data-theme="dark"] body{{background:#000;color:#f5f5f7;}}
-.w{{text-align:center;max-width:360px;padding:0 24px;}}
-.icon{{width:64px;height:64px;border-radius:18px;background:linear-gradient(150deg,#6f97d6,#2a4d85);
-  display:grid;place-items:center;margin:0 auto 20px;box-shadow:0 12px 28px -8px rgba(55,99,168,.35);}}
-.t{{font-family:'Anton',sans-serif;font-size:20px;letter-spacing:.8px;margin-bottom:8px;}}
-.s{{font-size:13.5px;color:#6e6e73;line-height:1.6;margin-bottom:28px;}}
-[data-theme="dark"] .s{{color:#aeaeb2;}}
-.back{{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:999px;
-  background:#1d1d1f;color:#fff;text-decoration:none;font-size:13.5px;font-weight:600;}}
-[data-theme="dark"] .back{{background:#f5f5f7;color:#1d1d1f;}}
-</style></head>
-<body>
-<div class="w">
-  <div class="icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></div>
-  <div class="t">NOTHING HERE YET</div>
-  <div class="s">{tagline}</div>
-  <a class="back" href="/home">&larr; Back to Axe</a>
-</div>
-</body></html>'''
+:root{--bg:#f5f5f7;--text:#1d1d1f;--text2:#6e6e73;--text3:#aeaeb2;--glass-bg:rgba(255,255,255,.58);--glass-grad:linear-gradient(145deg,rgba(255,255,255,.8),rgba(255,255,255,.38));--glass-border:rgba(255,255,255,.82);--glass-shadow:0 18px 45px -24px rgba(30,34,45,.28);--gold:#315f9f;--gold-light:#6f97d6;--gold-deep:#2a4d85;--gold-bg:rgba(49,95,159,.1);--gold-border:rgba(49,95,159,.25);--up:#34c759;--divider:rgba(60,60,67,.13);--radius-card:22px;}
+[data-theme="dark"]{--bg:#090b10;--text:#f5f5f7;--text2:#b8bbc4;--text3:#7d818c;--glass-bg:rgba(27,30,39,.62);--glass-grad:linear-gradient(145deg,rgba(44,48,60,.86),rgba(20,22,29,.62));--glass-border:rgba(255,255,255,.1);--glass-shadow:0 18px 45px -24px rgba(0,0,0,.7);--gold-bg:rgba(111,151,214,.12);--gold-border:rgba(111,151,214,.32);--divider:rgba(255,255,255,.1)}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}html,body{min-height:100%;-webkit-font-smoothing:antialiased}body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);transition:background .2s,color .2s}body:before{content:'';position:fixed;inset:0;z-index:-2;background:radial-gradient(circle at 10% 0%,rgba(111,151,214,.13),transparent 34%),radial-gradient(circle at 90% 100%,rgba(42,77,133,.1),transparent 35%)}
+.main{max-width:1140px;margin:0 auto;padding:24px 24px 112px}.topnav{height:48px;display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}.topnav-title{font-family:'Anton',sans-serif;font-size:22px;letter-spacing:1px}.topnav-sub{color:var(--text3);font-size:12px;margin-top:2px}.topnav-actions{display:flex;align-items:center;gap:10px}.nav-circle{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;text-decoration:none;color:var(--text2);background:var(--glass-bg);border:1px solid var(--glass-border);box-shadow:var(--glass-shadow)}.nav-circle:hover{color:var(--gold);transform:translateY(-1px)}.nav-circle svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8}.avatar{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(150deg,var(--gold-light),var(--gold-deep));color:#fff;font-weight:600;box-shadow:0 8px 18px -8px var(--gold)}
+.hero{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin:12px 0 20px}.eyebrow{font-size:11px;letter-spacing:1.6px;font-weight:600;color:var(--gold);text-transform:uppercase}.hero h1{font-family:'Anton',sans-serif;font-size:36px;letter-spacing:.6px;margin-top:6px}.hero p{color:var(--text2);font-size:14px;margin-top:8px;line-height:1.55}.hero-badge{padding:8px 12px;border-radius:999px;background:var(--gold-bg);border:1px solid var(--gold-border);color:var(--gold);font-size:11px;font-weight:600;white-space:nowrap}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}.card{grid-column:span 4;min-height:160px;padding:20px;border:1px solid var(--glass-border);border-radius:var(--radius-card);background:var(--glass-grad);box-shadow:var(--glass-shadow);backdrop-filter:blur(20px) saturate(140%)}.card.wide{grid-column:span 8}.card.full{grid-column:1/-1}.card-title{font-size:12px;letter-spacing:.7px;font-weight:600;color:var(--text2);text-transform:uppercase}.card-value{font-family:'Anton',sans-serif;font-size:27px;margin-top:14px}.card-copy{color:var(--text2);font-size:13px;line-height:1.6;margin-top:10px}.action-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}.action{border:0;text-decoration:none;border-radius:999px;padding:10px 14px;background:linear-gradient(150deg,var(--gold-light),var(--gold-deep));color:#fff;font:600 12px 'DM Sans',sans-serif;cursor:pointer;box-shadow:0 8px 18px -10px var(--gold)}.action.secondary{background:var(--gold-bg);border:1px solid var(--gold-border);color:var(--gold);box-shadow:none}.checklist{display:grid;gap:10px;margin-top:14px}.check{display:flex;align-items:center;gap:9px;color:var(--text2);font-size:13px}.check::before{content:'✓';width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:var(--gold-bg);color:var(--gold);font-size:11px;font-weight:700}.agent-chat{display:none;margin-top:16px}.agent-chat.open{display:block}.agent-chat textarea{width:100%;min-height:82px;resize:vertical;padding:12px;border-radius:14px;border:1px solid var(--glass-border);background:var(--glass-bg);color:var(--text);font:13px/1.5 'DM Sans',sans-serif;outline:none}.agent-reply{margin-top:12px;padding:12px 14px;border-radius:14px;background:var(--glass-bg);border:1px solid var(--glass-border);color:var(--text2);font-size:13px;line-height:1.55;display:none}.agent-reply.open{display:block}.agent-reply strong{color:var(--text)}
+.bottom-nav{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);display:flex;align-items:center;gap:7px;padding:6px;border-radius:999px;background:rgba(255,255,255,.7);border:1px solid var(--glass-border);box-shadow:0 14px 35px -18px rgba(30,34,45,.4);backdrop-filter:blur(20px);z-index:20}.bottom-nav a{width:46px;height:46px;display:grid;place-items:center;border-radius:50%;text-decoration:none;color:var(--text3);font-size:18px}.bottom-nav a:hover,.bottom-nav a.active{background:linear-gradient(150deg,var(--gold-light),var(--gold-deep));color:#fff;box-shadow:0 7px 18px -7px var(--gold)}.fab{position:fixed;right:22px;bottom:22px;width:56px;height:56px;border:0;border-radius:50%;background:linear-gradient(150deg,var(--gold-light),var(--gold-deep));color:#fff;font-size:26px;box-shadow:0 12px 28px -10px var(--gold);cursor:pointer;z-index:22}.fab:hover{transform:translateY(-2px)}
+@media(max-width:760px){.main{padding:18px 14px 106px}.hero{display:block}.hero-badge{display:inline-block;margin-top:16px}.card,.card.wide{grid-column:1/-1}.hero h1{font-size:30px}.bottom-nav a{width:42px;height:42px}.fab{right:16px;bottom:18px}}
+</style></head><body>
+<main class="main"><nav class="topnav"><div><div class="topnav-title">__LABEL__</div><div class="topnav-sub">Axe workspace</div></div><div class="topnav-actions"><a class="nav-circle" href="/home" title="Axe Home"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 19.5z"/><path d="M9 21v-7h6v7"/></svg></a><a class="nav-circle" href="/cfo" title="Ask Axe">🪓</a><a class="avatar" href="/logout" title="Profile / sign out">M</a></div></nav>
+<section class="hero"><div><div class="eyebrow">AXE AGENT</div><h1>__LABEL__ workspace</h1><p>Turn ideas into a clear next step with a focused, reusable workspace.</p></div><div class="hero-badge">READY TO BUILD</div></section>
+<section class="grid"><div class="card wide"><div class="card-title">Your command center</div><div class="card-value">Make progress, not tabs.</div><div class="card-copy">Use the workspace below to capture context, ask the agent for a starting point, and keep the next action visible.</div><div class="action-row"><button class="action" id="openChat">Ask __LABEL__ Axe</button><button class="action secondary" id="saveNote">Save a note</button></div><div class="agent-chat" id="agentChat"><textarea id="agentInput" placeholder="Tell Axe what you want to accomplish…"></textarea><div class="action-row"><button class="action" id="sendAgent">Get a plan</button></div><div class="agent-reply" id="agentReply"></div></div></div><div class="card"><div class="card-title">Suggested starting points</div><div class="checklist"><div class="check">Define the outcome you want</div><div class="check">Add the context Axe needs</div><div class="check">Choose one next action</div><div class="check">Review before you commit</div></div></div><div class="card full"><div class="card-title">Workspace notes</div><div class="card-copy" id="savedNote">No notes saved yet. Use “Save a note” to keep a reminder on this device.</div></div></section></main>
+<nav class="bottom-nav"><a href="/axefinance" title="Finance">💼</a><a href="/axecareer" title="Career">📈</a><a class="active" href="__ROUTE__" title="__LABEL__">✦</a><a href="/home" title="Home">⌂</a></nav><button class="fab" id="fab" title="Start a new note">+</button>
+<script>
+var slug='__SLUG__';var endpoint='/api/space-chat';var $=function(id){return document.getElementById(id)};
+$('openChat').addEventListener('click',function(){$('agentChat').classList.toggle('open');$('agentInput').focus();});
+$('fab').addEventListener('click',function(){$('agentChat').classList.add('open');$('agentInput').value='';$('agentInput').focus();});
+$('saveNote').addEventListener('click',function(){var value=$('agentInput').value.trim()||'__LABEL__ workspace note';localStorage.setItem('axe-note-'+slug,value);$('savedNote').textContent=value;});
+var saved=localStorage.getItem('axe-note-'+slug);if(saved)$('savedNote').textContent=saved;
+$('sendAgent').addEventListener('click',async function(){var input=$('agentInput'),reply=$('agentReply'),query=input.value.trim();if(!query)return;reply.className='agent-reply open';reply.textContent='Axe is shaping a practical next step…';try{var r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({slug:slug,messages:[{role:'user',content:query}]})});var d=await r.json();reply.innerHTML=String(d.reply||'Try adding a little more context.').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c];}).replace(/\\n/g,'<br>');}catch(e){reply.textContent='Axe is unavailable right now. Your note is still safe locally.';}});
+</script></body></html>"""
+
 
 
 def _render_space_stub(slug):
@@ -561,7 +552,54 @@ def _render_space_stub(slug):
     if row['status'] == 'live':
         return redirect(row['route'])
     tagline = row['tagline'] or f"{row['label']} isn't built yet \u2014 it's on the roadmap."
-    return STUB_TEMPLATE.format(label=row['label'], tagline=tagline)
+    return STUB_TEMPLATE.replace('__LABEL__', row['label']).replace('__SLUG__', slug).replace('__ROUTE__', row['route']).replace('__TAGLINE__', tagline)
+
+
+@app.route('/api/space-chat', methods=['POST'])
+@require_auth
+def api_space_chat():
+    """Shared agent endpoint for the non-Finance spaces."""
+    try:
+        data = request.get_json() or {}
+        slug = data.get('slug', 'axe')
+        messages = data.get('messages', [])
+        if not messages:
+            return jsonify({'reply': 'Tell me what you want to accomplish and I will help you map the next step.'})
+        labels = {'research': 'research and synthesis', 'travel': 'travel planning and logistics', 'network': 'relationship and networking strategy', 'vault': 'organizing and protecting important career materials'}
+        focus = labels.get(slug, 'structured planning')
+        if not GEMINI_API_KEY:
+            return jsonify({'reply': 'Axe is not configured yet. Your workspace and notes are ready locally while the agent connection is being completed.'})
+        system = f"You are Axe, a concise personal {focus} assistant. Give practical, prioritized next steps. Do not invent facts, bookings, contacts, or documents. Ask one clarifying question only when necessary. Keep the response under 180 words."
+        contents = [{'role': ('user' if m.get('role') == 'user' else 'model'), 'parts': [{'text': str(m.get('content', ''))}]} for m in messages]
+        payload = {'system_instruction': {'parts': [{'text': system}]}, 'contents': contents, 'generationConfig': {'maxOutputTokens': 500, 'temperature': 0.5}}
+        resp = requests.post(GEMINI_URL, json=payload, headers={'Content-Type': 'application/json'}, timeout=30)
+        if resp.status_code != 200:
+            logging.error(f"Space chat API error: {resp.status_code} {resp.text}")
+            return jsonify({'reply': 'Axe could not reach the agent service. Try again in a moment.'})
+        result = resp.json()
+        reply = result.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+        return jsonify({'reply': reply or 'Add a little more context and I will turn it into a plan.'})
+    except Exception as e:
+        logging.error(f"Space chat error: {e}")
+        return jsonify({'reply': 'Axe ran into a temporary issue. Your workspace is still available.'})
+
+
+CAREER_WORKSPACES = {
+    'applications': 'Applications',
+    'ai-research': 'AI Research',
+    'network': 'Network',
+    'vault': 'Career Vault',
+    'timeline': 'Timeline',
+}
+
+@app.route('/axe-career/<section>')
+@require_auth
+def axe_career_workspace(section):
+    label = CAREER_WORKSPACES.get(section)
+    if not label:
+        return redirect('/axecareer')
+    route = '/axe-career/' + section
+    return STUB_TEMPLATE.replace('__LABEL__', 'Career ' + label).replace('__SLUG__', 'career-' + section).replace('__ROUTE__', route).replace('__TAGLINE__', 'A focused workspace for your career ' + label.lower() + '.')
 
 
 @app.route('/axeresearch')
