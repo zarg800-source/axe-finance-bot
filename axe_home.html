@@ -285,6 +285,8 @@ body::after{
 }
 
 .skeleton{opacity:.5;}
+
+.ai-command-center{display:flex;flex-direction:column;gap:10px}.ai-prompt-row{display:flex;flex-wrap:wrap;gap:8px}.ai-prompt-row button{border:1px solid var(--glass-border);background:var(--glass-bg);color:var(--text2);border-radius:999px;padding:8px 12px;font:500 12px 'DM Sans',sans-serif;cursor:pointer;transition:transform .18s ease,background .18s ease,color .18s ease}.ai-prompt-row button:hover{transform:translateY(-1px);background:var(--glass-bg-strong);color:var(--text)}.ai-response{display:none;padding:14px 16px;border:1px solid var(--glass-border);border-radius:16px;background:var(--glass-bg-strong);color:var(--text2);font-size:13px;line-height:1.55;box-shadow:var(--glass-shadow)}.ai-response.open{display:block}.ai-response strong{color:var(--text)}.ai-response .ai-response-label{display:flex;align-items:center;gap:8px;color:var(--gold);font-size:11px;font-weight:700;letter-spacing:.4px;margin-bottom:6px}.ai-response .ai-response-label span{width:6px;height:6px;border-radius:50%;background:var(--up)}
 </style>
 </head>
 <body>
@@ -305,13 +307,18 @@ body::after{
     <div class="greeting-sub" id="dateLine"></div>
   </div>
 
-  <div>
+  <div class="ai-command-center">
     <div class="ai-search">
       <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input type="text" id="aiSearchInput" placeholder="Ask Axe anything…">
+      <input type="text" id="aiSearchInput" placeholder="Ask Axe anything…" autocomplete="off">
       <button id="aiSearchBtn" type="button">Ask</button>
     </div>
-    <div class="ai-note" id="aiNote"></div>
+    <div class="ai-prompt-row" id="aiPromptRow">
+      <button type="button" data-prompt="Can I afford this trip?">Can I afford this trip?</button>
+      <button type="button" data-prompt="What career opportunities should I review today?">Career opportunities</button>
+      <button type="button" data-prompt="What should I focus on today?">Today's focus</button>
+    </div>
+    <div class="ai-response" id="aiResponse" aria-live="polite"></div>
   </div>
 
   <div class="bento" id="bentoGrid">
@@ -330,15 +337,29 @@ var $ = function(id){ return document.getElementById(id); };
   $('dateLine').textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 })();
 
-// ── AI search bar (stub — Phase 0 has no backend for this yet) ──
-function aiSearchStub(){
-  var q = $('aiSearchInput').value.trim();
-  $('aiNote').textContent = q
-    ? 'Axe can\u2019t act on requests yet — this arrives with the AI Memory phase.'
-    : 'Type something to ask Axe — search goes live in a later phase.';
+// ── Global Axe command center ────────────────────────────────────────────────
+var globalAiBusy = false;
+function globalAiRoute(query){
+  var q = query.toLowerCase();
+  if (/career|job|fellowship|application|opportunit|deadline|resume|cv/.test(q)) return {endpoint:'/api/career-chat', label:'CAREER AXE'};
+  if (/money|finance|afford|budget|spend|saving|expense|income|account|trip|travel budget/.test(q)) return {endpoint:'/api/cfo-chat', label:'FINANCE AXE'};
+  return {endpoint:'/api/career-chat', label:'AXE'};
 }
-$('aiSearchBtn').addEventListener('click', aiSearchStub);
-$('aiSearchInput').addEventListener('keydown', function(e){ if(e.key === 'Enter') aiSearchStub(); });
+function safeGlobalText(value){return String(value||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c];}).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');}
+async function askGlobalAxe(){
+  var input=$('aiSearchInput'), button=$('aiSearchBtn'), response=$('aiResponse'), query=input.value.trim();
+  if(!query||globalAiBusy)return;
+  var route=globalAiRoute(query);globalAiBusy=true;button.disabled=true;button.textContent='…';response.className='ai-response open';response.innerHTML='<div class="ai-response-label"><span></span>'+route.label+'</div>Thinking through that…';
+  try{
+    var r=await fetch(route.endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:query}]})});
+    var data=await r.json();if(!r.ok)throw new Error(data.error||data.reply||'Server error');
+    response.innerHTML='<div class="ai-response-label"><span></span>'+route.label+'</div>'+safeGlobalText(data.reply||'I could not generate a response yet.');
+  }catch(e){response.innerHTML='<div class="ai-response-label"><span></span>AXE</div>I could not reach the selected agent right now. Try again in a moment.';console.error('Global Axe error:',e);}
+  finally{globalAiBusy=false;button.disabled=false;button.textContent='Ask';}
+}
+$('aiSearchBtn').addEventListener('click',askGlobalAxe);
+$('aiSearchInput').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();askGlobalAxe();}});
+document.querySelectorAll('#aiPromptRow button').forEach(function(b){b.addEventListener('click',function(){$('aiSearchInput').value=b.dataset.prompt;askGlobalAxe();});});
 
 // ── Emoji set for Agent tiles ──────────────────────────────
 var SPACE_EMOJI = {
